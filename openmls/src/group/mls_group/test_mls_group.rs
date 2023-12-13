@@ -645,3 +645,32 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, provider: &impl OpenMlsProv
         _ => unreachable!("Expected a StagedCommit."),
     }
 }
+
+#[apply(ciphersuites_and_providers)]
+fn test_self_update(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, provider);
+
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        provider,
+        &alice_signer,
+        &mls_group_config,
+        group_id.clone(),
+        alice_credential_with_key,
+    )
+    .expect("An unexpected error occurred.");
+
+    alice_group
+        .self_update(provider, &alice_signer)
+        .expect("self update should succeed");
+
+    let staged_commit = alice_group.pending_commit().unwrap();
+    let proposals = staged_commit.update_proposals().collect::<Vec<_>>();
+    assert_eq!(proposals.len(), 1);
+}
