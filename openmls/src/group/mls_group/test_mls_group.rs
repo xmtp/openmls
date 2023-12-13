@@ -671,6 +671,10 @@ fn test_self_update(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .expect("self update should succeed");
 
     let staged_commit = alice_group.pending_commit().unwrap();
-    let proposals = staged_commit.update_proposals().collect::<Vec<_>>();
-    assert_eq!(proposals.len(), 1);
+
+    let any_proposals = staged_commit.queued_proposals().collect::<Vec<_>>();
+    assert_eq!(any_proposals.len(), 1);
+
+    let update_proposals = staged_commit.update_proposals().collect::<Vec<_>>();
+    assert_eq!(update_proposals.len(), 1);
 }
