@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["make_key_package_ref","make_proposal_ref"],"struct":["HashReference"],"type":["KeyPackageRef","ProposalRef"]};

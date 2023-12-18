@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SignatureError"],"trait":["Signable","SignedStruct","Verifiable","VerifiedStruct"]};

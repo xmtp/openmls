@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CapabilitiesExtensionError","ExtensionError","InvalidExtensionError","KeyPackageIdError","ParentHashError","RatchetTreeError"]};
