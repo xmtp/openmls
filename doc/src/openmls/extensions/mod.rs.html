@@ -593,6 +593,41 @@
 <a href="#593" id="593">593</a>
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
@@ -627,6 +662,7 @@
 <span class="kw">mod </span>external_pub_extension;
 <span class="kw">mod </span>external_sender_extension;
 <span class="kw">mod </span>last_resort;
+<span class="kw">mod </span>protected_metadata;
 <span class="kw">mod </span>ratchet_tree_extension;
 <span class="kw">mod </span>required_capabilities;
 <span class="kw">use </span>errors::<span class="kw-2">*</span>;
@@ -643,6 +679,8 @@
 <span class="kw">pub use </span>last_resort::LastResortExtension;
 <span class="kw">pub use </span>ratchet_tree_extension::RatchetTreeExtension;
 <span class="kw">pub use </span>required_capabilities::RequiredCapabilitiesExtension;
+
+<span class="kw">pub use </span>protected_metadata::ProtectedMetadata;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test_extensions;
@@ -688,6 +726,10 @@
     /// scenario.
     </span>LastResort,
 
+    <span class="doccomment">/// Protected metadata extension for policies of the group. GroupContext
+    /// extension
+    </span>ProtectedMetadata,
+
     <span class="doccomment">/// A currently unknown extension type.
     </span>Unknown(u16),
 }
@@ -727,6 +769,7 @@
             <span class="number">4 </span>=&gt; ExtensionType::ExternalPub,
             <span class="number">5 </span>=&gt; ExtensionType::ExternalSenders,
             <span class="number">10 </span>=&gt; ExtensionType::LastResort,
+            <span class="number">11 </span>=&gt; ExtensionType::ProtectedMetadata,
             unknown =&gt; ExtensionType::Unknown(unknown),
         }
     }
@@ -741,6 +784,7 @@
             ExtensionType::ExternalPub =&gt; <span class="number">4</span>,
             ExtensionType::ExternalSenders =&gt; <span class="number">5</span>,
             ExtensionType::LastResort =&gt; <span class="number">10</span>,
+            ExtensionType::ProtectedMetadata =&gt; <span class="number">11</span>,
             ExtensionType::Unknown(unknown) =&gt; unknown,
         }
     }
@@ -757,6 +801,7 @@
                 | ExtensionType::ExternalPub
                 | ExtensionType::ExternalSenders
                 | ExtensionType::LastResort
+                | ExtensionType::ProtectedMetadata
         )
     }
 }
@@ -794,6 +839,9 @@
 
     <span class="doccomment">/// A [`LastResortExtension`]
     </span>LastResort(LastResortExtension),
+
+    <span class="doccomment">/// A [`ProtectedMetadata`] extension
+    </span>ProtectedMetadata(ProtectedMetadata),
 
     <span class="doccomment">/// A currently unknown extension.
     </span>Unknown(u16, UnknownExtension),
@@ -973,6 +1021,15 @@
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             })
     }
+
+    <span class="doccomment">/// Get a reference to the [`ProtectedMetadata`] if there is any.
+    </span><span class="kw">pub fn </span>protected_metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ProtectedMetadata&gt; {
+        <span class="self">self</span>.find_by_type(ExtensionType::ExternalSenders)
+            .and_then(|e| <span class="kw">match </span>e {
+                Extension::ProtectedMetadata(e) =&gt; <span class="prelude-val">Some</span>(e),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+            })
+    }
 }
 
 <span class="kw">impl </span>Extension {
@@ -1040,6 +1097,18 @@
         }
     }
 
+    <span class="doccomment">/// Get a reference to this extension as [`ProtectedMetadata`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+    /// an [`Extension`] that&#39;s not a [`ProtectedMetadata`] extension.
+    </span><span class="kw">pub fn </span>as_protected_metadata_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ProtectedMetadata, ExtensionError&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::ProtectedMetadata(e) =&gt; <span class="prelude-val">Ok</span>(e),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
+                <span class="string">&quot;This is not an ProtectedMetadata&quot;</span>.into(),
+            )),
+        }
+    }
+
     <span class="doccomment">/// Returns the [`ExtensionType`]
     </span><span class="attr">#[inline]
     </span><span class="kw">pub const fn </span>extension_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExtensionType {
@@ -1050,6 +1119,7 @@
             Extension::ExternalPub(<span class="kw">_</span>) =&gt; ExtensionType::ExternalPub,
             Extension::ExternalSenders(<span class="kw">_</span>) =&gt; ExtensionType::ExternalSenders,
             Extension::LastResort(<span class="kw">_</span>) =&gt; ExtensionType::LastResort,
+            Extension::ProtectedMetadata(<span class="kw">_</span>) =&gt; ExtensionType::ProtectedMetadata,
             Extension::Unknown(kind, <span class="kw">_</span>) =&gt; ExtensionType::Unknown(<span class="kw-2">*</span>kind),
         }
     }
