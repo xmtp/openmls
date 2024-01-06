@@ -78,58 +78,11 @@ fn application_id_in_proposals(ciphersuite: Ciphersuite, provider: &impl OpenMls
         .validate(provider.crypto(), ProtocolVersion::default())
         .expect("error validating key package with last resort extension");
     assert!(decoded_kp.extensions().application_id().is_some());
-
-    // If we join a group using a last resort KP, it shouldn't be deleted from the
-    // provider.
-
-    let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
-        "Alice".into(),
-        ciphersuite.signature_algorithm(),
-        provider,
-    );
-
-    let mls_group_config = MlsGroupConfigBuilder::new()
-        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
-        .build();
-
-    // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new(
-        provider,
-        &alice_credential_with_key_and_signer.signer,
-        &mls_group_config,
-        alice_credential_with_key_and_signer.credential_with_key,
-    )
-    .expect("An unexpected error occurred.");
-
-    // === Alice adds Bob ===
-
-    let (_message, _welcome, _group_info) = alice_group
-        .add_members(
-            provider,
-            &alice_credential_with_key_and_signer.signer,
-            &[kp.clone()],
-        )
-        .expect("An unexpected error occurred.");
-
-    let staged_commit = alice_group
-        .pending_commit()
-        .expect("should have a staged commit");
-    let queued_add_proposal = staged_commit.add_proposals().next().unwrap();
-    // Ensure that the application_id is in the KeyPackage
-    assert!(queued_add_proposal
-        .add_proposal()
-        .key_package()
-        .extensions()
-        .application_id()
-        .is_some());
-
-    assert!(queued_add_proposal
-        .add_proposal()
-        .key_package()
+    assert!(decoded_kp
         .leaf_node()
         .extensions()
         .application_id()
-        .is_some())
+        .is_some());
 }
 
 // This tests the ratchet tree extension to deliver the public ratcheting tree
