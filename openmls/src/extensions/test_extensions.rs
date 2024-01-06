@@ -37,6 +37,101 @@ fn application_id() {
     assert_eq!(&data[..], &serialized_extension_struct);
 }
 
+#[apply(ciphersuites_and_providers)]
+fn application_id_in_proposals(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
+    let extension = Extension::ApplicationId(ApplicationIdExtension::new("Bob".as_bytes()));
+
+    // Build a KeyPackage with an application id
+    let credential = Credential::new(b"Bob".to_vec(), CredentialType::Basic).unwrap();
+    let signer =
+        openmls_basic_credential::SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+    let extensions = Extensions::single(extension);
+    let crypto_config = CryptoConfig::with_default_version(ciphersuite);
+    let capabilities = Capabilities::new(
+        None,
+        None,
+        // Add last resort extension as supported extension
+        Some(&[ExtensionType::ApplicationId]),
+        None,
+        None,
+    );
+    let kp = KeyPackage::builder()
+        .key_package_extensions(extensions)
+        .leaf_node_capabilities(capabilities)
+        .build(
+            crypto_config,
+            provider,
+            &signer,
+            CredentialWithKey {
+                credential: credential.clone(),
+                signature_key: signer.to_public_vec().into(),
+            },
+        )
+        .expect("error building key package with last resort extension");
+    assert!(kp.extensions().application_id().is_some());
+    let encoded_kp = kp
+        .tls_serialize_detached()
+        .expect("error encoding key package with last resort extension");
+    let decoded_kp = KeyPackageIn::tls_deserialize(&mut encoded_kp.as_slice())
+        .expect("error decoding key package with last resort extension")
+        .validate(provider.crypto(), ProtocolVersion::default())
+        .expect("error validating key package with last resort extension");
+    assert!(decoded_kp.extensions().application_id().is_some());
+
+    // If we join a group using a last resort KP, it shouldn't be deleted from the
+    // provider.
+
+    let alice_credential_with_key_and_signer = tests::utils::generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let mls_group_config = MlsGroupConfigBuilder::new()
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new(
+        provider,
+        &alice_credential_with_key_and_signer.signer,
+        &mls_group_config,
+        alice_credential_with_key_and_signer.credential_with_key,
+    )
+    .expect("An unexpected error occurred.");
+
+    // === Alice adds Bob ===
+
+    let (_message, _welcome, _group_info) = alice_group
+        .add_members(
+            provider,
+            &alice_credential_with_key_and_signer.signer,
+            &[kp.clone()],
+        )
+        .expect("An unexpected error occurred.");
+
+    let staged_commit = alice_group
+        .pending_commit()
+        .expect("should have a staged commit");
+    let queued_add_proposal = staged_commit.add_proposals().next().unwrap();
+    // Ensure that the application_id is in the KeyPackage
+    assert!(queued_add_proposal
+        .add_proposal()
+        .key_package()
+        .extensions()
+        .application_id()
+        .is_some());
+
+    assert!(queued_add_proposal
+        .add_proposal()
+        .key_package()
+        .leaf_node()
+        .extensions()
+        .application_id()
+        .is_some())
+}
+
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[apply(ciphersuites_and_providers)]
