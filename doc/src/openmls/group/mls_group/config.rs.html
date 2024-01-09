@@ -343,6 +343,19 @@
 <a href="#343" id="343">343</a>
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Configuration module for [`MlsGroup`] configurations.
 //!
 //! ## Building an MlsGroupConfig
@@ -405,6 +418,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) lifetime: Lifetime,
     <span class="doccomment">/// Ciphersuite and protocol version
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) crypto_config: CryptoConfig,
+    <span class="comment">// Other extensions
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) group_context_extensions: Extensions,
 }
 
 <span class="kw">impl </span>MlsGroupConfig {
@@ -461,6 +476,11 @@
     <span class="doccomment">/// Returns the [`CryptoConfig`].
     </span><span class="kw">pub fn </span>crypto_config(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CryptoConfig {
         <span class="kw-2">&amp;</span><span class="self">self</span>.crypto_config
+    }
+
+    <span class="doccomment">/// Set the `group_context_extensions` property of the MlsGroupConfig.
+    </span><span class="kw">pub fn </span>group_context_extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.group_context_extensions
     }
 
     <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
@@ -562,6 +582,12 @@
     <span class="doccomment">/// Sets the `external_senders` property of the MlsGroupConfig.
     </span><span class="kw">pub fn </span>external_senders(<span class="kw-2">mut </span><span class="self">self</span>, external_senders: ExternalSendersExtension) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.config.external_senders = external_senders;
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Sets the `group_context_extensions` property of the MlsGroupConfig.
+    </span><span class="kw">pub fn </span>group_context_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.config.group_context_extensions = extensions;
         <span class="self">self
     </span>}
 
