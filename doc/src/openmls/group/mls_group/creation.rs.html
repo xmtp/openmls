@@ -230,7 +230,6 @@
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -290,7 +289,6 @@
             credential_with_key,
         )
         .with_config(group_config)
-        .with_group_context_extensions(mls_group_config.group_context_extensions.clone())
         .with_required_capabilities(mls_group_config.required_capabilities.clone())
         .with_external_senders(mls_group_config.external_senders.clone())
         .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)

@@ -175,18 +175,6 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsProvider};
 
 <span class="kw">use super</span>::{errors::PublicGroupBuildError, PublicGroup};
@@ -215,17 +203,11 @@
     required_capabilities: <span class="prelude-ty">Option</span>&lt;RequiredCapabilitiesExtension&gt;,
     external_senders: <span class="prelude-ty">Option</span>&lt;ExternalSendersExtension&gt;,
     leaf_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
-    group_context_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
 }
 
 <span class="kw">impl </span>TempBuilderPG1 {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.lifetime = <span class="prelude-val">Some</span>(lifetime);
-        <span class="self">self
-    </span>}
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_group_context_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.group_context_extensions = <span class="prelude-val">Some</span>(extensions);
         <span class="self">self
     </span>}
 
@@ -282,22 +264,17 @@
             <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected ExtensionError&quot;</span>).into(),
         })<span class="question-mark">?</span>;
         <span class="kw">let </span>required_capabilities = Extension::RequiredCapabilities(required_capabilities);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>extensions = Extensions::from_vec(<span class="macro">vec!</span>[required_capabilities])<span class="question-mark">?</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(ext_senders) = <span class="self">self</span>.external_senders.map(Extension::ExternalSenders) {
-            extensions.add(ext_senders)<span class="question-mark">?</span>;
-        }
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(group_context_extensions) = <span class="self">self</span>.group_context_extensions {
-            <span class="kw">for </span>extension <span class="kw">in </span>group_context_extensions.iter() {
-                extensions.add(extension.clone())<span class="question-mark">?</span>;
-            }
-        }
-
+        <span class="kw">let </span>extensions =
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(ext_senders) = <span class="self">self</span>.external_senders.map(Extension::ExternalSenders) {
+                <span class="macro">vec!</span>[required_capabilities, ext_senders]
+            } <span class="kw">else </span>{
+                <span class="macro">vec!</span>[required_capabilities]
+            };
         <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
             <span class="self">self</span>.crypto_config.ciphersuite,
             <span class="self">self</span>.group_id,
             treesync.tree_hash().to_vec(),
-            extensions,
+            Extensions::from_vec(extensions)<span class="question-mark">?</span>,
         );
         <span class="kw">let </span>next_builder = TempBuilderPG2 {
             treesync,
@@ -372,7 +349,6 @@
             required_capabilities: <span class="prelude-val">None</span>,
             external_senders: <span class="prelude-val">None</span>,
             leaf_extensions: <span class="prelude-val">None</span>,
-            group_context_extensions: <span class="prelude-val">None</span>,
         }
     }
 }
