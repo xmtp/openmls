@@ -774,6 +774,12 @@
 <a href="#774" id="774">774</a>
 <a href="#775" id="775">775</a>
 <a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -811,7 +817,7 @@
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::Error;
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 <span class="kw">use </span><span class="self">self</span>::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
@@ -993,7 +999,16 @@
 <span class="doccomment">/// A ratchet tree made of unverified nodes. This is used for deserialization
 /// and verification.
 </span><span class="attr">#[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>RatchetTreeIn(Vec&lt;<span class="prelude-ty">Option</span>&lt;NodeIn&gt;&gt;);
 
@@ -1213,10 +1228,7 @@
         <span class="comment">// Set the leaf indices in all the leaves and convert the node types.
         </span><span class="kw">for </span>(node_index, node_option) <span class="kw">in </span>ratchet_tree.<span class="number">0</span>.into_iter().enumerate() {
             <span class="kw">let </span>ts_node_option: TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt; = <span class="kw">match </span>node_option {
-                <span class="prelude-val">Some</span>(node) =&gt; {
-                    <span class="kw">let </span>node = node.clone();
-                    TreeSyncNode::from(node).into()
-                }
+                <span class="prelude-val">Some</span>(node) =&gt; TreeSyncNode::from(node).into(),
                 <span class="prelude-val">None </span>=&gt; {
                     <span class="kw">if </span>node_index % <span class="number">2 </span>== <span class="number">0 </span>{
                         TreeNode::Leaf(TreeSyncLeafNode::blank())

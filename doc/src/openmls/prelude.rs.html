@@ -61,13 +61,19 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.
 //! Include this to get access to all the public functions of OpenMLS.
 
 </span><span class="comment">// MlsGroup
 </span><span class="kw">pub use </span><span class="kw">crate</span>::group::{config::CryptoConfig, core_group::Member, ser::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="kw">pub use </span><span class="kw">crate</span>::group::public_group::errors::<span class="kw-2">*</span>;
+<span class="kw">pub use </span><span class="kw">crate</span>::group::public_group::{errors::<span class="kw-2">*</span>, PublicGroup};
 
 <span class="comment">// Ciphersuite
 </span><span class="kw">pub use </span><span class="kw">crate</span>::ciphersuite::{hash_ref::KeyPackageRef, signable::<span class="kw-2">*</span>, signature::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
@@ -85,7 +91,13 @@
 </span><span class="kw">pub use </span><span class="kw">crate</span>::extensions::{errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// Framing
-</span><span class="kw">pub use </span><span class="kw">crate</span>::framing::<span class="kw-2">*</span>;
+</span><span class="kw">pub use </span><span class="kw">crate</span>::framing::{
+    message_in::{MlsMessageIn, MlsMessageInBody, ProtocolMessage},
+    message_out::MlsMessageOut,
+    sender::Sender,
+    validation::{ApplicationMessage, ProcessedMessage, ProcessedMessageContent},
+    <span class="kw-2">*</span>,
+};
 
 <span class="comment">// Key packages
 </span><span class="kw">pub use </span><span class="kw">crate</span>::key_packages::{errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
