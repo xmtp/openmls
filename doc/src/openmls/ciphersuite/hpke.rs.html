@@ -156,6 +156,8 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Public-Key Encryption
 //!
 //! As with signing, MLS includes a label and context in encryption operations to
@@ -203,7 +205,7 @@
 
 <span class="doccomment">/// HPKE labeled encryption errors.
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>Error {
+</span><span class="kw">pub enum </span>Error {
     <span class="doccomment">/// Error while serializing content. This should only happen if a bounds check was missing.
     </span><span class="attr">#[error(
         <span class="string">&quot;Error while serializing content. This should only happen if a bounds check was missing.&quot;
@@ -226,13 +228,15 @@
     }
 }
 
-<span class="attr">#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
+<span class="doccomment">/// Context for HPKE encryption
+</span><span class="attr">#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 </span><span class="kw">pub struct </span>EncryptContext {
     label: VLBytes,
     context: VLBytes,
 }
 
-<span class="kw">impl </span>EncryptContext {
+<span class="doccomment">/// Context for HPKE encryption
+</span><span class="kw">impl </span>EncryptContext {
     <span class="doccomment">/// Create a new [`EncryptContext`] from a string label and the content bytes.
     </span><span class="kw">pub fn </span>new(label: <span class="kw-2">&amp;</span>str, context: VLBytes) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>label_string = LABEL_PREFIX.to_owned() + label;
@@ -248,7 +252,7 @@
 }
 
 <span class="doccomment">/// Encrypt to an HPKE key with a label.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_with_label(
+</span><span class="kw">pub fn </span>encrypt_with_label(
     public_key: <span class="kw-2">&amp;</span>[u8],
     label: <span class="kw-2">&amp;</span>str,
     context: <span class="kw-2">&amp;</span>[u8],
@@ -281,7 +285,7 @@
 }
 
 <span class="doccomment">/// Decrypt with HPKE and label.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt_with_label(
+</span><span class="kw">pub fn </span>decrypt_with_label(
     private_key: <span class="kw-2">&amp;</span>[u8],
     label: <span class="kw-2">&amp;</span>str,
     context: <span class="kw-2">&amp;</span>[u8],
