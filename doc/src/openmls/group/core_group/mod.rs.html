@@ -1166,6 +1166,7 @@
 <a href="#1166" id="1166">1166</a>
 <a href="#1167" id="1167">1167</a>
 <a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1207,6 +1208,7 @@
 
 <span class="kw">use </span><span class="self">self</span>::{
     create_commit_params::{CommitType, CreateCommitParams},
+    node::leaf_node::Capabilities,
     past_secrets::MessageSecretsStore,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
@@ -1347,26 +1349,10 @@
         <span class="self">self</span>.psk_ids = psk_ids;
         <span class="self">self
     </span>}
-    <span class="doccomment">/// Set the [`RequiredCapabilitiesExtension`] of the [`CoreGroup`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_required_capabilities(
-        <span class="kw-2">mut </span><span class="self">self</span>,
-        required_capabilities: RequiredCapabilitiesExtension,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.public_group_builder = <span class="self">self
-            </span>.public_group_builder
-            .with_required_capabilities(required_capabilities);
-        <span class="self">self
-    </span>}
-    <span class="doccomment">/// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_external_senders(
-        <span class="kw-2">mut </span><span class="self">self</span>,
-        external_senders: ExternalSendersExtension,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="kw">if </span>!external_senders.is_empty() {
-            <span class="self">self</span>.public_group_builder = <span class="self">self
-                </span>.public_group_builder
-                .with_external_senders(external_senders);
-        }
+
+    <span class="doccomment">/// Set the [`Capabilities`] of the group&#39;s creator.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.public_group_builder = <span class="self">self</span>.public_group_builder.with_capabilities(capabilities);
         <span class="self">self
     </span>}
 
@@ -1382,6 +1368,17 @@
         <span class="self">self</span>.public_group_builder = <span class="self">self
             </span>.public_group_builder
             .with_group_context_extensions(extensions)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+    }
+
+    <span class="doccomment">/// Sets extensions of the group creator&#39;s [`LeafNode`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_leaf_node_extensions(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        extensions: Extensions,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, InvalidExtensionError&gt; {
+        <span class="self">self</span>.public_group_builder = <span class="self">self
+            </span>.public_group_builder
+            .with_leaf_node_extensions(extensions)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">self</span>)
     }
 
@@ -1620,12 +1617,11 @@
             <span class="kw">let </span>required_capabilities = required_extension.as_required_capabilities_extension()<span class="question-mark">?</span>;
             <span class="comment">// Ensure we support all the capabilities.
             </span>required_capabilities.check_support()<span class="question-mark">?</span>;
-            <span class="comment">// TODO #566/#1361: This needs to be re-enabled once we support GCEs
-            /* self.own_leaf_node()?
-            .capabilities()
-            .supports_required_capabilities(required_capabilities)?; */
+            <span class="self">self</span>.own_leaf_node()<span class="question-mark">?
+                </span>.capabilities()
+                .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
 
-            // Ensure that all other leaf nodes support all the required
+            <span class="comment">// Ensure that all other leaf nodes support all the required
             // extensions as well.
             </span><span class="self">self</span>.public_group()
                 .check_extension_support(required_capabilities.extension_types())<span class="question-mark">?</span>;
@@ -2058,6 +2054,11 @@
                 .validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>sender_index)<span class="question-mark">?</span>;
         }
 
+        <span class="comment">// ValSem208
+        // ValSem209
+        </span><span class="self">self</span>.public_group
+            .validate_group_context_extensions_proposal(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+
         <span class="comment">// Make a copy of the public group to apply proposals safely
         </span><span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.public_group.empty_diff();
 
@@ -2083,12 +2084,13 @@
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
                     signer,
-                    params.take_credential_with_key()
+                    params.take_credential_with_key(),
+                    apply_proposals_values.extensions.clone()
                 )<span class="question-mark">?
             </span>} <span class="kw">else </span>{
                 <span class="comment">// If path is not needed, update the group context and return
                 // empty path processing results
-                </span>diff.update_group_context(provider.crypto())<span class="question-mark">?</span>;
+                </span>diff.update_group_context(provider.crypto(), apply_proposals_values.extensions.clone())<span class="question-mark">?</span>;
                 PathComputationResult::default()
             };
 

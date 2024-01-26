@@ -211,17 +211,34 @@
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsProvider};
 
 <span class="kw">use crate</span>::{
     credentials::CredentialWithKey,
-    extensions::{errors::InvalidExtensionError, Extensions, ExternalSendersExtension},
+    error::LibraryError,
+    extensions::{errors::InvalidExtensionError, Extensions},
     group::{
         config::CryptoConfig, public_group::errors::PublicGroupBuildError, CoreGroup,
         CoreGroupBuildError, CoreGroupConfig, GroupId, MlsGroupCreateConfig,
         MlsGroupCreateConfigBuilder, NewGroupError, ProposalStore, WireFormatPolicy,
     },
-    prelude::{LibraryError, Lifetime, SenderRatchetConfiguration},
+    key_packages::Lifetime,
+    tree::sender_ratchet::SenderRatchetConfiguration,
+    treesync::node::leaf_node::Capabilities,
 };
 
 <span class="kw">use super</span>::{InnerState, MlsGroup, MlsGroupState};
@@ -283,10 +300,10 @@
             credential_with_key,
         )
         .with_config(group_config)
-        .with_required_capabilities(mls_group_create_config.required_capabilities.clone())
-        .with_external_senders(mls_group_create_config.external_senders.clone())
         .with_group_context_extensions(mls_group_create_config.group_context_extensions.clone())<span class="question-mark">?
-        </span>.with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
+        </span>.with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())<span class="question-mark">?
+        </span>.with_capabilities(mls_group_create_config.capabilities.clone())
+        .with_max_past_epoch_secrets(mls_group_create_config.join_config.max_past_epochs)
         .with_lifetime(<span class="kw-2">*</span>mls_group_create_config.lifetime())
         .build(provider, signer)
         .map_err(|e| <span class="kw">match </span>e {
@@ -405,14 +422,6 @@
         <span class="self">self
     </span>}
 
-    <span class="doccomment">/// Sets the `external_senders` property of the MlsGroup.
-    </span><span class="kw">pub fn </span>external_senders(<span class="kw-2">mut </span><span class="self">self</span>, external_senders: ExternalSendersExtension) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-            </span>.mls_group_create_config_builder
-            .external_senders(external_senders);
-        <span class="self">self
-    </span>}
-
     <span class="doccomment">/// Sets the initial group context extensions
     </span><span class="kw">pub fn </span>with_group_context_extensions(
         <span class="kw-2">mut </span><span class="self">self</span>,
@@ -423,5 +432,24 @@
             .with_group_context_extensions(extensions)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">self</span>)
     }
+
+    <span class="doccomment">/// Sets the initial leaf node extensions
+    </span><span class="kw">pub fn </span>with_leaf_node_extensions(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        extensions: Extensions,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, InvalidExtensionError&gt; {
+        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+            </span>.mls_group_create_config_builder
+            .with_leaf_node_extensions(extensions)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+    }
+
+    <span class="doccomment">/// Sets the group creator&#39;s [`Capabilities`]
+    </span><span class="kw">pub fn </span>with_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+            </span>.mls_group_create_config_builder
+            .capabilities(capabilities);
+        <span class="self">self
+    </span>}
 }
 </code></pre></div></section></main></body></html>
