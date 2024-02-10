@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/extensions/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/extensions/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -667,7 +668,7 @@
 //! - In the `GroupContext` object, to ensure that all members of the group have
 //!   the same view of the parameters in use.
 //!
-//! Note that `GroupInfo` and `GroupContext` are not exposed in OpenMLS&#39; public
+//! Note that `GroupInfo` and `GroupContext` are not exposed in OpenMLS' public
 //! API.
 //!
 //! OpenMLS supports the following extensions:
@@ -690,7 +691,7 @@
 <span class="kw">mod </span>external_pub_extension;
 <span class="kw">mod </span>external_sender_extension;
 <span class="kw">mod </span>last_resort;
-<span class="kw">mod </span>protected_metadata;
+<span class="kw">mod </span>metadata;
 <span class="kw">mod </span>ratchet_tree_extension;
 <span class="kw">mod </span>required_capabilities;
 <span class="kw">use </span>errors::<span class="kw-2">*</span>;
@@ -712,7 +713,7 @@
     Size, TlsSize,
 };
 
-<span class="kw">pub use </span>protected_metadata::ProtectedMetadata;
+<span class="kw">pub use </span>metadata::Metadata;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test_extensions;
@@ -758,9 +759,9 @@
     /// scenario.
     </span>LastResort,
 
-    <span class="doccomment">/// Protected metadata extension for policies of the group. GroupContext
-    /// extension
-    </span>ProtectedMetadata,
+    <span class="doccomment">/// Immutable metadata extension for the GroupContext.
+    /// This can only be set on creation of the group.
+    </span>ImmutableMetadata,
 
     <span class="doccomment">/// A currently unknown extension type.
     </span>Unknown(u16),
@@ -813,7 +814,7 @@
             <span class="number">4 </span>=&gt; ExtensionType::ExternalPub,
             <span class="number">5 </span>=&gt; ExtensionType::ExternalSenders,
             <span class="number">10 </span>=&gt; ExtensionType::LastResort,
-            <span class="number">11 </span>=&gt; ExtensionType::ProtectedMetadata,
+            <span class="number">0xf000 </span>=&gt; ExtensionType::ImmutableMetadata,
             unknown =&gt; ExtensionType::Unknown(unknown),
         }
     }
@@ -828,7 +829,7 @@
             ExtensionType::ExternalPub =&gt; <span class="number">4</span>,
             ExtensionType::ExternalSenders =&gt; <span class="number">5</span>,
             ExtensionType::LastResort =&gt; <span class="number">10</span>,
-            ExtensionType::ProtectedMetadata =&gt; <span class="number">11</span>,
+            ExtensionType::ImmutableMetadata =&gt; <span class="number">0xf000</span>,
             ExtensionType::Unknown(unknown) =&gt; unknown,
         }
     }
@@ -845,7 +846,7 @@
                 | ExtensionType::ExternalPub
                 | ExtensionType::ExternalSenders
                 | ExtensionType::LastResort
-                | ExtensionType::ProtectedMetadata
+                | ExtensionType::ImmutableMetadata
         )
     }
 }
@@ -884,8 +885,8 @@
     <span class="doccomment">/// A [`LastResortExtension`]
     </span>LastResort(LastResortExtension),
 
-    <span class="doccomment">/// A [`ProtectedMetadata`] extension
-    </span>ProtectedMetadata(ProtectedMetadata),
+    <span class="doccomment">/// An immutable [`Metadata`] extension
+    </span>ImmutableMetadata(Metadata),
 
     <span class="doccomment">/// A currently unknown extension.
     </span>Unknown(u16, UnknownExtension),
@@ -914,7 +915,7 @@
     {
         <span class="kw">let </span>candidate: Vec&lt;Extension&gt; = Vec::tls_deserialize(bytes)<span class="question-mark">?</span>;
         Extensions::try_from(candidate)
-            .map_err(|<span class="kw">_</span>| Error::DecodingError(<span class="string">&quot;Found duplicate extensions&quot;</span>.into()))
+            .map_err(|<span class="kw">_</span>| Error::DecodingError(<span class="string">"Found duplicate extensions"</span>.into()))
     }
 }
 
@@ -1078,11 +1079,11 @@
             })
     }
 
-    <span class="doccomment">/// Get a reference to the [`ProtectedMetadata`] if there is any.
-    </span><span class="kw">pub fn </span>protected_metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ProtectedMetadata&gt; {
-        <span class="self">self</span>.find_by_type(ExtensionType::ProtectedMetadata)
+    <span class="doccomment">/// Get a reference to the immutable [`Metadata`] if there is any.
+    </span><span class="kw">pub fn </span>immutable_metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Metadata&gt; {
+        <span class="self">self</span>.find_by_type(ExtensionType::ImmutableMetadata)
             .and_then(|e| <span class="kw">match </span>e {
-                Extension::ProtectedMetadata(e) =&gt; <span class="prelude-val">Some</span>(e),
+                Extension::ImmutableMetadata(e) =&gt; <span class="prelude-val">Some</span>(e),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             })
     }
@@ -1091,76 +1092,76 @@
 <span class="kw">impl </span>Extension {
     <span class="doccomment">/// Get a reference to this extension as [`ApplicationIdExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
-    /// [`Extension`] that&#39;s not an [`ApplicationIdExtension`].
+    /// [`Extension`] that's not an [`ApplicationIdExtension`].
     </span><span class="kw">pub fn </span>as_application_id_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ApplicationIdExtension, ExtensionError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ApplicationId(e) =&gt; <span class="prelude-val">Ok</span>(e),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-                <span class="string">&quot;This is not an ApplicationIdExtension&quot;</span>.into(),
+                <span class="string">"This is not an ApplicationIdExtension"</span>.into(),
             )),
         }
     }
 
     <span class="doccomment">/// Get a reference to this extension as [`RatchetTreeExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on
-    /// an [`Extension`] that&#39;s not a [`RatchetTreeExtension`].
+    /// an [`Extension`] that's not a [`RatchetTreeExtension`].
     </span><span class="kw">pub fn </span>as_ratchet_tree_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>RatchetTreeExtension, ExtensionError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RatchetTree(rte) =&gt; <span class="prelude-val">Ok</span>(rte),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-                <span class="string">&quot;This is not a RatchetTreeExtension&quot;</span>.into(),
+                <span class="string">"This is not a RatchetTreeExtension"</span>.into(),
             )),
         }
     }
 
     <span class="doccomment">/// Get a reference to this extension as [`RequiredCapabilitiesExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
-    /// an [`Extension`] that&#39;s not a [`RequiredCapabilitiesExtension`].
+    /// an [`Extension`] that's not a [`RequiredCapabilitiesExtension`].
     </span><span class="kw">pub fn </span>as_required_capabilities_extension(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension, ExtensionError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RequiredCapabilities(e) =&gt; <span class="prelude-val">Ok</span>(e),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-                <span class="string">&quot;This is not a RequiredCapabilitiesExtension&quot;</span>.into(),
+                <span class="string">"This is not a RequiredCapabilitiesExtension"</span>.into(),
             )),
         }
     }
 
     <span class="doccomment">/// Get a reference to this extension as [`ExternalPubExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
-    /// an [`Extension`] that&#39;s not a [`ExternalPubExtension`].
+    /// an [`Extension`] that's not a [`ExternalPubExtension`].
     </span><span class="kw">pub fn </span>as_external_pub_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ExternalPubExtension, ExtensionError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ExternalPub(e) =&gt; <span class="prelude-val">Ok</span>(e),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-                <span class="string">&quot;This is not an ExternalPubExtension&quot;</span>.into(),
+                <span class="string">"This is not an ExternalPubExtension"</span>.into(),
             )),
         }
     }
 
     <span class="doccomment">/// Get a reference to this extension as [`ExternalSendersExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
-    /// an [`Extension`] that&#39;s not a [`ExternalSendersExtension`].
+    /// an [`Extension`] that's not a [`ExternalSendersExtension`].
     </span><span class="kw">pub fn </span>as_external_senders_extension(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ExternalSendersExtension, ExtensionError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ExternalSenders(e) =&gt; <span class="prelude-val">Ok</span>(e),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-                <span class="string">&quot;This is not an ExternalSendersExtension&quot;</span>.into(),
+                <span class="string">"This is not an ExternalSendersExtension"</span>.into(),
             )),
         }
     }
 
-    <span class="doccomment">/// Get a reference to this extension as [`ProtectedMetadata`].
+    <span class="doccomment">/// Get a reference to this extension as immutable [`Metadata`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
-    /// an [`Extension`] that&#39;s not a [`ProtectedMetadata`] extension.
-    </span><span class="kw">pub fn </span>as_protected_metadata_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ProtectedMetadata, ExtensionError&gt; {
+    /// an [`Extension`] that's not an immutable [`Metadata`] extension.
+    </span><span class="kw">pub fn </span>as_immutable_metadata_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>Metadata, ExtensionError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::ProtectedMetadata(e) =&gt; <span class="prelude-val">Ok</span>(e),
+            <span class="self">Self</span>::ImmutableMetadata(e) =&gt; <span class="prelude-val">Ok</span>(e),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-                <span class="string">&quot;This is not an ProtectedMetadata&quot;</span>.into(),
+                <span class="string">"This is not an immutable metadata extensions"</span>.into(),
             )),
         }
     }
@@ -1175,7 +1176,7 @@
             Extension::ExternalPub(<span class="kw">_</span>) =&gt; ExtensionType::ExternalPub,
             Extension::ExternalSenders(<span class="kw">_</span>) =&gt; ExtensionType::ExternalSenders,
             Extension::LastResort(<span class="kw">_</span>) =&gt; ExtensionType::LastResort,
-            Extension::ProtectedMetadata(<span class="kw">_</span>) =&gt; ExtensionType::ProtectedMetadata,
+            Extension::ImmutableMetadata(<span class="kw">_</span>) =&gt; ExtensionType::ImmutableMetadata,
             Extension::Unknown(kind, <span class="kw">_</span>) =&gt; ExtensionType::Unknown(<span class="kw-2">*</span>kind),
         }
     }
@@ -1207,7 +1208,7 @@
     </span><span class="kw">fn </span>add_try_from() {
         <span class="comment">// Create some extensions with different extension types and test that
         // duplicates are rejected. The extension content does not matter in this test.
-        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b&quot;Test&quot;</span>));
+        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b"Test"</span>));
         <span class="kw">let </span>ext_y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
         <span class="kw">let </span>tests = [
@@ -1240,11 +1241,11 @@
                         <span class="prelude-val">Err</span>(InvalidExtensionError::Duplicate) =&gt; {
                             works = <span class="bool-val">false</span>;
                         }
-                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;This should have never happened.&quot;</span>),
+                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"This should have never happened."</span>),
                     }
                 }
 
-                <span class="macro">println!</span>(<span class="string">&quot;{:?}, {:?}&quot;</span>, test.clone(), should_work);
+                <span class="macro">println!</span>(<span class="string">"{:?}, {:?}"</span>, test.clone(), should_work);
                 <span class="macro">assert_eq!</span>(works, should_work);
             }
 
@@ -1262,7 +1263,7 @@
         <span class="comment">// Create some extensions with different extension types and test
         // that all permutations keep their order after being (de)serialized.
         // The extension content does not matter in this test.
-        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b&quot;Test&quot;</span>));
+        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b"Test"</span>));
         <span class="kw">let </span>ext_y = Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(<span class="macro">vec!</span>[])));
         <span class="kw">let </span>ext_z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
@@ -1280,7 +1281,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>that_unknown_extensions_are_de_serialized_correctly() {
-        <span class="kw">let </span>extension_types = [<span class="number">0x0000u16</span>, <span class="number">0x0A0A</span>, <span class="number">0x7A7A</span>, <span class="number">0xF000</span>, <span class="number">0xFFFF</span>];
+        <span class="kw">let </span>extension_types = [<span class="number">0x0000u16</span>, <span class="number">0x0A0A</span>, <span class="number">0x7A7A</span>, <span class="number">0xF100</span>, <span class="number">0xFFFF</span>];
         <span class="kw">let </span>extension_datas = [<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]];
 
         <span class="kw">for </span>extension_type <span class="kw">in </span>extension_types.into_iter() {
@@ -1304,7 +1305,7 @@
                         <span class="macro">assert_eq!</span>(extension_type, got_extension_type);
                         <span class="macro">assert_eq!</span>(extension_data, <span class="kw-2">&amp;</span>got_extension_data.<span class="number">0</span>);
                     }
-                    other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Expected `Extension::Unknown`, got {:?}&quot;</span>, other),
+                    other =&gt; <span class="macro">panic!</span>(<span class="string">"Expected `Extension::Unknown`, got {:?}"</span>, other),
                 }
 
                 <span class="comment">// Test serialization.
