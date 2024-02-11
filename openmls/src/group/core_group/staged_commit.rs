@@ -226,7 +226,7 @@ impl CoreGroup {
                 // Even if there is no path, we have to update the group context.
                 diff.update_group_context(
                     provider.crypto(),
-                    apply_proposals_values.extensions.clone(),
+                    apply_proposals_values.extensions.clone(), // NOTE: Could/should be None.
                 )?;
 
                 (

@@ -124,7 +124,7 @@ impl CoreGroup {
                     FramedContentBody::Proposal(_) => {
                         Err(ProcessMessageError::UnsupportedProposalType)
                     }
-                    FramedContentBody::Commit(_) => unimplemented!(),
+                    FramedContentBody::Commit(_) => unimplemented!(), // NOTE: Should just be an error.
                 }
             }
         }
