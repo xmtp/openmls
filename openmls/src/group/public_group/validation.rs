@@ -168,7 +168,7 @@ impl PublicGroup {
                 .signature_key()
                 .as_slice()
                 .to_vec()
-        });
+        }); // NOTE: Why only Add proposals? Updates and the committer can also change their signature key.
 
         // Collect encryption keys from add proposals, update proposals, the
         // commit leaf node and path keys
@@ -225,6 +225,7 @@ impl PublicGroup {
         // Validate uniqueness of signature keys
         //  - ValSem101
         for signature_key in signature_keys {
+            // NOTE: This prohibits doing a Remove+Add in the same commit for a client.
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKey);
             }
@@ -237,9 +238,12 @@ impl PublicGroup {
         //  - ValSem206
         //  - ValSem207
         for encryption_key in encryption_keys {
-            if init_key_set.contains(&encryption_key) {
+            if init_key_set.contains(&encryption_key) { // NOTE: This doesn't seem to do anything?
                 return Err(ProposalValidationError::InitEncryptionKeyCollision);
             }
+            // NOTE: This needs to get ALL encryption keys from ratchet tree if
+            // it is also meant to do the UpdatePath uniqueness check. Above
+            // only initializes with ratchet tree leaves.
             if !encryption_key_set.insert(encryption_key) {
                 return Err(ProposalValidationError::DuplicateEncryptionKey);
             }
@@ -288,8 +292,9 @@ impl PublicGroup {
                 Proposal::Add(add_proposal) => Some(add_proposal.key_package().leaf_node()),
                 Proposal::Update(update_proposal) => Some(update_proposal.leaf_node()),
                 _ => None,
-            });
+            }); // NOTE: This does not include committer's leaf node.
 
+        // NOTE: This should exclude members being removed.
         let mut group_leaf_nodes = self.treesync().full_leaves();
 
         for leaf_node in leaf_nodes {
@@ -306,6 +311,7 @@ impl PublicGroup {
 
             // If there is a required capabilities extension, check if that one
             // is supported.
+            // NOTE: This check should be skipped if there is a GroupContextExtensions proposal being committed.
             if let Some(required_capabilities) =
                 self.group_context().extensions().required_capabilities()
             {
@@ -326,6 +332,7 @@ impl PublicGroup {
             }
 
             // Check that the credential type is supported by all members of the group.
+            // NOTE: This should also check against the new members being added to the group.
             if !group_leaf_nodes.all(|node| {
                 node.capabilities()
                     .contains_credential(&leaf_node.credential().credential_type())
@@ -336,6 +343,7 @@ impl PublicGroup {
             // Check that the capabilities field of this LeafNode indicates
             // support for all the credential types currently in use by other
             // members.
+            // NOTE: This should also check against the new members being added to the group.
             if !group_leaf_nodes
                 .all(|node| capabilities.contains_credential(&node.credential().credential_type()))
             {
@@ -354,6 +362,7 @@ impl PublicGroup {
         let add_proposals = proposal_queue.add_proposals();
 
         for add_proposal in add_proposals {
+            // NOTE: This check is already done elsewhere.
             // ValSem105: Check if ciphersuite and version of the group are correct:
             if add_proposal.add_proposal().key_package().ciphersuite() != self.ciphersuite()
                 || add_proposal.add_proposal().key_package().protocol_version() != self.version()
@@ -378,6 +387,7 @@ impl PublicGroup {
         for remove_proposal in remove_proposals {
             let removed = remove_proposal.remove_proposal().removed();
             // ValSem107
+            // NOTE: This should also be checking uniqueness among Updates.
             if !removes_set.insert(removed) {
                 return Err(ProposalValidationError::DuplicateMemberRemoval);
             }
@@ -476,12 +486,14 @@ impl PublicGroup {
         }
 
         // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+        // NOTE: Check for inline happens elsewhere.
         let contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
             let is_allowed_type = matches!(
                 p.proposal(),
                 Proposal::ExternalInit(_) | Proposal::Remove(_) | Proposal::PreSharedKey(_)
             );
+            // NOTE: Just !is_allowed_type
             is_inline && !is_allowed_type
         });
         if contains_denied_proposal {
@@ -503,6 +515,8 @@ impl PublicGroup {
                             .treesync()
                             .leaf(removed_leaf)
                             .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
+                        // NOTE: This is an application-defined check, I don't think you can implement it yourself.
+                        // NOTE: This check should be skipped if this client is being removed by the commit.
                         if removed_leaf.credential().identity() != new_leaf.credential().identity()
                         {
                             return Err(ExternalCommitValidationError::InvalidRemoveProposal);
@@ -531,6 +545,8 @@ impl PublicGroup {
                         .map(|ext| ext.extension_type())
                         .collect();
 
+                    // NOTE: This should be checking against all members of the new group.
+                    // NOTE: RequiredCapabilities not checked.
                     self.check_extension_support(&ext_type_list).map_err(|_| GroupContextExtensionsProposalValidationError::ExtensionNotSupportedByAllMembers)?
                 }
                 _ => {

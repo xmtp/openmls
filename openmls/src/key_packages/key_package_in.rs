@@ -186,6 +186,7 @@ impl KeyPackageIn {
 
         // Ensure validity of the life time extension in the leaf node.
         if let Some(life_time) = key_package.payload.leaf_node.life_time() {
+            // NOTE: This must only be verified optionally.
             if !life_time.is_valid() {
                 return Err(KeyPackageVerifyError::InvalidLifetime);
             }
