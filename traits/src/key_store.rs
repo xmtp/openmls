@@ -34,7 +34,7 @@ pub trait OpenMlsKeyStore {
     /// serialization for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn store<V: MlsEntity>(&self, k: &[u8], v: &V) -> Result<(), Self::Error>
+    fn store<V: MlsEntity>(&self, k: &[u8], v: &V, expiration: Option<u64>) -> Result<(), Self::Error>
     where
         Self: Sized;
 

@@ -779,7 +779,7 @@ impl CoreGroup {
             self.context().epoch().as_u64(),
             self.own_leaf_index(),
         );
-        store.store(&k.0, &keypair_references.to_vec())
+        store.store(&k.0, &keypair_references.to_vec(), None)
     }
 
     /// Read the [`EncryptionKeyPair`]s of this group and its current

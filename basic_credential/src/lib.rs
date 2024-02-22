@@ -121,7 +121,7 @@ impl SignatureKeyPair {
     where
         T: OpenMlsKeyStore,
     {
-        key_store.store(&self.id(), self)
+        key_store.store(&self.id(), self, None)
     }
 
     /// Read a signature key pair from the key store.

@@ -169,8 +169,9 @@ impl EncryptionKeyPair {
     pub(crate) fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
         store: &KeyStore,
+        expiration: Option<u64>,
     ) -> Result<(), KeyStore::Error> {
-        store.store(&self.public_key().to_bytes_with_prefix(), self)
+        store.store(&self.public_key().to_bytes_with_prefix(), self, expiration)
     }
 
     /// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
@@ -239,7 +240,7 @@ pub mod test_utils {
     pub fn write_keys_from_key_store(provider: &impl OpenMlsProvider, encryption_key: HpkeKeyPair) {
         let keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write_to_key_store(provider.key_store()).unwrap();
+        keypair.write_to_key_store(provider.key_store(), None).unwrap();
     }
 }
 

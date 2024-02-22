@@ -1714,7 +1714,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) {
         .find(|keypair| keypair.public_key() == &alice_encryption_key)
         .unwrap();
     leaf_keypair
-        .write_to_key_store(provider.key_store())
+        .write_to_key_store(provider.key_store(), None)
         .unwrap();
 
     // Have bob process the resulting plaintext

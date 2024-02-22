@@ -183,15 +183,16 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, provider: &impl OpenM
         .store(
             bob_kp.hash_ref(provider.crypto()).unwrap().as_slice(),
             bob_kp,
+            None,
         )
         .unwrap();
     provider
         .key_store()
-        .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
+        .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key, None)
         .unwrap();
 
     encryption_keypair
-        .write_to_key_store(provider.key_store())
+        .write_to_key_store(provider.key_store(), None)
         .unwrap();
 
     let _group = MlsGroup::new_from_welcome(

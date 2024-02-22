@@ -101,7 +101,7 @@ impl MlsGroup {
             )?;
             // TODO #1207: Move to the top of the function.
             keypair
-                .write_to_key_store(provider.key_store())
+                .write_to_key_store(provider.key_store(), None)
                 .map_err(ProposeSelfUpdateError::KeyStoreError)?;
         };
 

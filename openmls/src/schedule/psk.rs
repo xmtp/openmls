@@ -300,7 +300,7 @@ impl PreSharedKeyId {
 
         provider
             .key_store()
-            .store(&keystore_id, &psk_bundle)
+            .store(&keystore_id, &psk_bundle, None)
             .map_err(|_| PskError::KeyStore)
     }
 

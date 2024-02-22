@@ -171,6 +171,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         .store(
             key_package.hash_ref(provider.crypto()).unwrap().as_slice(),
             &key_package,
+            None,
         )
         .unwrap();
 
@@ -179,6 +180,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         .store::<HpkePrivateKey>(
             key_package.hpke_init_key().as_slice(),
             key_package_bundle.private_key(),
+            None,
         )
         .unwrap();
 

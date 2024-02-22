@@ -263,6 +263,7 @@ impl PassiveClient {
                     .unwrap()
                     .as_slice(),
                 &key_package,
+                None,
             )
             .unwrap();
 
@@ -272,6 +273,7 @@ impl PassiveClient {
             .store::<HpkePrivateKey>(
                 key_package.hpke_init_key().as_slice(),
                 key_package_bundle.private_key(),
+                None,
             )
             .unwrap();
 
@@ -282,7 +284,7 @@ impl PassiveClient {
         ));
 
         key_pair
-            .write_to_key_store(self.provider.key_store())
+            .write_to_key_store(self.provider.key_store(), None)
             .unwrap();
     }
 

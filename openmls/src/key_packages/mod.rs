@@ -422,6 +422,7 @@ impl KeyPackage {
             leaf_node_extensions,
             init_key,
         )?;
+        let expiration = Some(key_package.life_time().not_after());
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
@@ -430,12 +431,13 @@ impl KeyPackage {
             .store(
                 key_package.hash_ref(provider.crypto())?.as_slice(),
                 &key_package,
+                expiration,
             )
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the encryption key pair in the key store.
         encryption_key_pair
-            .write_to_key_store(provider.key_store())
+            .write_to_key_store(provider.key_store(), expiration)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)
@@ -461,13 +463,6 @@ impl KeyPackage {
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
 
-        // Store the private part of the init_key into the key store.
-        // The key is the public key.
-        provider
-            .key_store()
-            .store::<HpkePrivateKey>(&init_key.public, &init_key.private)
-            .map_err(KeyPackageNewError::KeyStoreError)?;
-
         // We don't need the private key here. It's stored in the key store for
         // use later when creating a group with this key package.
         let leaf_node = LeafNode::create_new_with_key(
@@ -484,12 +479,20 @@ impl KeyPackage {
         let key_package = KeyPackageTbs {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
-            init_key: init_key.public.into(),
+            init_key: init_key.public.clone().into(),
             leaf_node,
             extensions,
         };
 
         let key_package = key_package.sign(signer)?;
+        let expiration = Some(key_package.life_time().not_after());
+
+        // Store the private part of the init_key into the key store.
+        // The key is the public key.
+        provider
+            .key_store()
+            .store::<HpkePrivateKey>(&init_key.public, &init_key.private, expiration)
+            .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
@@ -498,6 +501,7 @@ impl KeyPackage {
             .store(
                 key_package.hash_ref(provider.crypto())?.as_slice(),
                 &key_package,
+                expiration,
             )
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
@@ -643,6 +647,7 @@ impl KeyPackageBuilder {
             self.leaf_node_capabilities.unwrap_or_default(),
             self.leaf_node_extensions.unwrap_or_default(),
         )?;
+        let expiration = Some(key_package.life_time().not_after());
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
@@ -651,19 +656,20 @@ impl KeyPackageBuilder {
             .store(
                 key_package.hash_ref(provider.crypto())?.as_slice(),
                 &key_package,
+                expiration,
             )
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the encryption key pair in the key store.
         encryption_keypair
-            .write_to_key_store(provider.key_store())
+            .write_to_key_store(provider.key_store(), expiration)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the private part of the init_key into the key store.
         // The key is the public key.
         provider
             .key_store()
-            .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key)
+            .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key, expiration)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)
