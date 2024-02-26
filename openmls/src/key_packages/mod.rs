@@ -669,7 +669,11 @@ impl KeyPackageBuilder {
         // The key is the public key.
         provider
             .key_store()
-            .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key, expiration)
+            .store::<HpkePrivateKey>(
+                key_package.hpke_init_key().as_slice(),
+                &init_private_key,
+                expiration,
+            )
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)

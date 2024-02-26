@@ -401,7 +401,11 @@ impl MlsClient for MlsClientImpl {
         // Store keys so OpenMLS can find them.
         crypto_provider
             .key_store()
-            .store(my_key_package.hpke_init_key().as_slice(), &private_key, None)
+            .store(
+                my_key_package.hpke_init_key().as_slice(),
+                &private_key,
+                None,
+            )
             .map_err(|_| Status::aborted("failed to interact with the key store"))?;
 
         // Store the key package in the key store with the hash reference as id
@@ -425,7 +429,11 @@ impl MlsClient for MlsClientImpl {
         // The key is the public key.
         crypto_provider
             .key_store()
-            .store::<HpkePrivateKey>(my_key_package.hpke_init_key().as_slice(), &private_key, None)
+            .store::<HpkePrivateKey>(
+                my_key_package.hpke_init_key().as_slice(),
+                &private_key,
+                None,
+            )
             .map_err(into_status)?;
 
         let welcome_msg = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())

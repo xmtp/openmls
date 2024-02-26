@@ -240,7 +240,9 @@ pub mod test_utils {
     pub fn write_keys_from_key_store(provider: &impl OpenMlsProvider, encryption_key: HpkeKeyPair) {
         let keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write_to_key_store(provider.key_store(), None).unwrap();
+        keypair
+            .write_to_key_store(provider.key_store(), None)
+            .unwrap();
     }
 }
 
