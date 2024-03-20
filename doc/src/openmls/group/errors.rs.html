@@ -554,7 +554,6 @@
 <a href="#553" id="553">553</a>
 <a href="#554" id="554">554</a>
 <a href="#555" id="555">555</a>
-<a href="#556" id="556">556</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -567,7 +566,7 @@
     ciphersuite::signable::SignatureError,
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
-    framing::errors::{MessageDecryptionError, SenderError},
+    framing::errors::MessageDecryptionError,
     key_packages::errors::KeyPackageVerifyError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
@@ -614,6 +613,9 @@
     <span class="doccomment">/// Sender not found in tree.
     </span><span class="attr">#[error(<span class="string">"Sender not found in tree."</span>)]
     </span>UnknownSender,
+    <span class="doccomment">/// The provided message is not a Welcome message.
+    </span><span class="attr">#[error(<span class="string">"Not a Welcome message."</span>)]
+    </span>NotAWelcomeMessage,
     <span class="doccomment">/// Malformed Welcome message.
     </span><span class="attr">#[error(<span class="string">"Malformed Welcome message."</span>)]
     </span>MalformedWelcomeMessage,
@@ -996,9 +998,9 @@
     <span class="doccomment">/// Not all proposals in the Commit were found locally.
     </span><span class="attr">#[error(<span class="string">"Not all proposals in the Commit were found locally."</span>)]
     </span>ProposalNotFound,
-    <span class="doccomment">/// See [`SenderError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>SenderError(<span class="attr">#[from] </span>SenderError),
+    <span class="doccomment">/// Update proposal from external sender.
+    </span><span class="attr">#[error(<span class="string">"Update proposal from external sender."</span>)]
+    </span>UpdateFromExternalSender,
 }
 
 <span class="doccomment">/// Errors that can arise when creating a [`ProposalQueue`] from committed
@@ -1014,25 +1016,6 @@
     <span class="doccomment">/// The sender of a Commit tried to remove themselves.
     </span><span class="attr">#[error(<span class="string">"The sender of a Commit tried to remove themselves."</span>)]
     </span>SelfRemoval,
-}
-
-<span class="doccomment">/// Creation proposal queue error
-</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>CreationProposalQueueError {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// See [`SenderError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>SenderError(<span class="attr">#[from] </span>SenderError),
-}
-
-<span class="comment">// Apply proposals error
-</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ApplyProposalsError {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attr">#[error(transparent)]
-    </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
 }
 
 <span class="comment">// Core group build error
@@ -1099,16 +1082,31 @@
     <span class="doccomment">/// Commit has more than one GroupContextExtensions proposal.
     </span><span class="attr">#[error(<span class="string">"Commit has more than one GroupContextExtensions proposal."</span>)]
     </span>TooManyGCEProposals,
+
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// The new extensions set contails extensions that are not supported by all group members.
+
+    <span class="doccomment">/// The new extension types in required capabilties contails extensions that are not supported by all group members.
     </span><span class="attr">#[error(
-        <span class="string">"The new extensions set contails extensions that are not supported by all group members."
+        <span class="string">"The new required capabilties contain extension types that are not supported by all group members."
     </span>)]
     </span>ExtensionNotSupportedByAllMembers,
     <span class="doccomment">/// Proposal changes the immutable metadata extension, which is not allowed.
     </span><span class="attr">#[error(<span class="string">"Proposal changes the immutable metadata extension, which is not allowed."</span>)]
     </span>ChangedImmutableMetadata,
+
+    <span class="doccomment">/// The new extension types in required capabilties contails extensions that are not supported by all group members.
+    </span><span class="attr">#[error(
+        <span class="string">"The new required capabilties contain extension types that are not supported by all group members."
+    </span>)]
+    </span>RequiredExtensionNotSupportedByAllMembers,
+
+    <span class="doccomment">/// An extension in the group context extensions is not listed in the required capabilties'
+    /// extension types.
+    </span><span class="attr">#[error(
+        <span class="string">"An extension in the group context extensions is not listed in the required capabilties' extension types."
+    </span>)]
+    </span>ExtensionNotInRequiredCapabilities,
 }
 </code></pre></div></section></main></body></html>

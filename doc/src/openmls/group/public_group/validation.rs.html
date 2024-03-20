@@ -570,9 +570,6 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -581,6 +578,7 @@
 <span class="kw">use </span>openmls_traits::types::VerifiableCiphersuite;
 
 <span class="kw">use </span><span class="kw">super</span>::PublicGroup;
+<span class="kw">use </span><span class="kw">crate</span>::extensions::RequiredCapabilitiesExtension;
 <span class="kw">use </span><span class="kw">crate</span>::group::GroupContextExtensionsProposalValidationError;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::LibraryError;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::LeafNodeValidationError;
@@ -600,7 +598,6 @@
         Commit,
     },
     schedule::errors::PskError,
-    treesync::node::leaf_node::LeafNode,
 };
 
 <span class="kw">impl </span>PublicGroup {
@@ -1032,12 +1029,9 @@
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
-    ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
-    ///               leaf are identical to the ones in the path KeyPackage.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>validate_external_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
-        path_leaf_node: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExternalCommitValidationError&gt; {
         <span class="kw">let </span>count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)
@@ -1063,30 +1057,13 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidInlineProposals);
         }
 
-        <span class="kw">let </span>remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
-        <span class="kw">for </span>proposal <span class="kw">in </span>remove_proposals {
-            <span class="kw">if </span>proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                <span class="kw">if let </span>Proposal::Remove(remove_proposal) = proposal.proposal() {
-                    <span class="kw">let </span>removed_leaf = remove_proposal.removed();
+        <span class="comment">// If a Remove proposal is present,
+        // the credential in the LeafNode MUST present a set of
+        // identifiers that is acceptable to the application for
+        // the removed participant.
+        // This MUST be checked by the application.
 
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(new_leaf) = path_leaf_node {
-                        <span class="comment">// ValSem243: External Commit, inline Remove Proposal:
-                        //            The identity and the endpoint_id of the
-                        //            removed leaf are identical to the ones
-                        //            in the path leaf node.
-                        </span><span class="kw">let </span>removed_leaf = <span class="self">self
-                            </span>.treesync()
-                            .leaf(removed_leaf)
-                            .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)<span class="question-mark">?</span>;
-                        <span class="kw">if </span>removed_leaf.credential().identity() != new_leaf.credential().identity()
-                        {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidRemoveProposal);
-                        }
-                    };
-                }
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
+        </span><span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
@@ -1095,29 +1072,50 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), GroupContextExtensionsProposalValidationError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
+        <span class="kw">let </span>iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(queued_proposal) = iter.next() {
+        <span class="kw">for </span>(i, queued_proposal) <span class="kw">in </span>iter.enumerate() {
+            <span class="comment">// There must at most be one group context extionsion proposal. Return an error if there are more
+            </span><span class="kw">if </span>i &gt; <span class="number">0 </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(GroupContextExtensionsProposalValidationError::TooManyGCEProposals);
+            }
+
             <span class="kw">match </span>queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) =&gt; {
-                    <span class="comment">// Check that immutable metadata didn't change and wasn't added or removed.
-                    </span><span class="kw">let </span>new_immutable_metadata = extensions.extensions().immutable_metadata();
-                    <span class="kw">let </span>current_immutable_metadata =
-                        <span class="self">self</span>.group_context.extensions().immutable_metadata();
-                    <span class="kw">if </span>new_immutable_metadata != current_immutable_metadata {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(
-                            GroupContextExtensionsProposalValidationError::ChangedImmutableMetadata,
-                        );
-                    }
+                    <span class="kw">let </span>required_capabilities_in_proposal =
+                        extensions.extensions().required_capabilities();
 
-                    <span class="kw">let </span>ext_type_list: Vec&lt;<span class="kw">_</span>&gt; = extensions
+                    <span class="comment">// Prepare the empty required capabilities in case there is no
+                    // RequiredCapabilitiesExtension in the proposal
+                    </span><span class="kw">let </span>default_required_capabilities =
+                        RequiredCapabilitiesExtension::new(<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[]);
+
+                    <span class="comment">// If there is a RequiredCapabilitiesExtension in the proposal, validate it and
+                    // use that. Otherwise, use the empty default one.
+                    </span><span class="kw">let </span>required_capabilities = <span class="kw">match </span>required_capabilities_in_proposal {
+                        <span class="prelude-val">Some</span>(required_capabilities_new) =&gt; {
+                            <span class="comment">// If a group context extensions proposal updates the required capabilities, we
+                            // need to check that these are satisfied for all existing members of the group.
+                            </span><span class="self">self</span>.check_extension_support(required_capabilities_new.extension_types()).map_err(|<span class="kw">_</span>| GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers)<span class="question-mark">?</span>;
+                            required_capabilities_new
+                        }
+                        <span class="prelude-val">None </span>=&gt; <span class="kw-2">&amp;</span>default_required_capabilities,
+                    };
+
+                    <span class="comment">// Make sure that all other extensions are known to be supported, by checking
+                    // that they are included in the required capabilities.
+                    </span><span class="kw">let </span>all_extensions_are_in_required_capabilities: bool = extensions
                         .extensions()
                         .iter()
                         .map(|ext| ext.extension_type())
-                        .collect();
+                        .all(|ext_type| {
+                            required_capabilities.requires_extension_type_support(ext_type)
+                        });
 
-                    <span class="self">self</span>.check_extension_support(<span class="kw-2">&amp;</span>ext_type_list).map_err(|<span class="kw">_</span>| GroupContextExtensionsProposalValidationError::ExtensionNotSupportedByAllMembers)<span class="question-mark">?
-                </span>}
+                    <span class="kw">if </span>!all_extensions_are_in_required_capabilities {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GroupContextExtensionsProposalValidationError::ExtensionNotInRequiredCapabilities);
+                    }
+                }
                 <span class="kw">_ </span>=&gt; {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(GroupContextExtensionsProposalValidationError::LibraryError(
                         LibraryError::custom(
@@ -1128,11 +1126,7 @@
             }
         }
 
-        <span class="comment">// make sure that there is at most one proposal of this type
-        </span><span class="kw">match </span>iter.next() {
-            <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(GroupContextExtensionsProposalValidationError::TooManyGCEProposals),
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(()),
-        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]

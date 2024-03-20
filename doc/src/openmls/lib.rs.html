@@ -188,13 +188,28 @@
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../README.md"</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here's the basic code to set
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::prelude::{*, config::CryptoConfig};
+//! use openmls::prelude::{*, config::CryptoConfig, tls_codec::*};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //! use openmls_basic_credential::SignatureKeyPair;
 //!
@@ -212,7 +227,8 @@
 //!     signature_algorithm: SignatureScheme,
 //!     provider: &amp;impl OpenMlsProvider,
 //! ) -&gt; (CredentialWithKey, SignatureKeyPair) {
-//!     let credential = Credential::new(identity, credential_type).unwrap();
+//!     let credential = BasicCredential::new(identity)
+//!         .expect("Error creating a credential.");
 //!     let signature_keys =
 //!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");
@@ -225,7 +241,7 @@
 //!     
 //!     (
 //!         CredentialWithKey {
-//!             credential,
+//!             credential: credential.into(),
 //!             signature_key: signature_keys.public().into(),
 //!         },
 //!         signature_keys,
@@ -306,21 +322,26 @@
 //!
 //! // ... and inspect the message.
 //! let welcome = match mls_message_in.extract() {
-//!    MlsMessageInBody::Welcome(welcome) =&gt; welcome,
+//!    MlsMessageBodyIn::Welcome(welcome) =&gt; welcome,
 //!    // We know it's a welcome message, so we ignore all other cases.
 //!    _ =&gt; unreachable!("Unexpected message type."),
 //! };
 //!
-//! // Now Maxim can join the group.
-//!  let mut maxim_group = MlsGroup::new_from_welcome(
+//! // Now Maxim can build a staged join for the group in order to inspect the welcome
+//! let maxim_staged_join = StagedWelcome::new_from_welcome(
 //!     provider,
 //!     &amp;MlsGroupJoinConfig::default(),
 //!     welcome,
 //!     // The public tree is need and transferred out of band.
 //!     // It is also possible to use the [`RatchetTreeExtension`]
 //!     Some(sasha_group.export_ratchet_tree().into()),
-//!  )
-//!  .expect("Error joining group from Welcome");
+//! )
+//! .expect("Error creating a staged join from Welcome");
+//!
+//! // Finally, Maxim can create the group
+//! let mut maxim_group = maxim_staged_join
+//!     .into_group(provider)
+//!     .expect("Error creating the group from the staged join");
 //! ```
 //!
 //! [//]: # "links and badges"
@@ -336,7 +357,10 @@
     target_pointer_width = <span class="string">"128"
 </span>))]
 
-</span><span class="comment">// === Testing ===
+#[cfg(all(target_arch = <span class="string">"wasm32"</span>, not(feature = <span class="string">"js"</span>)))]
+</span><span class="macro">compile_error!</span>(<span class="string">"In order for OpenMLS to build for WebAssembly, JavaScript APIs must be available (for access to secure randomness and the current time). This can be signalled by setting the `js` feature on OpenMLS."</span>);
+
+<span class="comment">// === Testing ===
 
 </span><span class="doccomment">/// Single place, re-exporting all structs and functions needed for integration tests
 </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
@@ -377,4 +401,10 @@
 
 <span class="doccomment">/// Single place, re-exporting the most used public functions.
 </span><span class="kw">pub mod </span>prelude;
+
+<span class="comment">// this is a workaround, see https://github.com/la10736/rstest/issues/211#issuecomment-1701238125
+</span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-utils"</span>))]
+</span><span class="kw">pub mod </span>wasm {
+    <span class="kw">pub use </span>wasm_bindgen_test::wasm_bindgen_test <span class="kw">as </span>test;
+}
 </code></pre></div></section></main></body></html>

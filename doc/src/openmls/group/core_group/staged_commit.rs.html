@@ -600,7 +600,8 @@
             </span><span class="kw">let </span>external_priv = epoch_secrets
                 .external_secret()
                 .derive_external_keypair(provider.crypto(), <span class="self">self</span>.ciphersuite())
-                .private;
+                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+                </span>.private;
             <span class="kw">let </span>init_secret = InitSecret::from_kem_output(
                 provider.crypto(),
                 <span class="self">self</span>.ciphersuite(),
@@ -683,7 +684,6 @@
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem243
     ///  - ValSem244
     /// Returns an error if the given commit was sent by the owner of this
     /// group.

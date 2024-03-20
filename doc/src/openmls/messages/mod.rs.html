@@ -508,6 +508,8 @@
 <a href="#507" id="507">507</a>
 <a href="#508" id="508">508</a>
 <a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -556,7 +558,7 @@
 ///
 /// This message is generated when a new member is added to a group.
 /// The invited member can use this message to join the group using
-/// [`MlsGroup::new_from_welcome()`](crate::group::mls_group::MlsGroup::new_from_welcome()).
+/// [`StagedWelcome::new_from_welcome()`](crate::group::mls_group::StagedWelcome::new_from_welcome()).
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -677,6 +679,7 @@
     }
 
     <span class="doccomment">/// Returns the update path of the Commit if it has one.
+    </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;UpdatePath&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.path
     }
@@ -833,8 +836,9 @@
             </span>.path_secret
             .kdf_expand_label(crypto, <span class="string">"node"</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-        <span class="kw">let </span>HpkeKeyPair { public, private } =
-            crypto.derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+        <span class="kw">let </span>HpkeKeyPair { public, private } = crypto
+            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice())
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((HpkePublicKey::from(public), private).into())
     }

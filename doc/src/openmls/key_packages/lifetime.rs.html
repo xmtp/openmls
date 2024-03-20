@@ -135,7 +135,13 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::time::{SystemTime, UNIX_EPOCH};
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+</pre></div><pre class="rust"><code><span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
+</span><span class="kw">use </span>fluvio_wasm_timer::{SystemTime, UNIX_EPOCH};
+<span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+</span><span class="kw">use </span>std::time::{SystemTime, UNIX_EPOCH};
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
