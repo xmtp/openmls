@@ -457,7 +457,7 @@ impl StagedCommit {
     }
 
     /// Returns the credentials that the caller needs to verify are valid.
-    pub fn credentials_to_verify(&self) -> impl Iterator<Item = &Credential> {
+    pub fn credentials_to_verify(&self) -> impl Iterator<Item = &OpenMlsCredential> {
         let update_path_leaf_node_cred = if let Some(node) = self.update_path_leaf_node() {
             vec![node.credential()]
         } else {

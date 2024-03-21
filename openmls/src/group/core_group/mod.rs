@@ -59,7 +59,7 @@ use super::{
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
     ciphersuite::{signable::Signable, HpkePublicKey},
-    credentials::*,
+    credentials::{Credential as OpenMlsCredential, CredentialWithKey},
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
     framing::{mls_auth_content::AuthenticatedContent, *},
@@ -99,7 +99,7 @@ pub struct Member {
     /// The member's leaf index in the ratchet tree.
     pub index: LeafNodeIndex,
     /// The member's credential.
-    pub credential: Credential,
+    pub credential: OpenMlsCredential,
     /// The member's public HPHKE encryption key.
     pub encryption_key: Vec<u8>,
     /// The member's public signature key.
@@ -112,7 +112,7 @@ impl Member {
         index: LeafNodeIndex,
         encryption_key: Vec<u8>,
         signature_key: Vec<u8>,
-        credential: Credential,
+        credential: OpenMlsCredential,
     ) -> Self {
         Self {
             index,

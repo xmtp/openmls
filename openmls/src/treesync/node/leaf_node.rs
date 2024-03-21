@@ -18,7 +18,7 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         Signature, SignaturePublicKey,
     },
-    credentials::{Credential, CredentialWithKey},
+    credentials::{Credential as OpenMlsCredential, CredentialWithKey},
     error::LibraryError,
     extensions::{ExtensionType, Extensions},
     group::{config::CryptoConfig, GroupId},
@@ -336,7 +336,7 @@ impl LeafNode {
     }
 
     /// Returns the `signature_key` as byte slice.
-    pub fn credential(&self) -> &Credential {
+    pub fn credential(&self) -> &OpenMlsCredential {
         &self.payload.credential
     }
 
@@ -429,7 +429,7 @@ impl LeafNode {
 #[cfg(any(feature = "test-utils", test))]
 impl LeafNode {
     /// Replace the credential in the KeyPackage.
-    pub(crate) fn set_credential(&mut self, credential: Credential) {
+    pub(crate) fn set_credential(&mut self, credential: OpenMlsCredential) {
         self.payload.credential = credential;
     }
 
@@ -504,7 +504,7 @@ impl LeafNode {
 struct LeafNodePayload {
     encryption_key: EncryptionKey,
     signature_key: SignaturePublicKey,
-    credential: Credential,
+    credential: OpenMlsCredential,
     capabilities: Capabilities,
     leaf_node_source: LeafNodeSource,
     extensions: Extensions,
@@ -698,7 +698,7 @@ impl LeafNodeIn {
     }
 
     /// Returns the `signature_key` as byte slice.
-    pub fn credential(&self) -> &Credential {
+    pub fn credential(&self) -> &OpenMlsCredential {
         &self.payload.credential
     }
 }
