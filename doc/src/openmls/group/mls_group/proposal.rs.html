@@ -1,5 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/proposal.rs`."><title>proposal.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/proposal.rs`."><title>proposal.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-5bc39a1768837dd0.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.2 (25ef9e3d8 2024-04-09)" data-channel="1.77.2" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-48f368f3872407c8.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -352,13 +353,65 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
 };
 
 <span class="kw">use super</span>::{
+    core_group::create_commit_params::CreateCommitParams,
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError},
-    MlsGroup,
+    CreateGroupContextExtProposalError, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
+    PendingCommitState, Proposal,
 };
 <span class="kw">use crate</span>::{
     binary_tree::LeafNodeIndex,
@@ -368,7 +421,7 @@
     framing::MlsMessageOut,
     group::{errors::CreateAddProposalError, GroupId, QueuedProposal},
     key_packages::KeyPackage,
-    messages::proposals::ProposalOrRefType,
+    messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
     prelude::LibraryError,
     schedule::PreSharedKeyId,
     treesync::LeafNode,
@@ -673,16 +726,19 @@
         }
     }
 
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub fn </span>propose_group_context_extensions(
+    <span class="doccomment">/// Creates a proposals with a new set of `extensions` for the group context.
+    ///
+    /// Returns an error when the group does not support all the required capabilities
+    /// in the new `extensions`.
+    </span><span class="kw">pub fn </span>propose_group_context_extensions&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
         extensions: Extensions,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;()&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>proposal = <span class="self">self</span>.group.create_group_context_ext_proposal(
+        <span class="kw">let </span>proposal = <span class="self">self</span>.group.create_group_context_ext_proposal::&lt;KeyStore&gt;(
             <span class="self">self</span>.framing_parameters(),
             extensions,
             signer,
@@ -703,6 +759,51 @@
         </span><span class="self">self</span>.flag_state_change();
 
         <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
+    }
+
+    <span class="doccomment">/// Updates group context extensions
+    ///
+    /// Returns an error when the group does not support all the required capabilities
+    /// in the new `extensions`.
+    </span><span class="attr">#[allow(clippy::type_complexity)]
+    </span><span class="kw">pub fn </span>update_group_context_extensions&lt;KeyStore: OpenMlsKeyStore&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        extensions: Extensions,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
+        CreateGroupContextExtProposalError&lt;KeyStore::Error&gt;,
+    &gt; {
+        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
+
+        <span class="comment">// Create group context extension proposals
+        </span><span class="kw">let </span>inline_proposals = <span class="macro">vec!</span>[Proposal::GroupContextExtensions(
+            GroupContextExtensionProposal { extensions },
+        )];
+
+        <span class="kw">let </span>params = CreateCommitParams::builder()
+            .framing_parameters(<span class="self">self</span>.framing_parameters())
+            .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
+            .inline_proposals(inline_proposals)
+            .build();
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>mls_messages = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
+        <span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
+
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
+
+        <span class="prelude-val">Ok</span>((
+            mls_messages,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+            create_commit_result.group_info,
+        ))
     }
 }
 </code></pre></div></section></main></body></html>
