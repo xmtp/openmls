@@ -1,5 +1,4 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use tls_codec::*;
 
 use crate::{
     group::{
@@ -16,15 +15,10 @@ mod test_unmerged_leaves;
 
 /// Pathological example taken from ...
 ///   https://github.com/mlswg/mls-protocol/issues/690#issue-1244086547.
-#[apply(ciphersuites_and_providers)]
-fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
-    ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
-) {
-    let _ = provider; // get rid of warning
-    let crypto_config = CryptoConfig::with_default_version(ciphersuite);
+#[apply(ciphersuites)]
+fn that_commit_secret_is_derived_from_end_of_update_path_not_root(ciphersuite: Ciphersuite) {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .crypto_config(crypto_config)
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();
 
@@ -49,7 +43,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         );
         let key_package = KeyPackage::builder()
             .build(
-                CryptoConfig::with_default_version(ciphersuite),
+                ciphersuite,
                 &provider,
                 &credential_with_key_and_signer.signer,
                 credential_with_key_and_signer.credential_with_key.clone(),
@@ -68,9 +62,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         group
             .members()
             .find_map(|member| {
-                let identity =
-                    VLBytes::tls_deserialize_exact(member.credential.serialized_content()).unwrap();
-                if identity.as_slice() == target_id {
+                if member.credential.serialized_content() == target_id {
                     Some(member.index)
                 } else {
                     None
