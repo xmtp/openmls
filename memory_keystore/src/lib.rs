@@ -14,7 +14,7 @@ impl OpenMlsKeyStore for MemoryKeyStore {
     /// serialization for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn store<V: MlsEntity>(&self, k: &[u8], v: &V) -> Result<(), Self::Error> {
+    fn store<V: MlsEntity>(&self, k: &[u8], v: &V, _: Option<u64>) -> Result<(), Self::Error> {
         let value = serde_json::to_vec(v).map_err(|_| MemoryKeyStoreError::SerializationError)?;
         // We unwrap here, because this is the only function claiming a write
         // lock on `credential_bundles`. It only holds the lock very briefly and
