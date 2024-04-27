@@ -82,6 +82,8 @@ pub enum ProposalType {
     ExternalInit,
     GroupContextExtensions,
     AppAck,
+    DeviceAdd,
+    DeviceRemove,
     Unknown(u16),
 }
 
@@ -159,6 +161,8 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             8 => ProposalType::AppAck,
+            9 => ProposalType::DeviceAdd,
+            10 => ProposalType::DeviceRemove,
             unknown => ProposalType::Unknown(unknown),
         }
     }
@@ -175,6 +179,8 @@ impl From<ProposalType> for u16 {
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
             ProposalType::AppAck => 8,
+            ProposalType::DeviceAdd => 9,
+            ProposalType::DeviceRemove => 10,
             ProposalType::Unknown(unknown) => unknown,
         }
     }
@@ -223,6 +229,8 @@ pub enum Proposal {
     //             was moved to `draft-ietf-mls-extensions-00`.
     #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
+    DeviceAdd(DeviceAddProposal),
+    DeviceRemove(DeviceRemoveProposal),
 }
 
 impl Proposal {
@@ -237,6 +245,8 @@ impl Proposal {
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             Proposal::AppAck(_) => ProposalType::AppAck,
+            Proposal::DeviceAdd(_) => ProposalType::DeviceAdd,
+            Proposal::DeviceRemove(_) => ProposalType::DeviceRemove,
         }
     }
 
@@ -269,6 +279,37 @@ impl AddProposal {
     /// Returns a reference to the key package in the proposal.
     pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
+    }
+}
+
+/// Device Add Proposal.
+///
+/// An Add proposal requests that a client with a specified [`KeyPackage`] be added to the group.
+/// This proposal carries additional opaque data compared to an add proposal.
+/// The information can be used by the application to determine whether the proposal
+/// is valid or not.
+///
+/// ```c
+/// struct {
+///     KeyPackage key_package;
+///     opaque metadata<V>;
+/// } Add;
+/// ```
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
+pub struct DeviceAddProposal {
+    pub(crate) key_package: KeyPackage,
+    pub(crate) metadata: Vec<u8>,
+}
+
+impl DeviceAddProposal {
+    /// Returns a reference to the key package in the proposal.
+    pub fn key_package(&self) -> &KeyPackage {
+        &self.key_package
+    }
+
+    /// Returns the metadata of this proposal.
+    pub fn metadata(&self) -> &[u8] {
+        &self.metadata
     }
 }
 
@@ -325,6 +366,39 @@ impl RemoveProposal {
     /// Returns the leaf index of the removed leaf in this proposal.
     pub fn removed(&self) -> LeafNodeIndex {
         self.removed
+    }
+}
+
+/// Device Remove Proposal.
+///
+/// A Remove proposal requests that the member with the leaf index removed be removed from the group.
+/// This proposal carries additional opaque data compared to a remove proposal.
+/// The information can be used by the application to determine whether the proposal
+/// is valid or not.
+///
+/// ```c
+/// struct {
+///     uint32 removed;
+///     opaque metadata<V>;
+/// } DeviceRemove;
+/// ```
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+pub struct DeviceRemoveProposal {
+    pub(crate) removed: LeafNodeIndex,
+    pub(crate) metadata: Vec<u8>,
+}
+
+impl DeviceRemoveProposal {
+    /// Returns the leaf index of the removed leaf in this proposal.
+    pub fn removed(&self) -> LeafNodeIndex {
+        self.removed
+    }
+
+    /// Returns the metadata of this proposal.
+    pub fn metadata(&self) -> &[u8] {
+        &self.metadata
     }
 }
 
