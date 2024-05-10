@@ -13,10 +13,11 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::proposals::*,
     schedule::ResumptionPskSecret,
+    storage::ByteWrapper,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{node::leaf_node::LeafNode, RatchetTree},
 };
-use openmls_traits::{storage::traits::ByteWrapper, types::Ciphersuite};
+use openmls_traits::{storage::traits::ByteWrapper as _, types::Ciphersuite};
 
 // Private
 mod application;
@@ -199,7 +200,7 @@ impl MlsGroup {
         aad: &[u8],
     ) -> Result<(), Storage::Error> {
         self.aad = aad.to_vec();
-        storage.write_aad(self.group_id(), aad)
+        storage.write_aad(self.group_id(), &ByteWrapper::from(aad))
     }
 
     // === Advanced functions ===

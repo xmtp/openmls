@@ -276,10 +276,10 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Returns the AAD for the group with given id
     /// If the value has not been set, returns an empty vector.
-    fn aad<GroupId: traits::GroupId<VERSION>, ByteWrapper: traits::ByteWrapper<VERSION>>(
+    fn aad<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<ByteWrapper, Self::Error>;
+    ) -> Result<impl crate::storage::traits::ByteWrapper<CURRENT_VERSION>, Self::Error>;
 
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposal_refs<

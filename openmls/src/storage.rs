@@ -61,8 +61,16 @@ pub struct ByteWrapper {
     data: Vec<u8>,
 }
 
-impl ByteWrapper {
-    pub fn from(data: Vec<u8>) -> Self {
+impl From<&[u8]> for ByteWrapper {
+    fn from(bytes: &[u8]) -> ByteWrapper {
+        ByteWrapper {
+            data: bytes.to_vec(),
+        }
+    }
+}
+
+impl From<Vec<u8>> for ByteWrapper {
+    fn from(data: Vec<u8>) -> ByteWrapper {
         ByteWrapper { data }
     }
 }
