@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/staged_commit.rs`."><title>staged_commit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-5bc39a1768837dd0.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.2 (25ef9e3d8 2024-04-09)" data-channel="1.77.2" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-48f368f3872407c8.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script> if (window.location.protocol !== "file:") document.write(`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2">`)</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0 (9b00956e5 2024-04-29)" data-channel="1.78.0" data-search-js="search-42d8da7a6b9792c2.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -257,6 +257,45 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
@@ -268,7 +307,38 @@
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
+    storage::StorageProvider,
 };
+
+<span class="attr">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>PublicStagedCommitState {
+    <span class="kw">pub</span>(<span class="kw">super</span>) staged_diff: StagedPublicGroupDiff,
+    <span class="kw">pub</span>(<span class="kw">super</span>) update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
+}
+
+<span class="kw">impl </span>PublicStagedCommitState {
+    <span class="kw">pub fn </span>new(
+        staged_diff: StagedPublicGroupDiff,
+        update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            staged_diff,
+            update_path_leaf_node,
+        }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_staged_diff(<span class="self">self</span>) -&gt; StagedPublicGroupDiff {
+        <span class="self">self</span>.staged_diff
+    }
+
+    <span class="kw">pub fn </span>update_path_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
+        <span class="self">self</span>.update_path_leaf_node.as_ref()
+    }
+
+    <span class="kw">pub fn </span>staged_diff(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>StagedPublicGroupDiff {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.staged_diff
+    }
+}
 
 <span class="kw">impl </span>PublicGroup {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_commit&lt;<span class="lifetime">'a</span>&gt;(
@@ -328,6 +398,7 @@
         })<span class="question-mark">?</span>;
 
         <span class="comment">// Validate the staged proposals by doing the following checks:
+
         // ValSem101
         // ValSem102
         // ValSem103
@@ -341,6 +412,9 @@
         <span class="comment">// ValSem107
         // ValSem108
         </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+        <span class="comment">// ValSem113: All Proposals: The proposal type must be supported by all
+        // members of the group
+        </span><span class="self">self</span>.validate_proposal_type_support(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
         <span class="comment">// ValSem208
         // ValSem209
         </span><span class="self">self</span>.validate_group_context_extensions_proposal(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
@@ -431,23 +505,22 @@
     ///  - ValSem244
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
-    /// TODO #1255: This will be used by the `process_message` function of the
-    /// `PublicGroup` later on.
-    </span><span class="attr">#[allow(unused)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
-        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
-
         <span class="kw">let </span>(commit, proposal_queue, sender_index) =
             <span class="self">self</span>.validate_commit(mls_content, proposal_store, crypto)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>staged_diff = <span class="self">self</span>.stage_diff(mls_content, <span class="kw-2">&amp;</span>proposal_queue, sender_index, crypto)<span class="question-mark">?</span>;
+        <span class="kw">let </span>staged_state = PublicStagedCommitState {
+            staged_diff,
+            update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
+        };
 
-        <span class="kw">let </span>staged_commit_state = StagedCommitState::PublicState(Box::new(staged_diff));
+        <span class="kw">let </span>staged_commit_state = StagedCommitState::PublicState(Box::new(staged_state));
 
         <span class="prelude-val">Ok</span>(StagedCommit::new(proposal_queue, staged_commit_state))
     }
@@ -503,15 +576,20 @@
     }
 
     <span class="doccomment">/// Merges a [StagedCommit] into the public group state.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a `LibraryError`.
-    </span><span class="kw">pub fn </span>merge_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, staged_commit: StagedCommit) {
+    </span><span class="kw">pub fn </span>merge_commit&lt;Storage: StorageProvider&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        storage: <span class="kw-2">&amp;</span>Storage,
+        staged_commit: StagedCommit,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Storage::Error&gt;&gt; {
         <span class="kw">match </span>staged_commit.into_state() {
-            StagedCommitState::PublicState(staged_diff) =&gt; <span class="self">self</span>.merge_diff(<span class="kw-2">*</span>staged_diff),
+            StagedCommitState::PublicState(staged_state) =&gt; {
+                <span class="self">self</span>.merge_diff(staged_state.staged_diff);
+            }
             StagedCommitState::GroupMember(<span class="kw">_</span>) =&gt; (),
         }
-        <span class="self">self</span>.proposal_store.empty()
+
+        <span class="self">self</span>.proposal_store.empty();
+        <span class="self">self</span>.store(storage).map_err(MergeCommitError::StorageError)
     }
 }
 </code></pre></div></section></main></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/node/encryption_keys.rs`."><title>encryption_keys.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-5bc39a1768837dd0.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.2 (25ef9e3d8 2024-04-09)" data-channel="1.77.2" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-48f368f3872407c8.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/node/encryption_keys.rs`."><title>encryption_keys.rs - source</title><script> if (window.location.protocol !== "file:") document.write(`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2">`)</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0 (9b00956e5 2024-04-29)" data-channel="1.78.0" data-search-js="search-42d8da7a6b9792c2.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -281,23 +281,11 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
-    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
+    storage::{StorageProvider <span class="kw">as </span>StorageProviderTrait, CURRENT_VERSION},
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
     OpenMlsProvider,
 };
@@ -307,8 +295,7 @@
 <span class="kw">use crate</span>::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
-    group::config::CryptoConfig,
-    versions::ProtocolVersion,
+    storage::StorageProvider,
 };
 
 <span class="doccomment">/// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -341,16 +328,6 @@
         <span class="self">self</span>.key.as_slice()
     }
 
-    <span class="doccomment">/// Helper function to prefix the given (serialized) [`EncryptionKey`] with
-    /// the `ENCRYPTION_KEY_LABEL`.
-    ///
-    /// Returns the resulting bytes.
-    </span><span class="kw">fn </span>to_bytes_with_prefix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
-        key_store_index.extend_from_slice(<span class="self">self</span>.as_slice());
-        key_store_index
-    }
-
     <span class="doccomment">/// Encrypt to this HPKE public key.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -375,7 +352,7 @@
     Clone, Serialize, Deserialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 )]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>EncryptionPrivateKey {
+</span><span class="kw">pub struct </span>EncryptionPrivateKey {
     key: HpkePrivateKey,
 }
 
@@ -414,7 +391,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        version: ProtocolVersion,
         ciphertext: <span class="kw-2">&amp;</span>HpkeCiphertext,
         group_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Secret, hpke::Error&gt; {
@@ -427,11 +403,11 @@
             ciphersuite,
             crypto,
         )
-        .map(|secret_bytes| Secret::from_slice(<span class="kw-2">&amp;</span>secret_bytes, version, ciphersuite))
+        .map(|secret_bytes| Secret::from_slice(<span class="kw-2">&amp;</span>secret_bytes))
     }
 }
 
-<span class="attr">#[cfg(test)]
+<span class="attr">#[cfg(any(test, feature = <span class="string">"test-utils"</span>))]
 </span><span class="kw">impl </span>EncryptionPrivateKey {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePrivateKey {
         <span class="kw-2">&amp;</span><span class="self">self</span>.key
@@ -453,45 +429,49 @@
     private_key: EncryptionPrivateKey,
 }
 
-<span class="kw">const </span>ENCRYPTION_KEY_LABEL: <span class="kw-2">&amp;</span>[u8; <span class="number">19</span>] = <span class="string">b"leaf_encryption_key"</span>;
-
 <span class="kw">impl </span>EncryptionKeyPair {
-    <span class="doccomment">/// Write the [`EncryptionKeyPair`] to the key store of the `provider`. This
-    /// function is meant to store standalone keypairs, not ones that are
-    /// already in use with an MLS group.
+    <span class="doccomment">/// Write the [`EncryptionKeyPair`] to the store of the `provider`.
     ///
-    /// Returns a key store error if access to the key store fails.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>write_to_key_store&lt;KeyStore: OpenMlsKeyStore&gt;(
+    /// This must only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>write&lt;Storage: StorageProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        store: <span class="kw-2">&amp;</span>KeyStore,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
-        store.store(<span class="kw-2">&amp;</span><span class="self">self</span>.public_key().to_bytes_with_prefix(), <span class="self">self</span>)
+        store: <span class="kw-2">&amp;</span>Storage,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
+        store.write_encryption_key_pair(<span class="self">self</span>.public_key(), <span class="self">self</span>)
     }
 
     <span class="doccomment">/// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
     /// function is meant to read standalone keypairs, not ones that are
     /// already in use with an MLS group.
     ///
+    /// This must only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
+    ///
     /// Returns `None` if the keypair cannot be read from the store.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read_from_key_store(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read(
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         encryption_key: <span class="kw-2">&amp;</span>EncryptionKey,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt; {
         provider
-            .key_store()
-            .read(<span class="kw-2">&amp;</span>encryption_key.to_bytes_with_prefix())
+            .storage()
+            .encryption_key_pair(encryption_key)
+            .ok()
+            .flatten()
     }
 
-    <span class="doccomment">/// Delete the [`EncryptionKeyPair`] from the key store of the `provider`.
-    /// This function is meant to delete standalone keypairs, not ones that are
-    /// already in use with an MLS group.
+    <span class="doccomment">/// Delete the [`EncryptionKeyPair`] from the store of the `provider`.
     ///
-    /// Returns a key store error if access to the key store fails.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>delete_from_key_store&lt;KeyStore: OpenMlsKeyStore&gt;(
+    /// This must only be used for encryption key pairs that are generated for
+    /// update leaf nodes. All other encryption key pairs are stored as part
+    /// of the key package or the epoch encryption key pairs.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>delete&lt;Storage: StorageProviderTrait&lt;CURRENT_VERSION&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        store: <span class="kw-2">&amp;</span>KeyStore,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
-        store.delete::&lt;<span class="self">Self</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>.public_key().to_bytes_with_prefix())
+        store: <span class="kw-2">&amp;</span>Storage,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
+        store.delete_encryption_key_pair(<span class="self">self</span>.public_key())
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EncryptionKey {
@@ -504,13 +484,13 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
-        config: CryptoConfig,
+        ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="kw">let </span>ikm = Secret::random(config.ciphersuite, provider.rand(), config.version)
+        <span class="kw">let </span>ikm = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(provider
             .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .derive_hpke_keypair(ciphersuite.hpke_config(), ikm.as_slice())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
             </span>.into())
     }
@@ -524,7 +504,7 @@
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         encryption_key: <span class="kw-2">&amp;</span>EncryptionKey,
     ) -&gt; HpkeKeyPair {
-        <span class="kw">let </span>keys = EncryptionKeyPair::read_from_key_store(provider, encryption_key).unwrap();
+        <span class="kw">let </span>keys = EncryptionKeyPair::read(provider, encryption_key).unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
@@ -535,7 +515,7 @@
     <span class="kw">pub fn </span>write_keys_from_key_store(provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider, encryption_key: HpkeKeyPair) {
         <span class="kw">let </span>keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write_to_key_store(provider.key_store()).unwrap();
+        keypair.write(provider.storage()).unwrap();
     }
 }
 
@@ -581,9 +561,5 @@
             private_key,
         }
     }
-}
-
-<span class="kw">impl </span>MlsEntity <span class="kw">for </span>EncryptionKeyPair {
-    <span class="kw">const </span>ID: MlsEntityId = MlsEntityId::EncryptionKeyPair;
 }
 </code></pre></div></section></main></body></html>

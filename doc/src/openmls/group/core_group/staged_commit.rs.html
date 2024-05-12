@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/staged_commit.rs`."><title>staged_commit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-5bc39a1768837dd0.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.2 (25ef9e3d8 2024-04-09)" data-channel="1.77.2" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-48f368f3872407c8.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script> if (window.location.protocol !== "file:") document.write(`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2">`)</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0 (9b00956e5 2024-04-29)" data-channel="1.78.0" data-search-js="search-42d8da7a6b9792c2.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -571,17 +571,47 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
-<span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 <span class="kw">use </span>public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
+
+<span class="kw">use </span><span class="self">self</span>::public_group::staged_commit::PublicStagedCommitState;
 
 <span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, proposals::ProposalStore, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
-    framing::mls_auth_content::AuthenticatedContent,
+    ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
+
+<span class="kw">use </span>openmls_traits::storage::StorageProvider <span class="kw">as _</span>;
 
 <span class="kw">impl </span>CoreGroup {
     <span class="kw">fn </span>derive_epoch_secrets(
@@ -612,6 +642,7 @@
             )<span class="question-mark">?</span>;
             JoinerSecret::new(
                 provider.crypto(),
+                <span class="self">self</span>.ciphersuite(),
                 commit_secret,
                 <span class="kw-2">&amp;</span>init_secret,
                 serialized_provisional_group_context,
@@ -620,6 +651,7 @@
         </span>} <span class="kw">else </span>{
             JoinerSecret::new(
                 provider.crypto(),
+                <span class="self">self</span>.ciphersuite(),
                 commit_secret,
                 epoch_secrets.init_secret(),
                 serialized_provisional_group_context,
@@ -629,8 +661,8 @@
 
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret = {
-            <span class="kw">let </span>psks = load_psks(
-                provider.key_store(),
+            <span class="kw">let </span>psks: Vec&lt;(<span class="kw-2">&amp;</span>PreSharedKeyId, Secret)&gt; = load_psks(
+                provider.storage(),
                 <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store,
                 <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
             )<span class="question-mark">?</span>;
@@ -650,21 +682,21 @@
             .add_context(provider.crypto(), serialized_provisional_group_context)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(key_schedule
-            .epoch_secrets(provider.crypto())
+            .epoch_secrets(provider.crypto(), <span class="self">self</span>.ciphersuite())
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Stages a commit message that was sent by another group member.
-    /// This function does the following:
+    <span class="doccomment">/// Stages a commit message that was sent by another group member. This
+    /// function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
     ///  - Decrypts and calculates the path secrets
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag
     ///
-    /// Returns a [StagedCommit] that can be inspected and later merged
-    /// into the group state with [CoreGroup::merge_commit()]
-    /// This function does the following checks:
+    /// Returns a [StagedCommit] that can be inspected and later merged into the
+    /// group state with [CoreGroup::merge_commit()] This function does the
+    /// following checks:
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -675,6 +707,8 @@
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem113: All Proposals: The proposal type must be supported by all
+    ///               members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
@@ -685,9 +719,8 @@
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem244
-    /// Returns an error if the given commit was sent by the owner of this
-    /// group.
+    ///  - ValSem244 Returns an error if the given commit was sent by the owner
+    /// of this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
@@ -719,9 +752,13 @@
         <span class="comment">// Check if we were removed from the group
         </span><span class="kw">if </span>apply_proposals_values.self_removed {
             <span class="kw">let </span>staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
+            <span class="kw">let </span>staged_state = PublicStagedCommitState::new(
+                staged_diff,
+                commit.path.as_ref().map(|path| path.leaf_node().clone()),
+            );
             <span class="kw">return </span><span class="prelude-val">Ok</span>(StagedCommit::new(
                 proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_diff)),
+                StagedCommitState::PublicState(Box::new(staged_state)),
             ));
         }
 
@@ -802,12 +839,7 @@
                     apply_proposals_values.extensions.clone(),
                 )<span class="question-mark">?</span>;
 
-                (
-                    CommitSecret::zero_secret(ciphersuite, <span class="self">self</span>.version()),
-                    <span class="macro">vec!</span>[],
-                    <span class="prelude-val">None</span>,
-                    <span class="prelude-val">None</span>,
-                )
+                (CommitSecret::zero_secret(ciphersuite), <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
             };
 
         <span class="comment">// Update the confirmed transcript hash before we compute the confirmation tag.
@@ -842,6 +874,7 @@
             .confirmation_key()
             .tag(
                 provider.crypto(),
+                <span class="self">self</span>.ciphersuite(),
                 diff.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
@@ -876,17 +909,20 @@
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_commit&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        provider: <span class="kw-2">&amp;</span>Provider,
         staged_commit: StagedCommit,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MessageSecrets&gt;, MergeCommitError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MessageSecrets&gt;, MergeCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.key_store());
+        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.storage());
         <span class="kw">match </span>staged_commit.state {
-            StagedCommitState::PublicState(staged_diff) =&gt; {
-                <span class="self">self</span>.public_group.merge_diff(<span class="kw-2">*</span>staged_diff);
+            StagedCommitState::PublicState(staged_state) =&gt; {
+                <span class="self">self</span>.public_group
+                    .merge_diff(staged_state.into_staged_diff());
+                <span class="self">self</span>.store(provider.storage())
+                    .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
             StagedCommitState::GroupMember(state) =&gt; {
@@ -922,8 +958,8 @@
                     .chain(leaf_keypair)
                     .filter(|keypair| new_owned_encryption_keys.contains(keypair.public_key()))
                     .collect();
-                <span class="comment">// We should have private keys for all owned encryption keys.
 
+                <span class="comment">// We should have private keys for all owned encryption keys.
                 </span><span class="macro">debug_assert_eq!</span>(new_owned_encryption_keys.len(), epoch_keypairs.len());
                 <span class="kw">if </span>new_owned_encryption_keys.len() != epoch_keypairs.len() {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(
@@ -931,16 +967,32 @@
                     )
                     .into());
                 }
+
+                <span class="comment">// store the updated group state
+                </span><span class="kw">let </span>storage = provider.storage();
+                <span class="kw">let </span>group_id = <span class="self">self</span>.group_id();
+
+                <span class="self">self</span>.public_group
+                    .store(storage)
+                    .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
+                storage
+                    .write_group_epoch_secrets(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.group_epoch_secrets)
+                    .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
+                storage
+                    .write_message_secrets(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.message_secrets_store)
+                    .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
+
                 <span class="comment">// Store the relevant keys under the new epoch
-                </span><span class="self">self</span>.store_epoch_keypairs(provider.key_store(), epoch_keypairs.as_slice())
-                    .map_err(MergeCommitError::KeyStoreError)<span class="question-mark">?</span>;
+                </span><span class="self">self</span>.store_epoch_keypairs(storage, epoch_keypairs.as_slice())
+                    .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
+
                 <span class="comment">// Delete the old keys.
-                </span><span class="self">self</span>.delete_previous_epoch_keypairs(provider.key_store())
-                    .map_err(MergeCommitError::KeyStoreError)<span class="question-mark">?</span>;
+                </span><span class="self">self</span>.delete_previous_epoch_keypairs(storage)
+                    .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(keypair) = state.new_leaf_keypair_option {
                     keypair
-                        .delete_from_key_store(provider.key_store())
-                        .map_err(MergeCommitError::KeyStoreError)<span class="question-mark">?</span>;
+                        .delete(storage)
+                        .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
                 }
 
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(message_secrets))
@@ -973,7 +1025,7 @@
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>StagedCommitState {
-    PublicState(Box&lt;StagedPublicGroupDiff&gt;),
+    PublicState(Box&lt;PublicStagedCommitState&gt;),
     GroupMember(Box&lt;MemberStagedCommitState&gt;),
 }
 
@@ -1022,7 +1074,9 @@
     <span class="doccomment">/// Returns the leaf node of the (optional) update path.
     </span><span class="kw">pub fn </span>update_path_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
         <span class="kw">match </span><span class="self">self</span>.state {
-            StagedCommitState::PublicState(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+            StagedCommitState::PublicState(<span class="kw-2">ref </span>public_state) =&gt; {
+                public_state.update_path_leaf_node()
+            }
             StagedCommitState::GroupMember(<span class="kw-2">ref </span>group_member_state) =&gt; {
                 group_member_state.update_path_leaf_node.as_ref()
             }
@@ -1085,7 +1139,7 @@
     <span class="doccomment">/// Returns the [`GroupContext`] of the staged commit state.
     </span><span class="kw">pub fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
         <span class="kw">match </span><span class="self">self</span>.state {
-            StagedCommitState::PublicState(<span class="kw-2">ref </span>ps) =&gt; ps.group_context(),
+            StagedCommitState::PublicState(<span class="kw-2">ref </span>ps) =&gt; ps.staged_diff().group_context(),
             StagedCommitState::GroupMember(<span class="kw-2">ref </span>gm) =&gt; gm.group_context(),
         }
     }

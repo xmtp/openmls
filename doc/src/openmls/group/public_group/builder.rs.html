@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/builder.rs`."><title>builder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-5bc39a1768837dd0.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.2 (25ef9e3d8 2024-04-09)" data-channel="1.77.2" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-48f368f3872407c8.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/builder.rs`."><title>builder.rs - source</title><script> if (window.location.protocol !== "file:") document.write(`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2">`)</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0 (9b00956e5 2024-04-29)" data-channel="1.78.0" data-search-js="search-42d8da7a6b9792c2.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -183,35 +183,16 @@
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, OpenMlsProvider};
+</pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{
+    crypto::OpenMlsCrypto, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
+};
 
 <span class="kw">use super</span>::{errors::PublicGroupBuildError, PublicGroup};
 <span class="kw">use crate</span>::{
     credentials::CredentialWithKey,
     error::LibraryError,
-    extensions::{
-        errors::{ExtensionError, InvalidExtensionError},
-        Extensions,
-    },
-    group::{config::CryptoConfig, ExtensionType, GroupContext, GroupId},
+    extensions::{errors::InvalidExtensionError, Extensions},
+    group::{ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
@@ -219,12 +200,13 @@
         node::{encryption_keys::EncryptionKeyPair, leaf_node::Capabilities},
         TreeSync,
     },
+    versions::ProtocolVersion,
 };
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TempBuilderPG1 {
     group_id: GroupId,
-    crypto_config: CryptoConfig,
+    ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     lifetime: <span class="prelude-ty">Option</span>&lt;Lifetime&gt;,
     capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
@@ -284,17 +266,6 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
                 <span class="self">self</span>.group_context_extensions.required_capabilities()
             {
-                <span class="comment">// Also, while we're at it, check if we support all required
-                // capabilities ourselves.
-                </span>required_capabilities.check_support().map_err(|e| <span class="kw">match </span>e {
-                    ExtensionError::UnsupportedProposalType =&gt; {
-                        PublicGroupBuildError::UnsupportedProposalType
-                    }
-                    ExtensionError::UnsupportedExtensionType =&gt; {
-                        PublicGroupBuildError::UnsupportedExtensionType
-                    }
-                    <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">"Unexpected ExtensionError"</span>).into(),
-                })<span class="question-mark">?</span>;
                 (
                     <span class="prelude-val">Some</span>(required_capabilities.extension_types()),
                     <span class="prelude-val">Some</span>(required_capabilities.proposal_types()),
@@ -304,8 +275,8 @@
                 (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
             };
         <span class="kw">let </span>capabilities = <span class="self">self</span>.capabilities.unwrap_or(Capabilities::new(
-            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.crypto_config.version]),
-            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.crypto_config.ciphersuite]),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[ProtocolVersion::default()]),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.ciphersuite]),
             required_extensions,
             required_proposals,
             required_credentials,
@@ -313,7 +284,7 @@
         <span class="kw">let </span>(treesync, commit_secret, leaf_keypair) = TreeSync::new(
             provider,
             signer,
-            <span class="self">self</span>.crypto_config,
+            <span class="self">self</span>.ciphersuite,
             <span class="self">self</span>.credential_with_key,
             <span class="self">self</span>.lifetime.unwrap_or_default(),
             capabilities,
@@ -321,7 +292,7 @@
         )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
-            <span class="self">self</span>.crypto_config.ciphersuite,
+            <span class="self">self</span>.ciphersuite,
             <span class="self">self</span>.group_id,
             treesync.tree_hash().to_vec(),
             <span class="self">self</span>.group_context_extensions,
@@ -348,13 +319,6 @@
             treesync: <span class="self">self</span>.treesync,
             group_context: <span class="self">self</span>.group_context,
             confirmation_tag,
-        }
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>crypto_config(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CryptoConfig {
-        CryptoConfig {
-            ciphersuite: <span class="self">self</span>.group_context.ciphersuite(),
-            version: <span class="self">self</span>.group_context.protocol_version(),
         }
     }
 
@@ -388,12 +352,12 @@
     <span class="doccomment">/// Create a new [`PublicGroupBuilder`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder(
         group_id: GroupId,
-        crypto_config: CryptoConfig,
+        ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -&gt; TempBuilderPG1 {
         TempBuilderPG1 {
             group_id,
-            crypto_config,
+            ciphersuite,
             credential_with_key,
             lifetime: <span class="prelude-val">None</span>,
             capabilities: <span class="prelude-val">None</span>,
