@@ -512,7 +512,10 @@ fn test_group_context_extension_proposal_fails(
 }
 
 #[openmls_test::openmls_test]
-fn test_group_context_extension_proposal(ciphersuite: Ciphersuite, provider: &Provider) {
+fn test_group_context_extension_proposal(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -583,7 +586,7 @@ fn test_group_context_extension_proposal(ciphersuite: Ciphersuite, provider: &Pr
             &[CredentialType::Basic],
         ));
     let gce_proposal = alice_group
-        .create_group_context_ext_proposal::<Provider>(
+        .create_group_context_ext_proposal(
             framing_parameters,
             Extensions::single(required_application_id),
             &alice_signer,
