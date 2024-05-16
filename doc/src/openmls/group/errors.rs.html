@@ -567,6 +567,9 @@
 <a href="#565" id="565">565</a>
 <a href="#566" id="566">566</a>
 <a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -1088,6 +1091,9 @@
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
+    <span class="doccomment">/// Error writing updated group to storage.
+    </span><span class="attr">#[error(<span class="string">"Error writing updated group data to storage."</span>)]
+    </span>StorageError(StorageError),
 }
 
 <span class="doccomment">/// Error merging a commit.
