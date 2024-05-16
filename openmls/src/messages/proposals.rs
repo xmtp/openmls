@@ -468,7 +468,7 @@ pub struct AppAckProposal {
     TlsSize,
 )]
 pub struct GroupContextExtensionProposal {
-    pub(crate) extensions: Extensions,
+    extensions: Extensions,
 }
 
 impl GroupContextExtensionProposal {
@@ -478,7 +478,7 @@ impl GroupContextExtensionProposal {
     }
 
     /// Get the extensions of the proposal
-    pub fn extensions(&self) -> &Extensions {
+    pub(crate) fn extensions(&self) -> &Extensions {
         &self.extensions
     }
 }

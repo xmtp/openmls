@@ -1,5 +1,4 @@
 use openmls_traits::storage::*;
-
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::RwLock};
 
@@ -894,7 +893,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         aad: &[u8],
     ) -> Result<(), Self::Error> {
         let key = serde_json::to_vec(group_id)?;
-        self.write::<CURRENT_VERSION>(AAD_LABEL, &key, serde_json::to_vec(aad).unwrap())
+        self.write::<CURRENT_VERSION>(AAD_LABEL, &key, aad.to_vec())
     }
 
     fn delete_aad<GroupId: traits::GroupId<CURRENT_VERSION>>(
