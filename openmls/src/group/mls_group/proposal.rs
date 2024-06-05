@@ -419,6 +419,7 @@ impl MlsGroup {
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
+        println!("___________CAMERON______________: setting pending commit state from proposal #1");
 
         provider
             .storage()

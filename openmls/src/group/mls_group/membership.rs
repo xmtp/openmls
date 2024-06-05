@@ -71,6 +71,7 @@ impl MlsGroup {
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
+        println!("___________CAMERON______________: setting pending commit state from membership #1");
 
         provider
             .storage()
@@ -151,6 +152,8 @@ impl MlsGroup {
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
+        println!("___________CAMERON______________: setting pending commit state from membership #2");
+
 
         provider
             .storage()
@@ -226,6 +229,8 @@ impl MlsGroup {
         self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
+        println!("___________CAMERON______________: setting pending commit state from membership #3");
+
 
         provider
             .storage()
