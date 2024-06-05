@@ -283,16 +283,23 @@ impl MlsGroup {
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
+        println!("___________CAMERON______________: clearing pending commit");
         match self.group_state {
             MlsGroupState::PendingCommit(ref pending_commit_state) => {
+                println!("___________CAMERON______________: clearing pending commit - matched group state is pending commit");
                 if let PendingCommitState::Member(_) = **pending_commit_state {
+                    println!("___________CAMERON______________: clearing pending commit - pending commit state is member");
                     self.group_state = MlsGroupState::Operational;
                     storage.write_group_state(self.group_id(), &self.group_state)
                 } else {
+                    println!("___________CAMERON______________: clearing pending commit - WONT CLEAR! - pending commit state is external");
                     Ok(())
                 }
             }
-            MlsGroupState::Operational | MlsGroupState::Inactive => Ok(()),
+            MlsGroupState::Operational | MlsGroupState::Inactive => {
+                println!("___________CAMERON______________: clearing pending commit - matched group state is operational or inactive");
+                Ok(())
+            }
         }
     }
 
