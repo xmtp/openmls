@@ -263,8 +263,14 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(ref pending_commit_state) => {
                 Some(pending_commit_state.staged_commit())
             }
-            MlsGroupState::Operational => None,
-            MlsGroupState::Inactive => None,
+            MlsGroupState::Operational => {
+                println!("___________CAMERON______________: pending commit is None because state is Operational");
+                None
+            }
+            MlsGroupState::Inactive => {
+                println!("___________CAMERON______________: pending commit is None because state is Inactive");
+                None
+            }
         }
     }
 
@@ -296,8 +302,12 @@ impl MlsGroup {
                     Ok(())
                 }
             }
-            MlsGroupState::Operational | MlsGroupState::Inactive => {
-                println!("___________CAMERON______________: clearing pending commit - matched group state is operational or inactive");
+            MlsGroupState::Operational => {
+                println!("___________CAMERON______________: not clearing because state is Operational");
+                Ok(())
+            }
+            MlsGroupState::Inactive => {
+                println!("___________CAMERON______________: not clearing because state is Inactive");
                 Ok(())
             }
         }
