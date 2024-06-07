@@ -436,6 +436,13 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider, types::Ciphersuite};
 
 <span class="kw">use super</span>::{
@@ -825,10 +832,13 @@
         <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
     }
 
-    <span class="doccomment">/// Updates group context extensions
+    <span class="doccomment">/// Updates Group Context Extensions
+    ///
+    /// Commits to the Group Context Extension inline proposal using the [`Extensions`]
     ///
     /// Returns an error when the group does not support all the required capabilities
-    /// in the new `extensions`.
+    /// in the new `extensions` or if there is a pending commit.
+    </span><span class="comment">//// FIXME: #1217
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>update_group_context_extensions&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -841,12 +851,13 @@
     &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="comment">// Create group context extension proposals
+        <span class="comment">// Create inline group context extension proposals
         </span><span class="kw">let </span>inline_proposals = <span class="macro">vec!</span>[Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal { extensions },
+            GroupContextExtensionProposal::new(extensions),
         )];
 
-        <span class="kw">let </span>params = CreateCommitParams::builder()
+        <span class="comment">// Create Commit over all proposals
+        </span><span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="self">self</span>.framing_parameters())
             .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
             .inline_proposals(inline_proposals)
@@ -854,7 +865,10 @@
         <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>mls_messages = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
-        <span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+
+        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        </span><span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
 
