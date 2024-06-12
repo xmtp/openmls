@@ -10,12 +10,13 @@ repository = "https://github.com/openmls/openmls/tree/main/basic_credential"
 readme = "README.md"
 
 [dependencies]
+zeroize = "1.8.1"
 openmls_traits = { version = "0.2.0", path = "../traits" }
 tls_codec = { workspace = true }
 serde = "1.0"
 
 # Rust Crypto
-ed25519-dalek = { version = "2.0", features = ["rand_core"] }
+ed25519-dalek = { version = "2.1.1", features = ["rand_core", "zeroize"] }
 p256 = { version = "0.13" }
 rand = "0.8"
 
