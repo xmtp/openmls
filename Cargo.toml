@@ -22,4 +22,4 @@ tls_codec = { version = "0.4.2-pre.1", features = [
   "derive",
   "serde",
   "mls",
-], git = "https://github.com/rustcrypto/formats", rev = "b91caee" }
+], git = "https://github.com/nplasterer/formats", rev = "b91caee" }
