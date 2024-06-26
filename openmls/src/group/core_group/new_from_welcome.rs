@@ -48,12 +48,24 @@ impl StagedCoreWelcome {
 
     /// Returns the [`LeafNode`] of the group member that authored the [`Welcome`] message.
     pub fn welcome_sender(&self) -> Result<&LeafNode, LibraryError> {
+        let start_time = std::time::Instant::now();
         let sender_index = self.welcome_sender_index();
-        self.public_group
+        log::info!(
+            "Getting to sender index took {}ms",
+            start_time.elapsed().as_millis()
+        );
+        let val = self
+            .public_group
             .leaf(sender_index)
             .ok_or(LibraryError::custom(
                 "no leaf with given welcome sender index exists",
-            ))
+            ));
+        log::info!(
+            "Getting to leaf node took {}ms",
+            start_time.elapsed().as_millis()
+        );
+
+        val
     }
 
     /// Consumes the [`StagedCoreWelcome`] and returns the respective [`CoreGroup`].
