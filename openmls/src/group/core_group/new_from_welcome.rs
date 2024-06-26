@@ -51,8 +51,9 @@ impl StagedCoreWelcome {
         let start_time = std::time::Instant::now();
         let sender_index = self.welcome_sender_index();
         log::info!(
-            "Getting to sender index took {}ms",
-            start_time.elapsed().as_millis()
+            "Getting to sender index took {}ms. Sender index is {}",
+            start_time.elapsed().as_millis(),
+            sender_index.clone()
         );
         let val = self
             .public_group
