@@ -62,8 +62,9 @@ impl StagedCoreWelcome {
                 "no leaf with given welcome sender index exists",
             ));
         log::info!(
-            "Getting to leaf node took {}ms",
-            start_time.elapsed().as_millis()
+            "Getting to leaf node took {}ms. Val is ok: {}",
+            start_time.elapsed().as_millis(),
+            val.is_ok()
         );
 
         val
