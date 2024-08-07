@@ -54,12 +54,14 @@ impl PublicGroup {
                         message.epoch(),
                         self.group_context().epoch()
                     );
+                    println!("message.epoch() {} > {} self.group_context().epoch()", message.epoch(), self.group_context().epoch());
                     return Err(ValidationError::WrongEpoch);
                 }
             }
             // For all other messages we only only accept the current epoch
             _ => {
                 if message.epoch() != self.group_context().epoch() {
+                    println!("message.epoch() {} != {} self.group_context().epoch()", message.epoch(), self.group_context().epoch());
                     log::error!(
                         "Wrong Epoch: message.epoch() {} != {} self.group_context().epoch()",
                         message.epoch(),
