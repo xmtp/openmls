@@ -5,6 +5,7 @@ use crate::{
     framing::{MessageDecryptionError, MlsMessageIn, ProcessedMessageContent},
     group::*,
 };
+use openmls_traits::OpenMlsProvider;
 
 #[openmls_test::openmls_test]
 fn test_past_secrets_in_group(
@@ -135,9 +136,11 @@ fn test_past_secrets_in_group(
                 ),)
             ));
         }
-
         // The last messages should not fail
         for application_message in application_messages.iter().skip(max_epochs / 2) {
+            let mut bob_group = MlsGroup::load(provider.storage(), bob_group.group_id())
+                .expect("reload group")
+                .unwrap();
             let bob_processed_message = bob_group
                 .process_message(provider, application_message.clone())
                 .expect("An unexpected error occurred.");
