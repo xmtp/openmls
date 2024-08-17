@@ -305,6 +305,10 @@ impl CoreGroup {
         if let Some(message_secrets) = self.merge_commit(provider, staged_commit)? {
             self.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
+            provider
+                .storage()
+                .write_message_secrets(self.group_id(), &self.message_secrets_store)
+                .map_err(|err| MergeCommitError::StorageError(err))?;
         }
         // Empty the proposal store
         proposal_store.empty();
