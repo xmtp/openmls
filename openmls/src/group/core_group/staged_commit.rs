@@ -7,7 +7,8 @@ use self::public_group::staged_commit::PublicStagedCommitState;
 
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
-    ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
+    ciphersuite::hash_ref::ProposalRef, ciphersuite::Secret,
+    framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
