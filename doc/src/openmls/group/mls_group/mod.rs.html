@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -514,11 +514,80 @@
 <a href="#514" id="514">514</a>
 <a href="#515" id="515">515</a>
 <a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
+//!
 
-</span><span class="kw">use </span><span class="kw">super</span>::proposals::{ProposalStore, QueuedProposal};
+</span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+</span><span class="kw">use </span><span class="kw">crate</span>::schedule::message_secrets::MessageSecrets;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">crate</span>::prelude::SenderRatchetConfiguration;
+
+<span class="kw">use </span><span class="kw">super</span>::proposals::{ProposalStore, QueuedProposal};
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
@@ -549,15 +618,15 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>membership;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>processing;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>proposal;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>ser;
 
 <span class="comment">// Tests
 </span><span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test_mls_group;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>tests_and_kats;
 
 <span class="doccomment">/// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub enum </span>PendingCommitState {
     <span class="doccomment">/// Commit from a group member
     </span>Member(StagedCommit),
@@ -589,47 +658,48 @@
 /// states and their transitions are as follows:
 ///
 /// * [`MlsGroupState::Operational`]: This is the main state of the group, which
-/// allows access to all of its functionality, (except merging pending commits,
-/// see the [`MlsGroupState::PendingCommit`] for more information) and it's the
-/// state the group starts in (except when created via
-/// [`MlsGroup::join_by_external_commit()`], see the functions documentation for
-/// more information). From this `Operational`, the group state can either
-/// transition to [`MlsGroupState::Inactive`], when it processes a commit that
-/// removes this client from the group, or to [`MlsGroupState::PendingCommit`],
-/// when this client creates a commit.
+///   allows access to all of its functionality, (except merging pending commits,
+///   see the [`MlsGroupState::PendingCommit`] for more information) and it's the
+///   state the group starts in (except when created via
+///   [`MlsGroup::join_by_external_commit()`], see the functions documentation for
+///   more information). From this `Operational`, the group state can either
+///   transition to [`MlsGroupState::Inactive`], when it processes a commit that
+///   removes this client from the group, or to [`MlsGroupState::PendingCommit`],
+///   when this client creates a commit.
 ///
 /// * [`MlsGroupState::Inactive`]: A group can enter this state from any other
-/// state when it processes a commit that removes this client from the group.
-/// This is a terminal state that the group can not exit from. If the clients
-/// wants to re-join the group, it can either be added by a group member or it
-/// can join via external commit.
+///   state when it processes a commit that removes this client from the group.
+///   This is a terminal state that the group can not exit from. If the clients
+///   wants to re-join the group, it can either be added by a group member or it
+///   can join via external commit.
 ///
 /// * [`MlsGroupState::PendingCommit`]: This state is split into two possible
-/// sub-states, one for each Commit type:
-/// [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
+///   sub-states, one for each Commit type:
+///   [`PendingCommitState::Member`] and [`PendingCommitState::External`]:
 ///
 ///   * If the client creates a commit for this group, the `PendingCommit` state
-///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
-///   additional state variable. In this state, it can perform the same
-///   operations as in the [`MlsGroupState::Operational`], except that it cannot
-///   create proposals or commits. However, it can merge or clear the stored
-///   [`StagedCommit`], where both actions result in a transition to the
-///   [`MlsGroupState::Operational`]. Additionally, if a commit from another
-///   group member is processed, the own pending commit is also cleared and
-///   either the `Inactive` state is entered (if this client was removed from
-///   the group as part of the processed commit), or the `Operational` state is
-///   entered.
+///     is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
+///     additional state variable. In this state, it can perform the same
+///     operations as in the [`MlsGroupState::Operational`], except that it cannot
+///     create proposals or commits. However, it can merge or clear the stored
+///     [`StagedCommit`], where both actions result in a transition to the
+///     [`MlsGroupState::Operational`]. Additionally, if a commit from another
+///     group member is processed, the own pending commit is also cleared and
+///     either the `Inactive` state is entered (if this client was removed from
+///     the group as part of the processed commit), or the `Operational` state is
+///     entered.
 ///
 ///   * A group can enter the [`PendingCommitState::External`] sub-state only as
-///   the initial state when the group is created via
-///   [`MlsGroup::join_by_external_commit()`]. In contrast to the
-///   [`PendingCommitState::Member`] `PendingCommit` state, the only possible
-///   functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
-///   function, which merges the pending external commit and transitions the
-///   state to [`MlsGroupState::PendingCommit`]. For more information on the
-///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
-///   Section 11.2.1 of the MLS specification.
+///     the initial state when the group is created via
+///     [`MlsGroup::join_by_external_commit()`]. In contrast to the
+///     [`PendingCommitState::Member`] `PendingCommit` state, the only possible
+///     functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
+///     function, which merges the pending external commit and transitions the
+///     state to [`MlsGroupState::PendingCommit`]. For more information on the
+///     external commit process, see [`MlsGroup::join_by_external_commit()`] or
+///     Section 11.2.1 of the MLS specification.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub enum </span>MlsGroupState {
     <span class="doccomment">/// There is currently a pending Commit that hasn't been merged yet.
     </span>PendingCommit(Box&lt;PendingCommitState&gt;),
@@ -664,21 +734,20 @@
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
 </span><span class="attr">#[derive(Debug)]
+#[cfg_attr(feature = <span class="string">"test-utils"</span>, derive(Clone, PartialEq))]
 </span><span class="kw">pub struct </span>MlsGroup {
     <span class="comment">// The group configuration. See [`MlsGroupJoinConfig`] for more information.
     </span>mls_group_config: MlsGroupJoinConfig,
     <span class="comment">// the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
     </span>group: CoreGroup,
-    <span class="comment">// A [ProposalStore] that stores incoming proposals from the DS within one epoch.
-    // The store is emptied after every epoch change.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) proposal_store: ProposalStore,
     <span class="comment">// Own [`LeafNode`]s that were created for update proposals and that
     // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
     </span>own_leaf_nodes: Vec&lt;LeafNode&gt;,
-    <span class="comment">// The AAD that is used for all outgoing handshake messages. The AAD can be set through
-    // `set_aad()`.
+    <span class="comment">// Additional authenticated data (AAD) for the next outgoing message. This
+    // is ephemeral and will be reset by every API call that successfully
+    // returns an [`MlsMessageOut`].
     </span>aad: Vec&lt;u8&gt;,
     <span class="comment">// A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
@@ -703,19 +772,17 @@
         storage.write_mls_join_config(<span class="self">self</span>.group_id(), mls_group_config)
     }
 
-    <span class="doccomment">/// Returns the AAD used in the framing.
-    </span><span class="kw">pub fn </span>aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.aad
+    <span class="doccomment">/// Sets the additional authenticated data (AAD) for the next outgoing
+    /// message. This is ephemeral and will be reset by every API call that
+    /// successfully returns an [`MlsMessageOut`].
+    </span><span class="kw">pub fn </span>set_aad(<span class="kw-2">&amp;mut </span><span class="self">self</span>, aad: Vec&lt;u8&gt;) {
+        <span class="self">self</span>.aad = aad;
     }
 
-    <span class="doccomment">/// Sets the AAD used in the framing.
-    </span><span class="kw">pub fn </span>set_aad&lt;Storage: StorageProvider&gt;(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        storage: <span class="kw-2">&amp;</span>Storage,
-        aad: <span class="kw-2">&amp;</span>[u8],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
-        <span class="self">self</span>.aad = aad.to_vec();
-        storage.write_aad(<span class="self">self</span>.group_id(), aad)
+    <span class="doccomment">/// Returns the additional authenticated data (AAD) for the next outgoing
+    /// message.
+    </span><span class="kw">pub fn </span>aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.aad
     }
 
     <span class="comment">// === Advanced functions ===
@@ -733,9 +800,7 @@
 
     <span class="doccomment">/// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    </span><span class="kw">pub fn </span>credential&lt;Provider: OpenMlsProvider&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>Credential, MlsGroupStateError&lt;Provider::StorageError&gt;&gt; {
+    </span><span class="kw">pub fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>Credential, MlsGroupStateError&gt; {
         <span class="kw">if </span>!<span class="self">self</span>.is_active() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction);
         }
@@ -768,7 +833,7 @@
 
     <span class="doccomment">/// Returns an `Iterator` over pending proposals.
     </span><span class="kw">pub fn </span>pending_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>QueuedProposal&gt; {
-        <span class="self">self</span>.proposal_store.proposals()
+        <span class="self">self</span>.proposal_store().proposals()
     }
 
     <span class="doccomment">/// Returns a reference to the [`StagedCommit`] of the most recently created
@@ -823,9 +888,9 @@
         storage: <span class="kw-2">&amp;</span>Storage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
         <span class="comment">// If the proposal store is not empty...
-        </span><span class="kw">if </span>!<span class="self">self</span>.proposal_store.is_empty() {
+        </span><span class="kw">if </span>!<span class="self">self</span>.proposal_store().is_empty() {
             <span class="comment">// Empty the proposal store
-            </span><span class="self">self</span>.proposal_store.empty();
+            </span><span class="self">self</span>.proposal_store_mut().empty();
 
             <span class="comment">// Clear proposals in storage
             </span>storage.clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
@@ -855,22 +920,21 @@
         group_id: <span class="kw-2">&amp;</span>GroupId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MlsGroup&gt;, Storage::Error&gt; {
         <span class="kw">let </span>group_config = storage.mls_group_join_config(group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>core_group = CoreGroup::load(storage, group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>proposals: Vec&lt;(ProposalRef, QueuedProposal)&gt; = storage.queued_proposals(group_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>core_group = CoreGroup::load(
+            storage,
+            group_id,
+            group_config
+                .as_ref()
+                .map(|config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig| config.use_ratchet_tree_extension),
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>own_leaf_nodes = storage.own_leaf_nodes(group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>aad = storage.aad(group_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>aad = Vec::new();
         <span class="kw">let </span>group_state = storage.group_state(group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>proposal_store = ProposalStore::new();
-
-        <span class="kw">for </span>(_ref, proposal) <span class="kw">in </span>proposals {
-            proposal_store.add(proposal);
-        }
 
         <span class="kw">let </span>build = || -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
             <span class="prelude-val">Some</span>(<span class="self">Self </span>{
                 mls_group_config: group_config<span class="question-mark">?</span>,
                 group: core_group<span class="question-mark">?</span>,
-                proposal_store,
                 own_leaf_nodes,
                 aad,
                 group_state: group_state<span class="question-mark">?</span>,
@@ -880,17 +944,25 @@
         <span class="prelude-val">Ok</span>(build())
     }
 
-    <span class="doccomment">/// Remove the persisted state from storage
-    </span><span class="kw">pub fn </span>delete&lt;StorageProvider: <span class="kw">crate</span>::storage::StorageProvider&gt;(
+    <span class="doccomment">/// Remove the persisted state of this group from storage. Note that
+    /// signature key material is not managed by OpenMLS and has to be removed
+    /// from the storage provider separately (if desired).
+    </span><span class="kw">pub fn </span>delete&lt;Storage: <span class="kw">crate</span>::storage::StorageProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        storage: <span class="kw-2">&amp;</span>StorageProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), StorageProvider::Error&gt; {
+        storage: <span class="kw-2">&amp;</span>Storage,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Storage::Error&gt; {
         <span class="self">self</span>.group.delete(storage)<span class="question-mark">?</span>;
         storage.delete_group_config(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_own_leaf_nodes(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
-        storage.delete_aad(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_group_state(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
+        storage.delete_encryption_epoch_key_pairs(
+            <span class="self">self</span>.group_id(),
+            <span class="kw-2">&amp;</span><span class="self">self</span>.epoch(),
+            <span class="self">self</span>.own_leaf_index().u32(),
+        )<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.proposal_store_mut().empty();
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -953,12 +1025,28 @@
 
     <span class="doccomment">/// Check if the group is operational. Throws an error if the group is
     /// inactive or if there is a pending commit.
-    </span><span class="kw">fn </span>is_operational&lt;StorageError&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&lt;StorageError&gt;&gt; {
+    </span><span class="kw">fn </span>is_operational(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&gt; {
         <span class="kw">match </span><span class="self">self</span>.group_state {
             MlsGroupState::PendingCommit(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(MlsGroupStateError::PendingCommit),
             MlsGroupState::Inactive =&gt; <span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction),
             MlsGroupState::Operational =&gt; <span class="prelude-val">Ok</span>(()),
         }
+    }
+
+    <span class="doccomment">/// Returns a reference to the proposal store.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProposalStore {
+        <span class="self">self</span>.group.proposal_store()
+    }
+
+    <span class="doccomment">/// Returns a mutable reference to the proposal store.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_store_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ProposalStore {
+        <span class="self">self</span>.group.proposal_store_mut()
+    }
+
+    <span class="doccomment">/// Resets the AAD.
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>reset_aad(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.aad.clear();
     }
 }
 
@@ -975,28 +1063,58 @@
     }
 
     <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_test_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>MessageSecrets {
+        <span class="self">self</span>.group.message_secrets_test_mut()
+    }
+
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
     </span><span class="kw">pub fn </span>print_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
         <span class="self">self</span>.group.print_ratchet_tree(message)
+    }
+
+    <span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>GroupContext {
+        <span class="self">self</span>.group.context_mut()
+    }
+
+    <span class="comment">// Encrypt an AuthenticatedContent into a PrivateMessage. Only needed for
+    // the message protection KAT.
+    </span><span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt&lt;Provider: OpenMlsProvider&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        public_message: AuthenticatedContent,
+        padding_size: usize,
+        provider: <span class="kw-2">&amp;</span>Provider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&lt;Provider::StorageError&gt;&gt; {
+        <span class="self">self</span>.group.encrypt(public_message, padding_size, provider)
+    }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="comment">// Decrypt a ProtocolMessage. Only needed for the message protection KAT.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt_message(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        message: ProtocolMessage,
+        sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;DecryptedMessage, ValidationError&gt; {
+        <span class="self">self</span>.group
+            .decrypt_message(crypto, message, sender_ratchet_configuration)
+    }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_group_context(<span class="kw-2">&amp;mut </span><span class="self">self</span>, group_context: GroupContext) {
+        <span class="self">self</span>.group.set_group_context(group_context)
+    }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_own_leaf_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, own_leaf_index: LeafNodeIndex) {
+        <span class="self">self</span>.group.set_own_leaf_index(own_leaf_index)
     }
 
     <span class="doccomment">/// Returns the underlying [CoreGroup].
     </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CoreGroup {
         <span class="kw-2">&amp;</span><span class="self">self</span>.group
-    }
-
-    <span class="doccomment">/// Removes a specific proposal from the store.
-    </span><span class="kw">pub fn </span>remove_pending_proposal&lt;Storage: StorageProvider&gt;(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        storage: <span class="kw-2">&amp;</span>Storage,
-        proposal_ref: ProposalRef,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&lt;Storage::Error&gt;&gt; {
-        storage
-            .remove_proposal(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span>proposal_ref)
-            .map_err(MlsGroupStateError::StorageError)<span class="question-mark">?</span>;
-        <span class="self">self</span>.proposal_store
-            .remove(proposal_ref)
-            .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }
 }
 

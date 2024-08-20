@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -292,23 +292,18 @@
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
-        core_group::{
-            proposals::{ProposalQueue, ProposalStore},
-            staged_commit::StagedCommitState,
-        },
+        core_group::{proposals::ProposalQueue, staged_commit::StagedCommitState},
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
-    storage::StorageProvider,
 };
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub struct </span>PublicStagedCommitState {
     <span class="kw">pub</span>(<span class="kw">super</span>) staged_diff: StagedPublicGroupDiff,
     <span class="kw">pub</span>(<span class="kw">super</span>) update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
@@ -342,7 +337,6 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_commit&lt;<span class="lifetime">'a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>AuthenticatedContent,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Commit, ProposalQueue, LeafNodeIndex), StageCommitError&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
@@ -383,7 +377,7 @@
             ciphersuite,
             crypto,
             commit.proposals.as_slice().to_vec(),
-            proposal_store,
+            <span class="self">self</span>.proposal_store(),
             sender,
         )
         .map_err(|e| {
@@ -501,16 +495,15 @@
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244
+    ///
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
-        <span class="kw">let </span>(commit, proposal_queue, sender_index) =
-            <span class="self">self</span>.validate_commit(mls_content, proposal_store, crypto)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(commit, proposal_queue, sender_index) = <span class="self">self</span>.validate_commit(mls_content, crypto)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>staged_diff = <span class="self">self</span>.stage_diff(mls_content, <span class="kw-2">&amp;</span>proposal_queue, sender_index, crypto)<span class="question-mark">?</span>;
         <span class="kw">let </span>staged_state = PublicStagedCommitState {
@@ -574,11 +567,11 @@
     }
 
     <span class="doccomment">/// Merges a [StagedCommit] into the public group state.
-    </span><span class="kw">pub fn </span>merge_commit&lt;Storage: StorageProvider&gt;(
+    </span><span class="kw">pub fn </span>merge_commit&lt;Storage: PublicStorageProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         storage: <span class="kw-2">&amp;</span>Storage,
         staged_commit: StagedCommit,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Storage::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Storage::PublicError&gt;&gt; {
         <span class="kw">match </span>staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) =&gt; {
                 <span class="self">self</span>.merge_diff(staged_state.staged_diff);
@@ -587,6 +580,9 @@
         }
 
         <span class="self">self</span>.proposal_store.empty();
+        storage
+            .clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())
+            .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
         <span class="self">self</span>.store(storage).map_err(MergeCommitError::StorageError)
     }
 }

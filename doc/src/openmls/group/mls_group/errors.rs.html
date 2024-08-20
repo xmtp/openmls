@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/errors.rs`."><title>errors.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/errors.rs`."><title>errors.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -365,6 +365,20 @@
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
 //!
 //! This module defines the public errors that can be returned from all calls
@@ -385,7 +399,10 @@
         CreateGroupContextExtProposalError,
     },
     schedule::errors::PskError,
-    treesync::errors::{LeafNodeValidationError, PublicTreeError},
+    treesync::{
+        errors::{LeafNodeValidationError, PublicTreeError},
+        node::leaf_node::LeafNodeUpdateError,
+    },
 };
 
 <span class="doccomment">/// New group error
@@ -424,7 +441,7 @@
 
 <span class="doccomment">/// Group state error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>MlsGroupStateError&lt;StorageError&gt; {
+</span><span class="kw">pub enum </span>MlsGroupStateError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -443,9 +460,6 @@
     <span class="doccomment">/// Requested pending proposal hasn't been found in local pending proposals
     </span><span class="attr">#[error(<span class="string">"Requested pending proposal hasn't been found in local pending proposals."</span>)]
     </span>PendingProposalNotFound,
-    <span class="doccomment">/// An error ocurred while writing to storage
-    </span><span class="attr">#[error(<span class="string">"An error ocurred while writing to storage"</span>)]
-    </span>StorageError(StorageError),
 }
 
 <span class="doccomment">/// Error merging pending commit
@@ -453,7 +467,7 @@
 </span><span class="kw">pub enum </span>MergePendingCommitError&lt;StorageError&gt; {
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>MlsGroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>MlsGroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// See [`MergeCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>MergeCommitError(<span class="attr">#[from] </span>MergeCommitError&lt;StorageError&gt;),
@@ -461,7 +475,7 @@
 
 <span class="doccomment">/// Process message error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>ProcessMessageError&lt;StorageError&gt; {
+</span><span class="kw">pub enum </span>ProcessMessageError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -473,10 +487,7 @@
     </span>ValidationError(<span class="attr">#[from] </span>ValidationError),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
-    <span class="doccomment">/// The message's signature is invalid.
-    </span><span class="attr">#[error(<span class="string">"The message's signature is invalid."</span>)]
-    </span>InvalidSignature,
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// See [`StageCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>InvalidCommit(<span class="attr">#[from] </span>StageCommitError),
@@ -490,13 +501,13 @@
 
 <span class="doccomment">/// Create message error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>CreateMessageError&lt;StorageError&gt; {
+</span><span class="kw">pub enum </span>CreateMessageError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
 }
 
 <span class="doccomment">/// Add members error
@@ -513,7 +524,7 @@
     </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// Error writing to storage.
     </span><span class="attr">#[error(<span class="string">"Error writing to storage"</span>)]
     </span>StorageError(StorageError),
@@ -530,7 +541,7 @@
     </span>UnsupportedExtensions,
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// See [`LeafNodeValidationError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LeafNodeValidation(<span class="attr">#[from] </span>LeafNodeValidationError),
@@ -547,7 +558,7 @@
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// The member that should be removed can not be found.
     </span><span class="attr">#[error(<span class="string">"The member that should be removed can not be found."</span>)]
     </span>UnknownMember,
@@ -570,7 +581,7 @@
     </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// The member that should be removed can not be found.
     </span><span class="attr">#[error(<span class="string">"The member that should be removed can not be found."</span>)]
     </span>UnknownMember,
@@ -590,7 +601,7 @@
     </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// The member that should be removed can not be found.
     </span><span class="attr">#[error(<span class="string">"The member that should be removed can not be found."</span>)]
     </span>UnknownMember,
@@ -607,7 +618,10 @@
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
+    <span class="doccomment">/// An error ocurred while writing to storage
+    </span><span class="attr">#[error(<span class="string">"An error ocurred while writing to storage"</span>)]
+    </span>StorageError(StorageError),
 }
 
 <span class="doccomment">/// Self update error
@@ -621,7 +635,7 @@
     </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// Error accessing the storage.
     </span><span class="attr">#[error(<span class="string">"Error accessing the storage."</span>)]
     </span>StorageError(StorageError),
@@ -636,13 +650,16 @@
 
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// Error accessing storage.
     </span><span class="attr">#[error(<span class="string">"Error accessing storage."</span>)]
     </span>StorageError(StorageError),
     <span class="doccomment">/// See [`PublicTreeError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>PublicTreeError(<span class="attr">#[from] </span>PublicTreeError),
+    <span class="doccomment">/// See [`LeafNodeUpdateError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>LeafNodeUpdateError(<span class="attr">#[from] </span>LeafNodeUpdateError&lt;StorageError&gt;),
 }
 
 <span class="doccomment">/// Commit to pending proposals error
@@ -656,7 +673,7 @@
     </span>CreateCommitError(<span class="attr">#[from] </span>CreateCommitError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// Error writing to storage
     </span><span class="attr">#[error(<span class="string">"Error writing to storage: {0}"</span>)]
     </span>StorageError(StorageError),
@@ -664,18 +681,18 @@
 
 <span class="doccomment">/// Errors that can happen when exporting a group info object.
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>ExportGroupInfoError&lt;StorageError&gt; {
+</span><span class="kw">pub enum </span>ExportGroupInfoError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
 }
 
 <span class="doccomment">/// Export secret error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>ExportSecretError&lt;StorageError&gt; {
+</span><span class="kw">pub enum </span>ExportSecretError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -684,24 +701,24 @@
     </span>KeyLengthTooLong,
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
 }
 
 <span class="doccomment">/// Propose PSK error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>ProposePskError&lt;StorageError&gt; {
+</span><span class="kw">pub enum </span>ProposePskError {
     <span class="doccomment">/// See [`PskError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>Psk(<span class="attr">#[from] </span>PskError),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
 }
 
-<span class="doccomment">/// Export secret error
+<span class="doccomment">/// Proposal error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub enum </span>ProposalError&lt;StorageError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
@@ -721,7 +738,7 @@
     </span>ProposeRemoveMemberError(<span class="attr">#[from] </span>ProposeRemoveMemberError&lt;StorageError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError&lt;StorageError&gt;),
+    </span>GroupStateError(<span class="attr">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// See [`ValidationError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>ValidationError(<span class="attr">#[from] </span>ValidationError),
@@ -731,5 +748,16 @@
     <span class="doccomment">/// Error writing proposal to storage.
     </span><span class="attr">#[error(<span class="string">"error writing proposal to storage"</span>)]
     </span>StorageError(StorageError),
+}
+
+<span class="doccomment">/// Remove proposal error
+</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>RemoveProposalError&lt;StorageError&gt; {
+    <span class="doccomment">/// Couldn't find the proposal for the given `ProposalRef`.
+    </span><span class="attr">#[error(<span class="string">"Couldn't find the proposal for the given `ProposalRef`"</span>)]
+    </span>ProposalNotFound,
+    <span class="doccomment">/// Error erasing proposal from storage.
+    </span><span class="attr">#[error(<span class="string">"error writing proposal to storage"</span>)]
+    </span>Storage(StorageError),
 }
 </code></pre></div></section></main></body></html>

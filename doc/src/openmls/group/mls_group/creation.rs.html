@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/creation.rs`."><title>creation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/creation.rs`."><title>creation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -332,13 +332,20 @@
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
 
 <span class="kw">use super</span>::{builder::MlsGroupBuilder, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     credentials::CredentialWithKey,
     group::{
-        core_group::create_commit_params::CreateCommitParams,
+        core_group::create_commit_params::{CommitType, CreateCommitParams},
         errors::{ExternalCommitError, WelcomeError},
     },
     messages::{
@@ -347,7 +354,10 @@
     },
     schedule::psk::{store::ResumptionPskStore, PreSharedKeyId},
     storage::OpenMlsProvider,
-    treesync::RatchetTreeIn,
+    treesync::{
+        node::leaf_node::{Capabilities, LeafNodeParameters},
+        RatchetTreeIn,
+    },
 };
 
 <span class="kw">impl </span>MlsGroup {
@@ -411,12 +421,15 @@
     ///
     /// Note: If there is a group member in the group with the same identity as
     /// us, this will create a remove proposal.
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>join_by_external_commit&lt;Provider: OpenMlsProvider&gt;(
         provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
+        capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
+        extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
         aad: <span class="kw-2">&amp;</span>[u8],
         credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;), ExternalCommitError&lt;Provider::StorageError&gt;&gt;
@@ -424,11 +437,14 @@
         <span class="comment">// Prepare the commit parameters
         </span><span class="kw">let </span>framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
-        <span class="kw">let </span>proposal_store = ProposalStore::new();
+        <span class="kw">let </span>leaf_node_parameters = LeafNodeParameters::builder()
+            .with_capabilities(capabilities.unwrap_or_default())
+            .with_extensions(extensions.unwrap_or_default())
+            .build();
         <span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .proposal_store(<span class="kw-2">&amp;</span>proposal_store)
-            .credential_with_key(credential_with_key)
+            .commit_type(CommitType::External(credential_with_key))
+            .leaf_node_parameters(leaf_node_parameters)
             .build();
         <span class="kw">let </span>(<span class="kw-2">mut </span>group, create_commit_result) = CoreGroup::join_by_external_commit(
             provider,
@@ -442,7 +458,6 @@
         <span class="kw">let </span>mls_group = MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
-            proposal_store: ProposalStore::new(),
             own_leaf_nodes: <span class="macro">vec!</span>[],
             aad: <span class="macro">vec!</span>[],
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
@@ -614,7 +629,6 @@
         <span class="kw">let </span>mls_group = MlsGroup {
             mls_group_config: <span class="self">self</span>.mls_group_config,
             group,
-            proposal_store: ProposalStore::new(),
             own_leaf_nodes: <span class="macro">vec!</span>[],
             aad: <span class="macro">vec!</span>[],
             group_state: MlsGroupState::Operational,

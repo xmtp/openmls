@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -589,18 +589,6 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -608,9 +596,10 @@
 
 <span class="kw">use </span><span class="self">self</span>::public_group::staged_commit::PublicStagedCommitState;
 
-<span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, proposals::ProposalStore, <span class="kw-2">*</span>};
+<span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
-    ciphersuite::Secret, framing::mls_auth_content::AuthenticatedContent,
+    ciphersuite::{hash_ref::ProposalRef, Secret},
+    framing::mls_auth_content::AuthenticatedContent,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -723,11 +712,10 @@
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244 Returns an error if the given commit was sent by the owner
-    /// of this group.
+    ///              of this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         old_epoch_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         leaf_node_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
@@ -741,9 +729,9 @@
 
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
-        <span class="kw">let </span>(commit, proposal_queue, sender_index) =
-            <span class="self">self</span>.public_group
-                .validate_commit(mls_content, proposal_store, provider.crypto())<span class="question-mark">?</span>;
+        <span class="kw">let </span>(commit, proposal_queue, sender_index) = <span class="self">self
+            </span>.public_group
+            .validate_commit(mls_content, provider.crypto())<span class="question-mark">?</span>;
 
         <span class="comment">// Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -751,19 +739,6 @@
 
         <span class="kw">let </span>apply_proposals_values =
             diff.apply_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="self">self</span>.own_leaf_index())<span class="question-mark">?</span>;
-
-        <span class="comment">// Check if we were removed from the group
-        </span><span class="kw">if </span>apply_proposals_values.self_removed {
-            <span class="kw">let </span>staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
-            <span class="kw">let </span>staged_state = PublicStagedCommitState::new(
-                staged_diff,
-                commit.path.as_ref().map(|path| path.leaf_node().clone()),
-            );
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(StagedCommit::new(
-                proposal_queue,
-                StagedCommitState::PublicState(Box::new(staged_state)),
-            ));
-        }
 
         <span class="comment">// Determine if Commit has a path
         </span><span class="kw">let </span>(commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
@@ -782,6 +757,20 @@
                     provider.crypto(),
                     apply_proposals_values.extensions.clone(),
                 )<span class="question-mark">?</span>;
+
+                <span class="comment">// Check if we were removed from the group
+                </span><span class="kw">if </span>apply_proposals_values.self_removed {
+                    <span class="comment">// If so, we return here, because we can't decrypt the path
+                    </span><span class="kw">let </span>staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>staged_state = PublicStagedCommitState::new(
+                        staged_diff,
+                        commit.path.as_ref().map(|path| path.leaf_node().clone()),
+                    );
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(StagedCommit::new(
+                        proposal_queue,
+                        StagedCommitState::PublicState(Box::new(staged_state)),
+                    ));
+                }
 
                 <span class="kw">let </span>decryption_keypairs: Vec&lt;<span class="kw-2">&amp;</span>EncryptionKeyPair&gt; = old_epoch_keypairs
                     .iter()
@@ -976,7 +965,7 @@
                     .into());
                 }
 
-                <span class="comment">// store the updated group state
+                <span class="comment">// Store the updated group state
                 </span><span class="kw">let </span>storage = provider.storage();
                 <span class="kw">let </span>group_id = <span class="self">self</span>.group_id();
 
@@ -1003,35 +992,20 @@
                         .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
                 }
 
+                <span class="comment">// Empty the proposal store
+                </span>storage
+                    .clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(group_id)
+                    .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
+                <span class="self">self</span>.proposal_store_mut().empty();
+
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(message_secrets))
             }
         }
     }
-
-    <span class="attr">#[cfg(test)]
-    </span><span class="doccomment">/// Helper function that reads the decryption keys from the key store
-    /// (unwrapping the result) and stages the given commit.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read_keys_and_stage_commit(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
-        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
-        own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
-        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
-        <span class="kw">let </span>(old_epoch_keypairs, leaf_node_keypairs) =
-            <span class="self">self</span>.read_decryption_keypairs(provider, own_leaf_nodes)<span class="question-mark">?</span>;
-
-        <span class="self">self</span>.stage_commit(
-            mls_content,
-            proposal_store,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-            provider,
-        )
-    }
 }
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>StagedCommitState {
     PublicState(Box&lt;PublicStagedCommitState&gt;),
     GroupMember(Box&lt;MemberStagedCommitState&gt;),
@@ -1039,6 +1013,7 @@
 
 <span class="doccomment">/// Contains the changes from a commit to the group state.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub struct </span>StagedCommit {
     staged_proposal_queue: ProposalQueue,
     state: StagedCommitState,
@@ -1171,6 +1146,7 @@
 
 <span class="doccomment">/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,

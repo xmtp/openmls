@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1205,19 +1205,6 @@
 <a href="#1205" id="1205">1205</a>
 <a href="#1206" id="1206">1206</a>
 <a href="#1207" id="1207">1207</a>
-<a href="#1208" id="1208">1208</a>
-<a href="#1209" id="1209">1209</a>
-<a href="#1210" id="1210">1210</a>
-<a href="#1211" id="1211">1211</a>
-<a href="#1212" id="1212">1212</a>
-<a href="#1213" id="1213">1213</a>
-<a href="#1214" id="1214">1214</a>
-<a href="#1215" id="1215">1215</a>
-<a href="#1216" id="1216">1216</a>
-<a href="#1217" id="1217">1217</a>
-<a href="#1218" id="1218">1218</a>
-<a href="#1219" id="1219">1219</a>
-<a href="#1220" id="1220">1220</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Don't Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1235,22 +1222,6 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>process;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>proposals;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>staged_commit;
-
-<span class="comment">// Tests
-</span><span class="attr">#[cfg(test)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>kat_passive_client;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>kat_welcome;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>test_core_group;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test_create_commit_params;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test_external_init;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test_past_secrets;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test_proposals;
 
 <span class="kw">use </span>log::{debug, trace};
 <span class="kw">use </span>openmls_traits::{
@@ -1378,8 +1349,8 @@
     </span>path_keypairs: <span class="prelude-ty">Option</span>&lt;Vec&lt;EncryptionKeyPair&gt;&gt;,
 }
 
-<span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+<span class="attr">#[derive(Debug)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroup {
     public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
@@ -1426,13 +1397,6 @@
     <span class="doccomment">/// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_config(<span class="kw-2">mut </span><span class="self">self</span>, config: CoreGroupConfig) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.config = <span class="prelude-val">Some</span>(config);
-        <span class="self">self
-    </span>}
-
-    <span class="doccomment">/// Set the [`Vec&lt;PreSharedKeyId&gt;`] of the [`CoreGroup`].
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_psk(<span class="kw-2">mut </span><span class="self">self</span>, psk_ids: Vec&lt;PreSharedKeyId&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.psk_ids = psk_ids;
         <span class="self">self
     </span>}
 
@@ -1841,6 +1805,16 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.public_group
     }
 
+    <span class="doccomment">/// Returns a reference to the proposal store.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProposalStore {
+        <span class="self">self</span>.public_group.proposal_store()
+    }
+
+    <span class="doccomment">/// Returns a mutable reference to the proposal store.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_store_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ProposalStore {
+        <span class="self">self</span>.public_group.proposal_store_mut()
+    }
+
     <span class="doccomment">/// Get the ciphersuite implementation used in this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ciphersuite {
         <span class="self">self</span>.public_group.ciphersuite()
@@ -1955,7 +1929,6 @@
         <span class="self">self</span>.public_group.store(storage)<span class="question-mark">?</span>;
         storage.write_own_leaf_index(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_index())<span class="question-mark">?</span>;
         storage.write_group_epoch_secrets(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.group_epoch_secrets)<span class="question-mark">?</span>;
-        storage.set_use_ratchet_tree_extension(group_id, <span class="self">self</span>.use_ratchet_tree_extension)<span class="question-mark">?</span>;
         storage.write_message_secrets(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.message_secrets_store)<span class="question-mark">?</span>;
         storage.write_resumption_psk_store(group_id, <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store)<span class="question-mark">?</span>;
 
@@ -1966,11 +1939,11 @@
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>load&lt;Storage: StorageProvider&gt;(
         storage: <span class="kw-2">&amp;</span>Storage,
         group_id: <span class="kw-2">&amp;</span>GroupId,
+        use_ratchet_tree_extension: <span class="prelude-ty">Option</span>&lt;bool&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;, Storage::Error&gt; {
         <span class="kw">let </span>public_group = PublicGroup::load(storage, group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>group_epoch_secrets = storage.group_epoch_secrets(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>own_leaf_index = storage.own_leaf_index(group_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>use_ratchet_tree_extension = storage.use_ratchet_tree_extension(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>message_secrets_store = storage.message_secrets(group_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>resumption_psk_store = storage.resumption_psk_store(group_id)<span class="question-mark">?</span>;
 
@@ -1995,7 +1968,6 @@
         <span class="self">self</span>.public_group.delete(storage)<span class="question-mark">?</span>;
         storage.delete_own_leaf_index(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_group_epoch_secrets(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
-        storage.delete_use_ratchet_tree_extension(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_message_secrets(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
         storage.delete_all_resumption_psk_secrets(<span class="self">self</span>.group_id())<span class="question-mark">?</span>;
 
@@ -2054,14 +2026,14 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_commit&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut </span>params: CreateCommitParams,
+        params: CreateCommitParams,
         provider: <span class="kw-2">&amp;</span>Provider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
         <span class="kw">let </span>sender = <span class="kw">match </span>params.commit_type() {
-            CommitType::External =&gt; Sender::NewMemberCommit,
+            CommitType::External(<span class="kw">_</span>) =&gt; Sender::NewMemberCommit,
             CommitType::Member =&gt; Sender::build_member(<span class="self">self</span>.own_leaf_index()),
         };
 
@@ -2070,7 +2042,7 @@
             ciphersuite,
             provider.crypto(),
             sender.clone(),
-            params.proposal_store(),
+            <span class="self">self</span>.proposal_store(),
             params.inline_proposals(),
             <span class="self">self</span>.own_leaf_index(),
         )
@@ -2134,7 +2106,7 @@
         <span class="comment">// Apply proposals to tree
         </span><span class="kw">let </span>apply_proposals_values =
             diff.apply_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="self">self</span>.own_leaf_index())<span class="question-mark">?</span>;
-        <span class="kw">if </span>apply_proposals_values.self_removed &amp;&amp; params.commit_type() != CommitType::External {
+        <span class="kw">if </span>apply_proposals_values.self_removed &amp;&amp; params.commit_type() == <span class="kw-2">&amp;</span>CommitType::Member {
             <span class="kw">return </span><span class="prelude-val">Err</span>(CreateCommitError::CannotRemoveSelf);
         }
 
@@ -2143,6 +2115,7 @@
             </span><span class="kw">if </span>apply_proposals_values.path_required
                 || contains_own_updates
                 || params.force_self_update()
+                || !params.leaf_node_parameters().is_empty()
             {
                 <span class="comment">// Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
@@ -2152,8 +2125,8 @@
                     <span class="self">self</span>.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
+                    params.leaf_node_parameters(),
                     signer,
-                    params.take_credential_with_key(),
                     apply_proposals_values.extensions.clone()
                 )<span class="question-mark">?
             </span>} <span class="kw">else </span>{
@@ -2394,10 +2367,6 @@
 <span class="comment">// Test functions
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">impl </span>CoreGroup {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>use_ratchet_tree_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.use_ratchet_tree_extension
-    }
-
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_own_leaf_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, own_leaf_index: LeafNodeIndex) {
         <span class="self">self</span>.own_leaf_index = own_leaf_index;
     }
@@ -2416,7 +2385,8 @@
 }
 
 <span class="comment">// Test and test-utils functions
-</span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+</span><span class="attr">#[cfg_attr(all(not(test), feature = <span class="string">"test-utils"</span>), allow(dead_code))]
+#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
 </span><span class="kw">impl </span>CoreGroup {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>GroupContext {
         <span class="self">self</span>.public_group.context_mut()
@@ -2428,6 +2398,10 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>print_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
         <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, message, <span class="self">self</span>.public_group().export_ratchet_tree());
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resumption_psk_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPskStore {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store
     }
 }
 

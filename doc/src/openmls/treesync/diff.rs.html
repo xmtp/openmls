@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/diff.rs`."><title>diff.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/diff.rs`."><title>diff.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -908,6 +908,26 @@
 <a href="#908" id="908">908</a>
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -931,9 +951,10 @@
 
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
-<span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+<span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
+<span class="kw">use </span><span class="kw">super</span>::node::leaf_node::UpdateLeafNodeParams;
 <span class="kw">use super</span>::{
     errors::<span class="kw-2">*</span>,
     node::{
@@ -945,6 +966,7 @@
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
+<span class="kw">use </span><span class="kw">crate</span>::group::{create_commit_params::CommitType, GroupId};
 <span class="kw">use crate</span>::{
     binary_tree::{
         array_representation::{
@@ -954,9 +976,9 @@
     },
     ciphersuite::Secret,
     error::LibraryError,
-    group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
+    storage::OpenMlsProvider,
     treesync::RatchetTree,
 };
 
@@ -969,6 +991,7 @@
 <span class="doccomment">/// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined
 /// and later merged into a [`TreeSync`] instance.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>StagedTreeSyncDiff {
     diff: StagedMlsBinaryTreeDiff&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;,
     new_tree_hash: Vec&lt;u8&gt;,
@@ -1198,28 +1221,50 @@
     /// derivation, as well as the newly derived [`EncryptionKeyPair`]s.
     ///
     /// Returns an error if the target leaf is not in the tree.
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>apply_own_update_path(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         ciphersuite: Ciphersuite,
+        commit_type: <span class="kw-2">&amp;</span>CommitType,
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathResult, LibraryError&gt; {
-        <span class="macro">debug_assert!</span>(
-            <span class="self">self</span>.leaf(leaf_index).is_some(),
-            <span class="string">"Tree diff is missing own leaf"
-        </span>);
+        leaf_node_params: UpdateLeafNodeParams,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathResult, TreeSyncAddLeaf&gt; {
+        <span class="comment">// For External Commits, we temporarily add a placeholder leaf node to the tree, because it
+        // might be required to make the tree grow to the right size. If we
+        // don't do that, calculating the direct path might fail. It's important
+        // to not do anything with the value of that leaf until it has been
+        // replaced.
+        </span><span class="kw">if let </span>CommitType::External(<span class="kw">_</span>) = commit_type {
+            <span class="kw">let </span>leaf_node = LeafNode::new_placeholder();
+            <span class="self">self</span>.add_leaf(leaf_node)<span class="question-mark">?</span>;
+        }
 
-        <span class="kw">let </span>(path, update_path_nodes, keypairs, commit_secret) =
+        <span class="comment">// We calculate the parent hash so that we can use it for a fresh leaf
+        </span><span class="kw">let </span>(path, update_path_nodes, parent_keypairs, commit_secret) =
             <span class="self">self</span>.derive_path(provider, ciphersuite, leaf_index)<span class="question-mark">?</span>;
-
         <span class="kw">let </span>parent_hash =
             <span class="self">self</span>.process_update_path(provider.crypto(), ciphersuite, leaf_index, path)<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.leaf_mut(leaf_index)
-            .ok_or_else(|| LibraryError::custom(<span class="string">"Didn't find own leaf in diff."</span>))<span class="question-mark">?
-            </span>.update_parent_hash(<span class="kw-2">&amp;</span>parent_hash, group_id, leaf_index, signer)<span class="question-mark">?</span>;
+        <span class="comment">// We generate the new leaf with all parameters
+        </span><span class="kw">let </span>(leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
+            provider,
+            ciphersuite,
+            <span class="kw-2">&amp;</span>parent_hash,
+            leaf_node_params,
+            group_id,
+            leaf_index,
+            signer,
+        )<span class="question-mark">?</span>;
+
+        <span class="comment">// We insert the fresh leaf into the tree.
+        </span><span class="self">self</span>.diff.replace_leaf(leaf_index, leaf_node.into());
+
+        <span class="comment">// Prepend parent keypairs with node keypair
+        </span><span class="kw">let </span><span class="kw-2">mut </span>keypairs = <span class="macro">vec!</span>[node_keypair];
+        keypairs.extend(parent_keypairs);
 
         <span class="prelude-val">Ok</span>((update_path_nodes, keypairs, commit_secret))
     }
@@ -1576,7 +1621,7 @@
     <span class="doccomment">/// This turns the diff into a staged diff. In the process, the diff
     /// computes and sets the new tree hash.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_staged_diff(
-        <span class="kw-2">mut </span><span class="self">self</span>,
+        <span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedTreeSyncDiff, LibraryError&gt; {
@@ -1591,7 +1636,7 @@
     <span class="doccomment">/// Helper function to compute and set the tree hash of the given node and
     /// all nodes below it in the tree. The leaf nodes in `exclusion_list` are
     /// not included in the tree hash.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>compute_tree_hash(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_tree_hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -1630,14 +1675,9 @@
         <span class="self">self</span>.diff.leaf(index).node().as_ref()
     }
 
-    <span class="doccomment">/// Return a mutable reference to the leaf with the given index.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>LeafNode&gt; {
-        <span class="self">self</span>.diff.leaf_mut(index).node_mut().as_mut()
-    }
-
     <span class="doccomment">/// Compute and set the tree hash of all nodes in the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_tree_hashes(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {

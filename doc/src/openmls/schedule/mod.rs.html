@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/schedule/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../openmls/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/schedule/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1268,22 +1268,6 @@
 <a href="#1268" id="1268">1268</a>
 <a href="#1269" id="1269">1269</a>
 <a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
-<a href="#1278" id="1278">1278</a>
-<a href="#1279" id="1279">1279</a>
-<a href="#1280" id="1280">1280</a>
-<a href="#1281" id="1281">1281</a>
-<a href="#1282" id="1282">1282</a>
-<a href="#1283" id="1283">1283</a>
-<a href="#1284" id="1284">1284</a>
-<a href="#1285" id="1285">1285</a>
-<a href="#1286" id="1286">1286</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1435,13 +1419,9 @@
 <span class="kw">use </span>openmls_traits::random::OpenMlsRand;
 <span class="kw">use </span>psk::PskSecret;
 
-<span class="comment">// Tests
+<span class="comment">// Tests and kats
 </span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-</span><span class="kw">pub mod </span>kat_key_schedule;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">pub mod </span>kat_psk_secret;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>unit_tests;
+</span><span class="kw">pub mod </span>tests_and_kats;
 
 <span class="comment">// Public types
 </span><span class="kw">pub use </span>psk::{ExternalPsk, PreSharedKeyId, Psk};
@@ -1449,7 +1429,7 @@
 <span class="doccomment">/// A group secret that can be used among members to prove that a member was
 /// part of a group in a given epoch.
 </span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(Eq, PartialEq))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Eq, PartialEq))]
 </span><span class="kw">pub struct </span>ResumptionPskSecret {
     secret: Secret,
 }
@@ -1476,7 +1456,7 @@
 <span class="doccomment">/// A secret that can be used among members to make sure everyone has the same
 /// group state.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(Eq, PartialEq, Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Eq, PartialEq, Clone))]
 </span><span class="kw">pub struct </span>EpochAuthenticator {
     secret: Secret,
 }
@@ -1541,7 +1521,7 @@
 
 <span class="doccomment">/// The `InitSecret` is used to connect the next epoch to the current one.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>InitSecret {
     secret: Secret,
 }
@@ -1997,7 +1977,7 @@
 
 <span class="doccomment">/// A secret that we can derive secrets from, that are used outside of OpenMLS.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExporterSecret {
     secret: Secret,
 }
@@ -2043,7 +2023,7 @@
 
 <span class="doccomment">/// A secret used when joining a group with an external Commit.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExternalSecret {
     secret: Secret,
 }
@@ -2078,7 +2058,7 @@
 
 <span class="doccomment">/// The confirmation key is used to calculate the `ConfirmationTag`.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ConfirmationKey {
     secret: Secret,
 }
@@ -2150,7 +2130,7 @@
 
 <span class="doccomment">/// The membership key is used to calculate the `MembershipTag`.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MembershipKey {
     secret: Secret,
 }
@@ -2225,10 +2205,9 @@
 
 <span class="doccomment">/// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 </span><span class="attr">#[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
 #[cfg_attr(
     any(feature = <span class="string">"test-utils"</span>, feature = <span class="string">"crypto-debug"</span>, test),
-    derive(Debug, Clone)
+    derive(Debug, Clone, PartialEq)
 )]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SenderDataSecret {
     secret: Secret,
@@ -2511,7 +2490,7 @@
 }
 
 <span class="attr">#[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
+#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>GroupEpochSecrets {
     init_secret: InitSecret,
     exporter_secret: ExporterSecret,
@@ -2526,22 +2505,11 @@
     }
 }
 
-<span class="attr">#[cfg(not(test))]
+<span class="attr">#[cfg(not(any(test, feature = <span class="string">"test-utils"</span>)))]
 </span><span class="kw">impl </span>PartialEq <span class="kw">for </span>GroupEpochSecrets {
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, _other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
         <span class="bool-val">false
     </span>}
-}
-
-<span class="comment">// In tests we allow comparing secrets.
-</span><span class="attr">#[cfg(test)]
-</span><span class="kw">impl </span>PartialEq <span class="kw">for </span>GroupEpochSecrets {
-    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
-        <span class="self">self</span>.exporter_secret == other.exporter_secret
-            &amp;&amp; <span class="self">self</span>.epoch_authenticator == other.epoch_authenticator
-            &amp;&amp; <span class="self">self</span>.external_secret == other.external_secret
-            &amp;&amp; <span class="self">self</span>.resumption_psk == other.resumption_psk
-    }
 }
 
 <span class="kw">impl </span>GroupEpochSecrets {
