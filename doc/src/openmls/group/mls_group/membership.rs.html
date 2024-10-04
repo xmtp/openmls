@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/membership.rs`."><title>membership.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/membership.rs`."><title>membership.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -432,16 +432,17 @@
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
-</span><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
+</span><span class="kw">use </span>errors::{EmptyInputError, UpdateGroupMembershipError};
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>};
+<span class="kw">use </span>proposal_store::QueuedRemoveProposal;
 
 <span class="kw">use super</span>::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
     <span class="kw-2">*</span>,
 };
 <span class="kw">use crate</span>::{
-    binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
-    storage::OpenMlsProvider, treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, key_packages::KeyPackage,
+    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNode,
 };
 
 <span class="kw">type </span>UpdateResult&lt;Provider&gt; = <span class="prelude-ty">Result</span>&lt;
@@ -488,8 +489,10 @@
         <span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="self">self</span>.framing_parameters())
             .inline_proposals(proposals)
+            .force_self_update(<span class="bool-val">true</span>)
             .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -512,7 +515,7 @@
             mls_messages,
             create_commit_result
                 .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.version())),
             create_commit_result.group_info,
         ))
     }
@@ -613,7 +616,7 @@
             .inline_proposals(inline_proposals)
             .force_self_update(force_self_update)
             .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>welcome = <span class="kw">match </span>create_commit_result.welcome_option {
             <span class="prelude-val">Some</span>(welcome) =&gt; welcome,
@@ -640,14 +643,14 @@
         <span class="self">self</span>.reset_aad();
         <span class="prelude-val">Ok</span>((
             mls_messages,
-            MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.group.version()),
+            MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.version()),
             create_commit_result.group_info,
         ))
     }
 
     <span class="doccomment">/// Returns a reference to the own [`LeafNode`].
     </span><span class="kw">pub fn </span>own_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
-        <span class="self">self</span>.group.public_group().leaf(<span class="self">self</span>.group.own_leaf_index())
+        <span class="self">self</span>.public_group().leaf(<span class="self">self</span>.own_leaf_index())
     }
 
     <span class="doccomment">/// Removes members from the group.
@@ -695,7 +698,7 @@
             .framing_parameters(<span class="self">self</span>.framing_parameters())
             .inline_proposals(inline_proposals)
             .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, provider, signer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.create_commit(params, provider, signer)<span class="question-mark">?</span>;
 
         <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -717,7 +720,7 @@
             mls_message,
             create_commit_result
                 .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.version())),
             create_commit_result.group_info,
         ))
     }
@@ -735,10 +738,9 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, LeaveGroupError&lt;Provider::StorageError&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>removed = <span class="self">self</span>.group.own_leaf_index();
+        <span class="kw">let </span>removed = <span class="self">self</span>.own_leaf_index();
         <span class="kw">let </span>remove_proposal = <span class="self">self
-            </span>.group
-            .create_remove_proposal(<span class="self">self</span>.framing_parameters(), removed, signer)
+            </span>.create_remove_proposal(<span class="self">self</span>.framing_parameters(), removed, signer)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Creating a self removal should not fail"</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
@@ -765,14 +767,13 @@
 
     <span class="doccomment">/// Returns a list of [`Member`]s in the group.
     </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">'_ </span>{
-        <span class="self">self</span>.group.public_group().members()
+        <span class="self">self</span>.public_group().members()
     }
 
     <span class="doccomment">/// Returns the [`Credential`] of a member corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
     </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
-        <span class="self">self</span>.group
-            .public_group()
+        <span class="self">self</span>.public_group()
             <span class="comment">// This will return an error if the member can't be found.
             </span>.leaf(leaf_index)
             .map(|leaf| leaf.credential())
@@ -781,8 +782,7 @@
     <span class="doccomment">/// Returns the [`Member`] corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
     </span><span class="kw">pub fn </span>member_at(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;Member&gt; {
-        <span class="self">self</span>.group
-            .public_group()
+        <span class="self">self</span>.public_group()
             <span class="comment">// This will return an error if the member can't be found.
             </span>.leaf(leaf_index)
             .map(|leaf_node| {

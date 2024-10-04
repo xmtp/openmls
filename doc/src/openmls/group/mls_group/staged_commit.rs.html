@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -589,23 +589,53 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
-<span class="kw">use </span>public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
+<span class="kw">use </span>openmls_traits::storage::StorageProvider;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>tls_codec::Serialize <span class="kw">as _</span>;
 
-<span class="kw">use </span><span class="self">self</span>::public_group::staged_commit::PublicStagedCommitState;
+<span class="kw">use </span><span class="kw">super</span>::proposal_store::{
+    QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
+};
 
-<span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<span class="kw">use super</span>::{
+    <span class="kw">super</span>::errors::<span class="kw-2">*</span>, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
+    JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
+    Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
+};
 <span class="kw">use crate</span>::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
+    group::public_group::{
+        diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
+        staged_commit::PublicStagedCommitState,
+    },
+    schedule::{CommitSecret, EpochAuthenticator, EpochSecrets, InitSecret, PreSharedKeyId},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-<span class="kw">use </span>openmls_traits::storage::StorageProvider <span class="kw">as _</span>;
-
-<span class="kw">impl </span>CoreGroup {
+<span class="kw">impl </span>MlsGroup {
     <span class="kw">fn </span>derive_epoch_secrets(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
@@ -687,7 +717,7 @@
     ///  - Verifies the confirmation tag
     ///
     /// Returns a [StagedCommit] that can be inspected and later merged into the
-    /// group state with [CoreGroup::merge_commit()] This function does the
+    /// group state with [MlsGroup::merge_commit()] This function does the
     /// following checks:
     ///  - ValSem101
     ///  - ValSem102
@@ -910,7 +940,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span>Provider,
         staged_commit: StagedCommit,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MessageSecrets&gt;, MergeCommitError&lt;Provider::StorageError&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.storage());
@@ -920,10 +950,16 @@
                     .merge_diff(staged_state.into_staged_diff());
                 <span class="self">self</span>.store(provider.storage())
                     .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+                <span class="prelude-val">Ok</span>(())
             }
             StagedCommitState::GroupMember(state) =&gt; {
-                <span class="self">self</span>.group_epoch_secrets = state.group_epoch_secrets;
+                <span class="comment">// Save the past epoch
+                </span><span class="kw">let </span>past_epoch = <span class="self">self</span>.context().epoch();
+                <span class="comment">// Get all the full leaves
+                </span><span class="kw">let </span>leaves = <span class="self">self</span>.public_group().members().collect();
+                <span class="comment">// Merge the staged commit into the group state and store the secret tree from the
+                // previous epoch in the message secrets store.
+                </span><span class="self">self</span>.group_epoch_secrets = state.group_epoch_secrets;
 
                 <span class="comment">// Replace the previous message secrets with the new ones and return the previous message secrets
                 </span><span class="kw">let </span><span class="kw-2">mut </span>message_secrets = state.message_secrets;
@@ -931,6 +967,8 @@
                     <span class="kw-2">&amp;mut </span>message_secrets,
                     <span class="self">self</span>.message_secrets_store.message_secrets_mut(),
                 );
+                <span class="self">self</span>.message_secrets_store
+                    .add(past_epoch, message_secrets, leaves);
 
                 <span class="self">self</span>.public_group.merge_diff(state.staged_diff);
 
@@ -998,7 +1036,7 @@
                     .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
                 <span class="self">self</span>.proposal_store_mut().empty();
 
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(message_secrets))
+                <span class="prelude-val">Ok</span>(())
             }
         }
     }
