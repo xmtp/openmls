@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light" dir="ltr">
+<html lang="en" class="light sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -7,7 +7,7 @@
 
 
         <!-- Custom HTML head -->
-        
+
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
@@ -24,26 +24,40 @@
         <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="../highlight.css">
-        <link rel="stylesheet" href="../tomorrow-night.css">
-        <link rel="stylesheet" href="../ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
-    </head>
-    <body class="sidebar-visible no-js">
-    <div id="body-container">
-        <!-- Provide site root to javascript -->
-        <script>
-            var path_to_root = "../";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
-        </script>
 
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -57,24 +71,22 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            var theme;
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
-            var html = document.querySelector('html');
+            const html = document.documentElement;
             html.classList.remove('light')
             html.classList.add(theme);
-            var body = document.querySelector('body');
-            body.classList.remove('no-js')
-            body.classList.add('js');
+            html.classList.add("js");
         </script>
 
         <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var body = document.querySelector('body');
-            var sidebar = null;
-            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -82,45 +94,25 @@
                 sidebar = 'hidden';
             }
             sidebar_toggle.checked = sidebar === 'visible';
-            body.classList.remove('sidebar-visible');
-            body.classList.add("sidebar-" + sidebar);
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../introduction.html">Introduction</a></li><li class="chapter-item expanded "><a href="../user_manual/index.html"><strong aria-hidden="true">1.</strong> User manual</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../user_manual/identity.html"><strong aria-hidden="true">1.1.</strong> Credentials</a></li><li class="chapter-item expanded "><a href="../user_manual/create_key_package.html"><strong aria-hidden="true">1.2.</strong> Key packages</a></li><li class="chapter-item expanded "><a href="../user_manual/group_config.html"><strong aria-hidden="true">1.3.</strong> Group configuration</a></li><li class="chapter-item expanded "><a href="../user_manual/create_group.html"><strong aria-hidden="true">1.4.</strong> Creating groups</a></li><li class="chapter-item expanded "><a href="../user_manual/join_from_welcome.html"><strong aria-hidden="true">1.5.</strong> Join a group from a Welcome message</a></li><li class="chapter-item expanded "><a href="../user_manual/join_from_external_commit.html"><strong aria-hidden="true">1.6.</strong> Join a group from an External Commit message</a></li><li class="chapter-item expanded "><a href="../user_manual/add_members.html" class="active"><strong aria-hidden="true">1.7.</strong> Adding members to a group</a></li><li class="chapter-item expanded "><a href="../user_manual/remove_members.html"><strong aria-hidden="true">1.8.</strong> Removing members from a group</a></li><li class="chapter-item expanded "><a href="../user_manual/updates.html"><strong aria-hidden="true">1.9.</strong> Updating own key package</a></li><li class="chapter-item expanded "><a href="../user_manual/aad.html"><strong aria-hidden="true">1.10.</strong> Using Additional Authenticated Data (AAD)</a></li><li class="chapter-item expanded "><a href="../user_manual/leaving.html"><strong aria-hidden="true">1.11.</strong> Leaving a group</a></li><li class="chapter-item expanded "><a href="../user_manual/custom_proposals.html"><strong aria-hidden="true">1.12.</strong> Custom proposals</a></li><li class="chapter-item expanded "><a href="../user_manual/application_messages.html"><strong aria-hidden="true">1.13.</strong> Creating application messages</a></li><li class="chapter-item expanded "><a href="../user_manual/commit_to_proposals.html"><strong aria-hidden="true">1.14.</strong> Committing to pending proposals</a></li><li class="chapter-item expanded "><a href="../user_manual/processing.html"><strong aria-hidden="true">1.15.</strong> Processing incoming messages</a></li><li class="chapter-item expanded "><a href="../user_manual/persistence.html"><strong aria-hidden="true">1.16.</strong> Persistence of group state</a></li><li class="chapter-item expanded "><a href="../user_manual/credential_validation.html"><strong aria-hidden="true">1.17.</strong> Credential validation</a></li><li class="chapter-item expanded "><a href="../user_manual/wasm.html"><strong aria-hidden="true">1.18.</strong> WebAssembly</a></li></ol></li><li class="chapter-item expanded "><a href="../traits/index.html"><strong aria-hidden="true">2.</strong> Traits & External Types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../traits/traits.html"><strong aria-hidden="true">2.1.</strong> Traits</a></li><li class="chapter-item expanded "><a href="../traits/types.html"><strong aria-hidden="true">2.2.</strong> Types</a></li></ol></li><li class="chapter-item expanded "><a href="../message_validation.html"><strong aria-hidden="true">3.</strong> Message Validation</a></li><li class="chapter-item expanded "><a href="../app_validation.html"><strong aria-hidden="true">4.</strong> App Validation</a></li><li class="chapter-item expanded "><a href="../performance.html"><strong aria-hidden="true">5.</strong> Performance</a></li><li class="chapter-item expanded "><a href="../forward_secrecy.html"><strong aria-hidden="true">6.</strong> Forward Secrecy</a></li><li class="chapter-item expanded "><a href="../release_management.html"><strong aria-hidden="true">7.</strong> Release management</a></li></ol>
-            </div>
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
             </div>
         </nav>
 
-        <!-- Track and set sidebar scroll position -->
-        <script>
-            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
-            sidebarScrollbox.addEventListener('click', function(e) {
-                if (e.target.tagName === 'A') {
-                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
-                }
-            }, { passive: true });
-            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
-            sessionStorage.removeItem('sidebar-scroll');
-            if (sidebarScrollTop) {
-                // preserve sidebar scroll position when navigating via links within sidebar
-                sidebarScrollbox.scrollTop = sidebarScrollTop;
-            } else {
-                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
-                var activeSection = document.querySelector('#sidebar .active');
-                if (activeSection) {
-                    activeSection.scrollIntoView({ block: 'center' });
-                }
-            }
-        </script>
-
         <div id="page-wrapper" class="page-wrapper">
 
             <div class="page">
-                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
                         <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
@@ -130,13 +122,14 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -183,7 +176,30 @@
             &amp;[bob_key_package.key_package().clone()],
         )
         .expect("Could not add members.");</code></pre>
-<p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
+<p>The function returns the tuple <code>(MlsMessageOut, Welcome, Option&lt;GroupInfo&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members, along the optional <code>GroupInfo</code> if it is available.</p>
+<p>Users could also use the new <code>CommitBuilder</code> API, which would look like this:</p>
+<pre><code class="language-rust no_run noplayground">    let message_bundle = alice_group
+        .commit_builder()
+        .propose_adds(Some(bob_key_package.key_package().clone()))
+        .load_psks(provider.storage())
+        .expect("error loading psks")
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &amp;alice_signature_keys,
+            |_proposal| true,
+        )
+        .expect("error validating data and building commit")
+        .stage_commit(provider)
+        .expect("error staging commit");
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();</code></pre>
+<p>Some notes on the arguments to the builder stages:</p>
+<ul>
+<li>The reason that the <code>KeyPackage</code> is wrapped in a <code>Some</code> is that <code>Option&lt;KeyPackage&gt;</code> implements <code>IntoIterator&lt;Item = KeyPackage&gt;</code>, which is the type bounds of that function. This means that the function also works with any iterator over <code>KeyPackage</code> items or a <code>Vec&lt;KeyPackage&gt;</code>.</li>
+<li>The closure is a predicate over <code>&amp;QueuedProposal</code> and represents the policy of which proposals are deemed acceptable in the application.</li>
+</ul>
+<p>This function returns a <code>CommitMessageBundle</code>, from which the <code>MlsMessageOut</code>, <code>Welcome</code> and <code>GroupInfo</code> can be extracted.</p>
 <h3 id="adding-members-without-update"><a class="header" href="#adding-members-without-update">Adding members without update</a></h3>
 <p>The <code>.add_members_without_update()</code> function functions the same as the <code>.add_members()</code> function, except that it will only include an update to the sender's key material if the sender's proposal store includes a proposal that requires a path. For a list of proposals and an indication whether they require a <code>path</code> (i.e. a key material update) see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-17.4">Section 17.4 of RFC 9420</a>.</p>
 <p>Not sending an update means that the sender will not achieve post-compromise security with this particular commit. However, not sending an update saves on performance both in terms of computation and bandwidth. Using <code>.add_members_without_update()</code> can thus be a useful option if the ciphersuite of the group features large public keys and/or expensive encryption operations.</p>
@@ -247,6 +263,41 @@ Note that in this scenario it is up to the application to define a proper author
             .into_group(provider)
             .expect("Bob could not join the group");
             assert_eq!(bob_group.members().count(), 2);
+        }
+        _ =&gt; unreachable!(),
+    }</code></pre>
+<p>Outside parties can also make proposals to add other members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
+Since those proposals are crafted by outsiders, they are always public messages.</p>
+<pre><code class="language-rust no_run noplayground">    let proposal = ExternalProposal::new_add::&lt;Provider&gt;(
+        bob_key_package.key_package().clone(),
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &amp;ds_signature_keys,
+        SenderExtensionIndex::new(0),
+    )
+    .expect("Could not create external Add proposal");</code></pre>
+<p>It is then up to one of the group members to process the proposal and commit it.</p>
+<pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
+        .process_message(
+            provider,
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type."),
+        )
+        .expect("Could not process message.");
+    match alice_processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
+            assert_eq!(alice_group.members().count(), 2);
+            alice_group
+                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .expect("Could not commit");
+            alice_group
+                .merge_pending_commit(provider)
+                .expect("Could not merge commit");
+            assert_eq!(alice_group.members().count(), 1);
         }
         _ =&gt; unreachable!(),
     }</code></pre>

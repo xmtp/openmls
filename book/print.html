@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light" dir="ltr">
+<html lang="en" class="light sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -8,7 +8,7 @@
 
 
         <!-- Custom HTML head -->
-        
+
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
@@ -25,26 +25,40 @@
         <link rel="stylesheet" href="fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="highlight.css">
-        <link rel="stylesheet" href="tomorrow-night.css">
-        <link rel="stylesheet" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
-    </head>
-    <body class="sidebar-visible no-js">
-    <div id="body-container">
-        <!-- Provide site root to javascript -->
-        <script>
-            var path_to_root = "";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
-        </script>
 
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -58,24 +72,22 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            var theme;
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
-            var html = document.querySelector('html');
+            const html = document.documentElement;
             html.classList.remove('light')
             html.classList.add(theme);
-            var body = document.querySelector('body');
-            body.classList.remove('no-js')
-            body.classList.add('js');
+            html.classList.add("js");
         </script>
 
         <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var body = document.querySelector('body');
-            var sidebar = null;
-            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -83,45 +95,25 @@
                 sidebar = 'hidden';
             }
             sidebar_toggle.checked = sidebar === 'visible';
-            body.classList.remove('sidebar-visible');
-            body.classList.add("sidebar-" + sidebar);
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html">Introduction</a></li><li class="chapter-item expanded "><a href="user_manual/index.html"><strong aria-hidden="true">1.</strong> User manual</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="user_manual/identity.html"><strong aria-hidden="true">1.1.</strong> Credentials</a></li><li class="chapter-item expanded "><a href="user_manual/create_key_package.html"><strong aria-hidden="true">1.2.</strong> Key packages</a></li><li class="chapter-item expanded "><a href="user_manual/group_config.html"><strong aria-hidden="true">1.3.</strong> Group configuration</a></li><li class="chapter-item expanded "><a href="user_manual/create_group.html"><strong aria-hidden="true">1.4.</strong> Creating groups</a></li><li class="chapter-item expanded "><a href="user_manual/join_from_welcome.html"><strong aria-hidden="true">1.5.</strong> Join a group from a Welcome message</a></li><li class="chapter-item expanded "><a href="user_manual/join_from_external_commit.html"><strong aria-hidden="true">1.6.</strong> Join a group from an External Commit message</a></li><li class="chapter-item expanded "><a href="user_manual/add_members.html"><strong aria-hidden="true">1.7.</strong> Adding members to a group</a></li><li class="chapter-item expanded "><a href="user_manual/remove_members.html"><strong aria-hidden="true">1.8.</strong> Removing members from a group</a></li><li class="chapter-item expanded "><a href="user_manual/updates.html"><strong aria-hidden="true">1.9.</strong> Updating own key package</a></li><li class="chapter-item expanded "><a href="user_manual/aad.html"><strong aria-hidden="true">1.10.</strong> Using Additional Authenticated Data (AAD)</a></li><li class="chapter-item expanded "><a href="user_manual/leaving.html"><strong aria-hidden="true">1.11.</strong> Leaving a group</a></li><li class="chapter-item expanded "><a href="user_manual/custom_proposals.html"><strong aria-hidden="true">1.12.</strong> Custom proposals</a></li><li class="chapter-item expanded "><a href="user_manual/application_messages.html"><strong aria-hidden="true">1.13.</strong> Creating application messages</a></li><li class="chapter-item expanded "><a href="user_manual/commit_to_proposals.html"><strong aria-hidden="true">1.14.</strong> Committing to pending proposals</a></li><li class="chapter-item expanded "><a href="user_manual/processing.html"><strong aria-hidden="true">1.15.</strong> Processing incoming messages</a></li><li class="chapter-item expanded "><a href="user_manual/persistence.html"><strong aria-hidden="true">1.16.</strong> Persistence of group state</a></li><li class="chapter-item expanded "><a href="user_manual/credential_validation.html"><strong aria-hidden="true">1.17.</strong> Credential validation</a></li><li class="chapter-item expanded "><a href="user_manual/wasm.html"><strong aria-hidden="true">1.18.</strong> WebAssembly</a></li></ol></li><li class="chapter-item expanded "><a href="traits/index.html"><strong aria-hidden="true">2.</strong> Traits & External Types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="traits/traits.html"><strong aria-hidden="true">2.1.</strong> Traits</a></li><li class="chapter-item expanded "><a href="traits/types.html"><strong aria-hidden="true">2.2.</strong> Types</a></li></ol></li><li class="chapter-item expanded "><a href="message_validation.html"><strong aria-hidden="true">3.</strong> Message Validation</a></li><li class="chapter-item expanded "><a href="app_validation.html"><strong aria-hidden="true">4.</strong> App Validation</a></li><li class="chapter-item expanded "><a href="performance.html"><strong aria-hidden="true">5.</strong> Performance</a></li><li class="chapter-item expanded "><a href="forward_secrecy.html"><strong aria-hidden="true">6.</strong> Forward Secrecy</a></li><li class="chapter-item expanded "><a href="release_management.html"><strong aria-hidden="true">7.</strong> Release management</a></li></ol>
-            </div>
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
             </div>
         </nav>
 
-        <!-- Track and set sidebar scroll position -->
-        <script>
-            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
-            sidebarScrollbox.addEventListener('click', function(e) {
-                if (e.target.tagName === 'A') {
-                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
-                }
-            }, { passive: true });
-            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
-            sessionStorage.removeItem('sidebar-scroll');
-            if (sidebarScrollTop) {
-                // preserve sidebar scroll position when navigating via links within sidebar
-                sidebarScrollbox.scrollTop = sidebarScrollTop;
-            } else {
-                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
-                var activeSection = document.querySelector('#sidebar .active');
-                if (activeSection) {
-                    activeSection.scrollIntoView({ block: 'center' });
-                }
-            }
-        </script>
-
         <div id="page-wrapper" class="page-wrapper">
 
             <div class="page">
-                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
                         <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
@@ -131,13 +123,14 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -189,9 +182,9 @@ OpenMLS provides a high-level API to create and manage MLS groups. It supports b
 <!-- Get the rest of the Readme -->
 <h2 id="supported-ciphersuites"><a class="header" href="#supported-ciphersuites">Supported ciphersuites</a></h2>
 <ul>
-<li>MLS_128_HPKEX25519_AES128GCM_SHA256_Ed25519 (MTI)</li>
+<li>MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 (MTI)</li>
 <li>MLS_128_DHKEMP256_AES128GCM_SHA256_P256</li>
-<li>MLS_128_HPKEX25519_CHACHA20POLY1305_SHA256_Ed25519</li>
+<li>MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519</li>
 </ul>
 <h2 id="supported-platforms"><a class="header" href="#supported-platforms">Supported platforms</a></h2>
 <p>OpenMLS is built and tested on the Github CI for the following rust targets.</p>
@@ -247,7 +240,7 @@ Note that the link between the credential and its signature keys depends on the 
 For example, the link between the <code>BasicCredential</code>'s and its keys is not defined by MLS.</p>
 <p>A credential is always embedded in a leaf node, which is ultimately used to represent a client in a group and signed by the private key corresponding to the signature public key of the leaf node.
 Clients can decide to use the same credential in multiple leaf nodes (and thus multiple groups) or to use distinct credentials per group.</p>
-<p>The binding between a given credential and owning client's identity is, in turn, authenticated by the Authentication Service, an abstract authentication layer defined by the <a href="https://github.com/mlswg/mls-architecture">MLS architecture document</a>.
+<p>The binding between a given credential and owning client's identity is, in turn, authenticated by the Authentication Service, an abstract authentication layer defined by the <a href="https://www.rfc-editor.org/rfc/rfc9750.html">MLS architecture document</a>.
 Note that the implementation of the Authentication Service and, thus, the details of how the binding is authenticated are not specified by MLS.</p>
 <h2 id="creating-and-using-credentials"><a class="header" href="#creating-and-using-credentials">Creating and using credentials</a></h2>
 <p>OpenMLS allows clients to create <code>Credentials</code>.
@@ -259,10 +252,10 @@ Thus, to create a fresh <code>Credential</code>, the following inputs are requir
 </ul>
 <pre><code class="language-rust no_run noplayground">    let credential = BasicCredential::new(identity);</code></pre>
 <p>After creating the credential bundle, clients should create keys for it.
-OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic-credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
+OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic_credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
 <pre><code class="language-rust no_run noplayground">    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.storage()).unwrap();</code></pre>
-<p>All functions and structs related to credentials can be found in the <a href="https://docs.rs/crate/openmls/latest/credentials/index.html"><code>credentials</code></a> module.</p>
+<p>All functions and structs related to credentials can be found in the <a href="https://docs.rs/openmls/latest/openmls/credentials/index.html"><code>credentials</code></a> module.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="key-packages"><a class="header" href="#key-packages">Key packages</a></h1>
 <p>To enable the asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in the group, MLS relies on key packages. Key packages hold several pieces of information:</p>
 <ul>
@@ -333,11 +326,12 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         ])))
         .expect("error adding external senders extension to group context extensions")
         .ciphersuite(ciphersuite)
+        // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
             None, // Defaults to the group's ciphersuite
+            Some(&amp;[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
-            None, // Defaults to all basic proposal types
             Some(&amp;[CredentialType::Basic]),
         ))
         // Example leaf extension
@@ -427,6 +421,95 @@ to inspect the message, e.g. to determine the identity of the sender.</p>
 <p>Pay attention not to forward a Welcome message to a client before its associated
 commit has been accepted by the Delivery Service.  Otherwise, you would end up
 with an invalid MLS group instance.</p>
+<h1 id="examining-a-welcome-message"><a class="header" href="#examining-a-welcome-message">Examining a welcome message</a></h1>
+<p>When a client is invited to join a group, the application can allow the client to decide whether or not to join the group. In order to determine whether to join the group, the application can inspect information provided in the welcome message, such as who invited them, who else is in the group, what extensions are available, and more. If the application decides not to join the group, the welcome must be discarded to ensure that the local state is cleaned up.</p>
+<p>After receiving a <code>MlsMessageIn</code> from the delivery service, the first step is to extract the <code>MlsMessageBodyIn</code>, and determine whether it is a welcome message.</p>
+<pre><code class="language-rust no_run noplayground">    let welcome = match welcome.extract() {
+        MlsMessageBodyIn::Welcome(welcome) =&gt; welcome,
+        _ =&gt; unimplemented!("Handle other message types"),
+    };</code></pre>
+<p>The next step is to process the <code>Welcome</code>. This removes the consumed <code>KeyPackage</code> from the <code>StorageProvider</code>, unless it is a last resort <code>KeyPackage</code>.</p>
+<pre><code class="language-rust no_run noplayground">    let join_config = MlsGroupJoinConfig::default();
+    // This deletes the keys used to decrypt the welcome, except if it is a last resort key
+    // package.
+    let processed_welcome = ProcessedWelcome::new_from_welcome(bob_provider, &amp;join_config, welcome)
+        .expect("Error constructing processed welcome");</code></pre>
+<p>At this stage, there are some more pieces of information in the <code>ProcessedWelcome</code> that could be useful to the application. For example, it can be useful to check which extensions are available. However, the pieces of information that are retrieved from the <code>ProcessedWelcome</code> are unverified, and verified values are only available from the <code>StagedWelcome</code> that is produced in the next step.</p>
+<pre><code class="language-rust no_run noplayground">    // unverified pre-shared keys (`&amp;[PreSharedKeyId]`)
+    let _unverified_psks = processed_welcome.psks();
+
+    // unverified group info (`VerifiableGroupInfo`)
+    let unverified_group_info = processed_welcome.unverified_group_info();
+
+    // From the unverified group info, the ciphersuite, group_id, and other information
+    // can be retrieved.
+    let _ciphersuite = unverified_group_info.ciphersuite();
+    let _group_id = unverified_group_info.group_id();
+    let _epoch = unverified_group_info.epoch();
+
+    // Can also retrieve any available extensions
+    let extensions = unverified_group_info.extensions();
+
+    // Retrieving the ratchet tree extension
+    let ratchet_tree_extension = extensions
+        .ratchet_tree()
+        .expect("No ratchet tree extension");
+    // The (unverified) ratchet tree itself can also be inspected
+    let _ratchet_tree = ratchet_tree_extension.ratchet_tree();</code></pre>
+<p>The next step is to stage the <code>ProcessedWelcome</code>.</p>
+<pre><code class="language-rust no_run noplayground">    let staged_welcome: StagedWelcome = processed_welcome
+        .into_staged_welcome(bob_provider, None)
+        .expect("Error constructing staged welcome");</code></pre>
+<p>Then, more information about the welcome message's sender, such as the credential, signature public key, and encryption public key can also be individually inspected. The welcome message sender's credential can be validated at this stage.</p>
+<pre><code class="language-rust no_run noplayground">    let welcome_sender: &amp;LeafNode = staged_welcome
+        .welcome_sender()
+        .expect("Welcome sender could not be retrieved");
+
+    // Inspect sender's credential...
+    let _credential = welcome_sender.credential();
+    // Inspect sender's signature public key...
+    let _signature_key = welcome_sender.signature_key();</code></pre>
+<p>Additionally, some information about the other group members is made available, e.g. credentials and signature public keys for credential validation.</p>
+<pre><code class="language-rust no_run noplayground">    // Inspect the group members
+    for member in staged_welcome.members() {
+        // leaf node index
+        let _leaf_node_index = member.index;
+        // credential
+        let _credential = member.credential;
+        // encryption public key
+        let _encryption_key = member.encryption_key;
+        // signature public key
+        let _signature_key = member.signature_key;
+    }</code></pre>
+<p>Lastly, the <code>GroupContext</code> contains several other useful pieces of information, including the protocol version, the extensions enabled on the group, and the required extension, proposal, and credential types.</p>
+<pre><code class="language-rust no_run noplayground">    // Inspect group context...
+    let group_context = staged_welcome.group_context();
+
+    // inspect protocol version...
+    let _protocol_version = group_context.protocol_version();
+    // Inspect ciphersuite...
+    let _ciphersuite = group_context.ciphersuite();
+    // Inspect extensions...
+    let extensions: &amp;Extensions = group_context.extensions();
+
+    // Can check which extensions are enabled
+    let _has_ratchet_extension = extensions.ratchet_tree().is_some();
+
+    // Inspect required capabilities...
+    if let Some(capabilities) = group_context.required_capabilities() {
+        // Inspect required extension types...
+        let _extension_types: &amp;[ExtensionType] = capabilities.extension_types();
+        // Inspect required proposal types...
+        let _proposal_types: &amp;[ProposalType] = capabilities.proposal_types();
+        // Inspect required credential types...
+        let _credential_types: &amp;[CredentialType] = capabilities.credential_types();
+    }
+    // Additional information from the `GroupContext`
+    let _group_id = group_context.group_id();
+    let _epoch = group_context.epoch();
+    let _tree_hash = group_context.tree_hash();
+    let _confirmed_transcript_hash = group_context.confirmed_transcript_hash();
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="join-a-group-with-an-external-commit"><a class="header" href="#join-a-group-with-an-external-commit">Join a group with an external commit</a></h1>
 <p>To join a group with an external commit message, a new <code>MlsGroup</code> can be instantiated directly from the <code>GroupInfo</code>.
 The <code>GroupInfo</code>/Ratchet Tree should be shared over a secure channel.
@@ -472,7 +555,30 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
             &amp;[bob_key_package.key_package().clone()],
         )
         .expect("Could not add members.");</code></pre>
-<p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
+<p>The function returns the tuple <code>(MlsMessageOut, Welcome, Option&lt;GroupInfo&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members, along the optional <code>GroupInfo</code> if it is available.</p>
+<p>Users could also use the new <code>CommitBuilder</code> API, which would look like this:</p>
+<pre><code class="language-rust no_run noplayground">    let message_bundle = alice_group
+        .commit_builder()
+        .propose_adds(Some(bob_key_package.key_package().clone()))
+        .load_psks(provider.storage())
+        .expect("error loading psks")
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &amp;alice_signature_keys,
+            |_proposal| true,
+        )
+        .expect("error validating data and building commit")
+        .stage_commit(provider)
+        .expect("error staging commit");
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();</code></pre>
+<p>Some notes on the arguments to the builder stages:</p>
+<ul>
+<li>The reason that the <code>KeyPackage</code> is wrapped in a <code>Some</code> is that <code>Option&lt;KeyPackage&gt;</code> implements <code>IntoIterator&lt;Item = KeyPackage&gt;</code>, which is the type bounds of that function. This means that the function also works with any iterator over <code>KeyPackage</code> items or a <code>Vec&lt;KeyPackage&gt;</code>.</li>
+<li>The closure is a predicate over <code>&amp;QueuedProposal</code> and represents the policy of which proposals are deemed acceptable in the application.</li>
+</ul>
+<p>This function returns a <code>CommitMessageBundle</code>, from which the <code>MlsMessageOut</code>, <code>Welcome</code> and <code>GroupInfo</code> can be extracted.</p>
 <h3 id="adding-members-without-update"><a class="header" href="#adding-members-without-update">Adding members without update</a></h3>
 <p>The <code>.add_members_without_update()</code> function functions the same as the <code>.add_members()</code> function, except that it will only include an update to the sender's key material if the sender's proposal store includes a proposal that requires a path. For a list of proposals and an indication whether they require a <code>path</code> (i.e. a key material update) see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-17.4">Section 17.4 of RFC 9420</a>.</p>
 <p>Not sending an update means that the sender will not achieve post-compromise security with this particular commit. However, not sending an update saves on performance both in terms of computation and bandwidth. Using <code>.add_members_without_update()</code> can thus be a useful option if the ciphersuite of the group features large public keys and/or expensive encryption operations.</p>
@@ -536,6 +642,41 @@ Note that in this scenario it is up to the application to define a proper author
             .into_group(provider)
             .expect("Bob could not join the group");
             assert_eq!(bob_group.members().count(), 2);
+        }
+        _ =&gt; unreachable!(),
+    }</code></pre>
+<p>Outside parties can also make proposals to add other members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
+Since those proposals are crafted by outsiders, they are always public messages.</p>
+<pre><code class="language-rust no_run noplayground">    let proposal = ExternalProposal::new_add::&lt;Provider&gt;(
+        bob_key_package.key_package().clone(),
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &amp;ds_signature_keys,
+        SenderExtensionIndex::new(0),
+    )
+    .expect("Could not create external Add proposal");</code></pre>
+<p>It is then up to one of the group members to process the proposal and commit it.</p>
+<pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
+        .process_message(
+            provider,
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type."),
+        )
+        .expect("Could not process message.");
+    match alice_processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
+            assert_eq!(alice_group.members().count(), 2);
+            alice_group
+                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .expect("Could not commit");
+            alice_group
+                .merge_pending_commit(provider)
+                .expect("Could not merge commit");
+            assert_eq!(alice_group.members().count(), 1);
         }
         _ =&gt; unreachable!(),
     }</code></pre>
@@ -613,14 +754,38 @@ Since those proposals are crafted by outsiders, they are always public messages.
     )
     .expect("Could not create external Remove proposal");</code></pre>
 <p>It is then up to one of the group members to process the proposal and commit it.</p>
-<pre><code class="language-rust no_run noplayground"></code></pre>
+<pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
+        .process_message(
+            provider,
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type."),
+        )
+        .expect("Could not process message.");
+    match alice_processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
+            assert_eq!(alice_group.members().count(), 2);
+            alice_group
+                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .expect("Could not commit");
+            alice_group
+                .merge_pending_commit(provider)
+                .expect("Could not merge commit");
+            assert_eq!(alice_group.members().count(), 1);
+        }
+        _ =&gt; unreachable!(),
+    }</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="updating-own-leaf-node"><a class="header" href="#updating-own-leaf-node">Updating own leaf node</a></h1>
 <h2 id="immediate-operation-2"><a class="header" href="#immediate-operation-2">Immediate operation</a></h2>
 <p>Members can update their own leaf node atomically with the <code>.self_update()</code> function.
 By default, only the HPKE encryption key is updated. The application can however also provide more parameters like a new credential, capabilities and extensions using the <code>LeafNodeParameters</code> struct.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = bob_group
         .self_update(provider, &amp;bob_signature_keys, LeafNodeParameters::default())
-        .expect("Could not update own key package.");</code></pre>
+        .expect("Could not update own key package.")
+        .into_contents();</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though the member updates its own leaf node only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal-2"><a class="header" href="#proposal-2">Proposal</a></h2>
@@ -660,7 +825,7 @@ Even though the member updates its own leaf node only in this operation, the Com
 <p>For details on creating Remove Proposals, see <a href="user_manual/remove_members.html">Removing members from a group</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="custom-proposals"><a class="header" href="#custom-proposals">Custom proposals</a></h1>
 <p>OpenMLS allows the creation and use of application-defined proposals. To create such a proposal, the application needs to define a Proposal Type in such a way that its value doesn't collide with any Proposal Types defined in Section 17.4. of RFC 9420. If the proposal is meant to be used only inside of a particular application, the value of the Proposal Type is recommended to be in the range between <code>0xF000</code> and <code>0xFFFF</code>, as that range is reserved for private use.</p>
-<p>Custom proposals can contain arbitrary octet-strings as defined by the application. Any policy decisions based on custom proposals will have to be made by the application, such as the decision to include a given custom proposal in a commit, or whether to accept a commit that includes one or more custom proposals. To decide the latter, applications can inspect the queued proposals in a <code>ProcessedMessageContent::StagedCommitMesage(staged_commit)</code>.</p>
+<p>Custom proposals can contain arbitrary octet-strings as defined by the application. Any policy decisions based on custom proposals will have to be made by the application, such as the decision to include a given custom proposal in a commit, or whether to accept a commit that includes one or more custom proposals. To decide the latter, applications can inspect the queued proposals in a <code>ProcessedMessageContent::StagedCommitMessage(staged_commit)</code>.</p>
 <p>Example on how to use custom proposals:</p>
 <pre><code class="language-rust no_run noplayground">    // Define a custom proposal type
     let custom_proposal_type = 0xFFFF;
@@ -911,11 +1076,40 @@ as well as the <code>GroupId</code> of the group to be loaded. For this to work,
 must have been written to the provider previously.</p>
 <h2 id="forward-secrecy-considerations"><a class="header" href="#forward-secrecy-considerations">Forward-Secrecy Considerations</a></h2>
 <p>OpenMLS uses the <code>StorageProvider</code> to store sensitive key material. To achieve forward-secrecy (i.e. to prevent an adversary from decrypting messages sent in the past if a client is compromised), OpenMLS frequently deletes previously used key material through calls to the <code>StorageProvider</code>. <code>StorageProvider</code> implementations must thus take care to ensure that values deleted through any of the <code>delete_</code> functions of the trait are irrevocably deleted and that no copies are kept.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="discarding-commits"><a class="header" href="#discarding-commits">Discarding commits</a></h1>
+<p>The delivery service may reject a commit sent by a client. In this case, the application needs to ensure that the local state remains the same as it was before the commit was staged.</p>
+<h2 id="cleaning-up-local-state-after-discarded-commits"><a class="header" href="#cleaning-up-local-state-after-discarded-commits">Cleaning up local state after discarded commits</a></h2>
+<p>Generally, if a commit is discarded (e.g. due to being rejected by the Delivery Service), it can be cleaned up by the application in the following way:</p>
+<pre><code class="language-rust no_run noplayground">    // clear pending commit and reset state
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .unwrap();</code></pre>
+<p>In general, the application only needs to complete the cleanup above in order to fully restore the local state to the way it was before the commit was staged.</p>
+<p>In several other cases, additional cleanup may need to be done.</p>
+<h3 id="externaljoin"><a class="header" href="#externaljoin">ExternalJoin</a></h3>
+<p>If a staged commit containing an external join proposal must be discarded, the entire <code>MlsGroup</code> instance should be discarded by the application.</p>
+<pre><code class="language-rust no_run noplayground">    // delete the `MlsGroup`
+    bob_group
+        .delete(bob_provider.storage())
+        .expect("Could not delete the group");</code></pre>
+<h3 id="presharedkey"><a class="header" href="#presharedkey">PreSharedKey</a></h3>
+<p>In addition to clearing the staged commit, the application may also clear the pre-shared key from storage.</p>
+<pre><code class="language-rust no_run noplayground">    // clear the psk that was stored earlier, if necessary
+    alice_provider
+        .storage()
+        .delete_psk(&amp;psk)
+        .expect("Could not delete stored psk");
+
+    // clear pending commit and reset state
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .expect("Could not clear pending commit");</code></pre>
+<h3 id="self-update"><a class="header" href="#self-update">Self Update</a></h3>
+<p>The storage provider may also be used by the application to store signature keypairs. For self updates that update a signature keypair for the client, if the application has stored a new keypair in the storage provider at this point, it can be deleted from the storage provider here.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="credential-validation"><a class="header" href="#credential-validation">Credential validation</a></h1>
 <p>Credential validation is a process that allows a member to verify the validity
-of the credentials of other members in the group.  The process is described in
-detail in the <a href="https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-credential-validation">MLS protocol
-specification</a>.</p>
+of the credentials of other members in the group. The process is described in
+detail in the <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-credential-validation">MLS protocol specification</a>.</p>
 <p>In practice, the application should check the validity of the credentials of
 other members in two instances:</p>
 <ul>
@@ -925,6 +1119,398 @@ other members in two instances:</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="webassembly"><a class="header" href="#webassembly">WebAssembly</a></h1>
 <p>OpenMLS can be built for WebAssembly. However, it does require two features that WebAssembly itself does not provide: access to secure randomness and the current time. Currently, this means that it can only run in a runtime that provides common JavaScript APIs (e.g. in the browser or node.js), accessed through the <code>web_sys</code> crate.
 You can enable the <code>js</code> feature on the <code>openmls</code> crate to signal that the APIs are available.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="fork-resolution"><a class="header" href="#fork-resolution">Fork Resolution</a></h1>
+<p>If members of a group merge different commits, the group state is called forked.
+At this point, the group members have different keys and will not be able to decrypt
+each others' messages. While this should not happen in normal operation, it may
+still occur due to bugs. When enabling the <code>fork-resolution-helpers</code> feature,
+OpenMLS comes with helpers to get a working group again. There are two helpers,
+and they use different mechanisms.</p>
+<p>The <code>readd</code> helper removes and then re-adds members that are forked. This requires
+that the caller knows the set of members that are forked. It is relatively
+efficient, especially if only a small number of members forked.</p>
+<p>The <code>reboot</code> helper creates a new group and helps with migrating the entire group
+state over. This includes extensions in the group context, as well as re-inviting
+all the members.</p>
+<p>We provide examples for how to use both, and in the end provide some guidance on
+detecting forks.</p>
+<h2 id="readd-example"><a class="header" href="#readd-example"><code>readd</code> Example</a></h2>
+<p>First, let's create a forked group. In this example, Alice creates a group and
+adds Bob. Then, they both merge different commits to add Charlie.</p>
+<pre><code class="language-rust no_run noplayground">    // Alice creates a group
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &amp;alice_signature_keys,
+        &amp;mls_group_create_config,
+        alice_credential.clone(),
+    )
+    .unwrap();
+
+    // Alice adds Bob and merges the commit
+    let add_bob_messages = alice_group
+        .commit_builder()
+        .propose_adds(vec![bob_kpb.key_package().clone()])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    // Bob joins from the welcome
+    let welcome = add_bob_messages.into_welcome().unwrap();
+    let mut bob_group =
+        StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome.clone(), None)
+            .unwrap()
+            .into_group(bob_provider)
+            .unwrap();
+
+    // Now Alice and Bob both add Charlie and merge their own commit.
+    // This forks the group.
+    let charlie_kpb = generate_key_package(
+        ciphersuite,
+        charlie_credential,
+        Extensions::empty(),
+        charlie_provider,
+        &amp;charlie_signature_keys,
+    );
+
+    let add_charlie_messages = alice_group
+        .commit_builder()
+        .propose_adds(vec![charlie_kpb.key_package().clone()])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    bob_group
+        .commit_builder()
+        .propose_adds(vec![charlie_kpb.key_package().clone()])
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &amp;bob_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(bob_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    bob_group.merge_pending_commit(bob_provider).unwrap();
+
+    // Charlie joins using Alice's invite
+    let welcome = add_charlie_messages.into_welcome().unwrap();
+    let mut charlie_group =
+        StagedWelcome::new_from_welcome(charlie_provider, mls_group_config, welcome, None)
+            .unwrap()
+            .into_group(charlie_provider)
+            .unwrap();
+
+    // We should be forked now, double-check
+    // Alice and Charlie are on the same state
+    assert_eq!(
+        alice_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+    // But Bob is different from the other two
+    assert_ne!(bob_group.confirmation_tag(), alice_group.confirmation_tag());
+    assert_ne!(
+        bob_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+</code></pre>
+<p>Then, Alice removes and re-adds Bob using the helper.
+We assume here that Alice knows that only Bob merged the wrong commit. This
+information needs to be transferred somehow, see <a href="user_manual/fork-resolution.html#fork-detection">Fork Detection</a>.
+Notice how Alice needs to provide a new key package for Bob.</p>
+<pre><code class="language-rust no_run noplayground">    // Let Alice re-add the members of the other partition (i.e. Bob)
+    let bob_new_kpb = generate_key_package(
+        ciphersuite,
+        bob_credential,
+        Extensions::empty(),
+        bob_provider,
+        &amp;bob_signature_keys,
+    );
+
+    // Alice and Charlie are in the same partition
+    let our_partition = &amp;[alice_group.own_leaf_index(), charlie_group.own_leaf_index()];
+    let builder = alice_group.recover_fork_by_readding(our_partition).unwrap();
+
+    // Here we iterate over the members of the complement partition to get their key packages.
+    // In this example this is trivial, but the pattern extends to more realistic scenarios.
+    let readded_key_packages = builder
+        .complement_partition()
+        .iter()
+        .map(|member| {
+            let basic_credential = BasicCredential::try_from(member.credential.clone()).unwrap();
+            match basic_credential.identity() {
+                b"Bob" =&gt; bob_new_kpb.key_package().clone(),
+                other =&gt; panic!(
+                    "we only expect bob to be re-added, but found {:?}",
+                    String::from_utf8(other.to_vec()).unwrap()
+                ),
+            }
+        })
+        .collect();
+
+    // Specify the key packages to be re-added and create the commit
+    let readd_messages = builder
+        .provide_key_packages(readded_key_packages)
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    // Make Bob re-join the group and Alice and Charlie merge the commit that adds Bob.
+    let (commit, welcome, _) = readd_messages.into_contents();
+    let welcome = welcome.unwrap();
+    let bob_group = StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome, None)
+        .unwrap()
+        .into_group(bob_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) = charlie_group
+        .process_message(charlie_provider, commit.into_protocol_message().unwrap())
+        .unwrap()
+        .into_content()
+    {
+        charlie_group
+            .merge_staged_commit(charlie_provider, *staged_commit)
+            .unwrap()
+    } else {
+        panic!("expected a commit")
+    }
+
+    // The fork should be fixed now, double-check
+    assert_eq!(alice_group.confirmation_tag(), bob_group.confirmation_tag());
+    assert_eq!(
+        alice_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+    assert_eq!(
+        charlie_group.confirmation_tag(),
+        bob_group.confirmation_tag()
+    );</code></pre>
+<p>In the end, they all can communicate again.</p>
+<h2 id="reboot-example"><a class="header" href="#reboot-example"><code>reboot</code> Example</a></h2>
+<p>Again, let's create a forked group. In this example, Alice creates a group and
+adds Bob. Then, they both merge different commits to add Charlie.</p>
+<pre><code class="language-rust no_run noplayground">    // Alice creates a group
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &amp;alice_signature_keys,
+        &amp;mls_group_create_config,
+        alice_credential.clone(),
+    )
+    .unwrap();
+
+    // Alice adds Bob and merges the commit
+    let add_bob_messages = alice_group
+        .commit_builder()
+        .propose_adds(vec![bob_kpb.key_package().clone()])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    // Bob joins from the welcome
+    let welcome = add_bob_messages.into_welcome().unwrap();
+    let mut bob_group =
+        StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome, None)
+            .unwrap()
+            .into_group(bob_provider)
+            .unwrap();
+
+    // Now Alice and Bob both add Charlie and merge their own commit.
+    // This forks the group.
+    let charlie_kpb = generate_key_package(
+        ciphersuite,
+        charlie_credential.clone(),
+        Extensions::empty(),
+        charlie_provider,
+        &amp;charlie_signature_keys,
+    );
+
+    let add_charlie_messages = alice_group
+        .commit_builder()
+        .propose_adds(vec![charlie_kpb.key_package().clone()])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    bob_group
+        .commit_builder()
+        .propose_adds(vec![charlie_kpb.key_package().clone()])
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &amp;bob_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(bob_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    bob_group.merge_pending_commit(bob_provider).unwrap();
+
+    // Charlie joins using Alice's invite
+    let welcome = add_charlie_messages.into_welcome().unwrap();
+    let charlie_group =
+        StagedWelcome::new_from_welcome(charlie_provider, mls_group_config, welcome, None)
+            .unwrap()
+            .into_group(charlie_provider)
+            .unwrap();
+
+    // We shoulkd be forked now, double-check
+    // Alice and Charlie are on the same state
+    assert_eq!(
+        alice_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+    // But Bob is different from the other two
+    assert_ne!(bob_group.confirmation_tag(), alice_group.confirmation_tag());
+    assert_ne!(
+        bob_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );</code></pre>
+<p>Then, Alice sets up a new group and adds everyone from the old group. In this
+approach, she not only needs to provide key packages for all members, but also
+set a new group id and migrate the group context extensions, because these might
+be contain e.g. the old group id. This is the responsibility of the application,
+so the API just exposes the old extensions and expects the new ones.</p>
+<pre><code class="language-rust no_run noplayground">    // Let Alice reboot the group. For that she needs new key packages for Bob and Charlie, a;s
+    // well as a new group ID.
+    let bob_new_kpb = generate_key_package(
+        ciphersuite,
+        bob_credential,
+        Extensions::empty(),
+        bob_provider,
+        &amp;bob_signature_keys,
+    );
+
+    let charlie_new_kpb = generate_key_package(
+        ciphersuite,
+        charlie_credential,
+        Extensions::empty(),
+        charlie_provider,
+        &amp;charlie_signature_keys,
+    );
+
+    let new_group_id: GroupId = GroupId::from_slice(
+        alice_group
+            .group_id()
+            .as_slice()
+            .iter()
+            .copied()
+            .chain(b"-new".iter().copied())
+            .collect::&lt;Vec&lt;_&gt;&gt;()
+            .as_slice(),
+    );
+
+    let (mut alice_group, reboot_messages) = alice_group
+        .reboot(new_group_id)
+        .finish(
+            Extensions::empty(),
+            vec![
+                bob_new_kpb.key_package().clone(),
+                charlie_new_kpb.key_package().clone(),
+            ],
+            // We can use this closure to add more proposals to the commit builder that is used to
+            // create the commit that readds all the other members, but in this case we will leave
+            // it as-is.
+            |builder| builder,
+            alice_provider,
+            &amp;alice_signature_keys,
+            alice_credential,
+        )
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    // Bob and Charlie join the new group
+    let welcome = reboot_messages.into_welcome().unwrap();
+    let bob_group =
+        StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome.clone(), None)
+            .unwrap()
+            .into_group(bob_provider)
+            .unwrap();
+    assert_eq!(bob_group.own_leaf_index(), LeafNodeIndex::new(1));
+
+    let charlie_group =
+        StagedWelcome::new_from_welcome(charlie_provider, mls_group_config, welcome, None)
+            .unwrap()
+            .into_group(charlie_provider)
+            .unwrap();
+    assert_eq!(charlie_group.own_leaf_index(), LeafNodeIndex::new(2));
+
+    // The fork should be fixed now, double-check
+    assert_eq!(alice_group.confirmation_tag(), bob_group.confirmation_tag());
+    assert_eq!(
+        alice_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+    assert_eq!(
+        bob_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );</code></pre>
+<p>In the end, they all can communicate again.</p>
+<h2 id="fork-detection"><a class="header" href="#fork-detection">Fork Detection</a></h2>
+<p>Before initiating fork resolution, we first need to detect that a fork happened.
+In addition, for using the <code>readd</code> mechanism, we also need to know the members
+that forked.</p>
+<p>One simple technique that may work, depending on how the delivery service works,
+is to consider all incoming non-decryptable messages as a sign that there is a fork.
+However, this may lead to false positives and is not enough to know the membership.</p>
+<p>One way to learn about this that every member send a message when they merges a
+commit, encrypted for the old epoch, that contains the hash of the commit they are
+merging. This way, all group members know which commits are merged, and the <code>readd</code>
+strategy can be used to resolve possible forks.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="traits--external-types"><a class="header" href="#traits--external-types">Traits &amp; External Types</a></h1>
 <p>OpenMLS defines several traits that have to be implemented to use
 OpenMLS.
@@ -1212,7 +1798,7 @@ pub enum HpkeKemType {
     /// DH KEM on x25519
     DhKem25519 = 0x0020,</code></pre>
 <pre><code class="language-rust no_run noplayground">    /// XWing combiner for ML-KEM and X25519
-    XWingKemDraft2 = 0x004D,
+    XWingKemDraft6 = 0x004D,
 }
 
 /// KDF Types for HPKE
