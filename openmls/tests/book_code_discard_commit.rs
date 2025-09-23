@@ -170,15 +170,16 @@ fn discard_commit_update_with_new_signer() {
     // Alice updates own credential
     // HPKE encryption key is also updated by the commit
 
-    let leaf_node_parameters = LeafNodeParameters::builder()
-        .with_credential_with_key(new_credential)
-        .build();
+    let signer_bundle = NewSignerBundle {
+        signer: &new_signer,
+        credential_with_key: new_credential,
+    };
     let _commit_message_bundle = alice_group
         .self_update_with_new_signer(
             alice_provider,
             old_signer,
-            &new_signer,
-            leaf_node_parameters,
+            signer_bundle,
+            LeafNodeParameters::default(),
         )
         .expect("failed to update own leaf node");
 
@@ -372,7 +373,7 @@ fn discard_commit_external_join() {
     // export the group info so Bob can join
     let group_info_msg_out = alice_group
         .export_group_info(
-            alice_provider,
+            alice_provider.crypto(),
             alice_signer,
             true, // with ratchet tree
         )
@@ -389,18 +390,21 @@ fn discard_commit_external_join() {
 
     let aad = vec![0; 32];
 
-    let (mut bob_group, _message, _group_info) = MlsGroup::join_by_external_commit(
-        bob_provider,
-        &bob_signer,
-        None,
-        verifiable_group_info,
-        &MlsGroupJoinConfig::default(),
-        None,
-        None,
-        &aad,
-        bob_credential,
-    )
-    .expect("could not create external join commit");
+    let (mut bob_group, _bundle) = MlsGroup::external_commit_builder()
+        .with_aad(aad)
+        .build_group(bob_provider, verifiable_group_info, bob_credential)
+        .unwrap()
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(bob_provider)
+        .unwrap();
 
     // === Delivery service rejected the commit ===
 
@@ -423,6 +427,7 @@ fn discard_commit_group_context_extensions() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true) // NOTE: important
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY) // Important because the secret tree might diverge otherwise
         .capabilities(Capabilities::new(
             None,
             None,

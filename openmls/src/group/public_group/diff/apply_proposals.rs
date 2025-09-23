@@ -67,7 +67,7 @@ impl PublicGroupDiff<'_> {
             .next()
             .and_then(|queued_proposal| {
                 if let Proposal::ExternalInit(external_init_proposal) = queued_proposal.proposal() {
-                    Some(external_init_proposal.clone())
+                    Some(*(*external_init_proposal).clone())
                 } else {
                     None
                 }
@@ -142,8 +142,10 @@ impl PublicGroupDiff<'_> {
                 .diff
                 .add_leaf(leaf_node.clone())
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
-            invitation_list.push((leaf_index, add_proposal.clone()))
+            invitation_list.push((leaf_index, *(*add_proposal).clone()))
         }
+
+        self.diff.trim_tree();
 
         // Process PSK proposals
         let presharedkeys: Vec<PreSharedKeyId> = proposal_queue
