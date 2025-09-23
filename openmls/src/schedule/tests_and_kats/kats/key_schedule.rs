@@ -135,7 +135,7 @@ fn generate(
     key_schedule
         .add_context(crypto.crypto(), &serialized_group_context)
         .expect("An unexpected error occurred.");
-    let epoch_secrets = key_schedule
+    let EpochSecretsResult { epoch_secrets, .. } = key_schedule
         .epoch_secrets(crypto.crypto(), ciphersuite)
         .expect("An unexpected error occurred.");
 
@@ -280,7 +280,7 @@ pub fn run_test_vector(
     provider: &impl OpenMlsProvider,
 ) -> Result<(), KsTestVectorError> {
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-    log::trace!("  {:?}", test_vector);
+    log::trace!("  {test_vector:?}");
 
     if !provider
         .crypto()
@@ -354,8 +354,8 @@ pub fn run_test_vector(
             .expect("An unexpected error occurred.");
         if group_context_serialized != expected_group_context {
             log::error!("  Group context mismatch");
-            log::debug!("    Computed: {:x?}", group_context_serialized);
-            log::debug!("    Expected: {:x?}", expected_group_context);
+            log::debug!("    Computed: {group_context_serialized:x?}");
+            log::debug!("    Expected: {expected_group_context:x?}");
             if cfg!(test) {
                 panic!("Group context mismatch");
             }
@@ -366,7 +366,7 @@ pub fn run_test_vector(
             .add_context(provider.crypto(), &group_context_serialized)
             .expect("An unexpected error occurred.");
 
-        let epoch_secrets = key_schedule
+        let EpochSecretsResult { epoch_secrets, .. } = key_schedule
             .epoch_secrets(provider.crypto(), ciphersuite)
             .expect("An unexpected error occurred.");
 

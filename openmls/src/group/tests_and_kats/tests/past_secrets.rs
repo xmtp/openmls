@@ -1,5 +1,6 @@
 //! This module contains tests regarding the use of [`MessageSecretsStore`] in [`MlsGroup`]
 
+use crate::framing::SecretTreeError;
 use crate::group::tests_and_kats::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
     framing::{MessageDecryptionError, MlsMessageIn, ProcessedMessageContent},
@@ -61,7 +62,7 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             .add_members(
                 alice_provider,
                 &alice_credential_with_keys.signer,
-                &[bob_key_package.key_package().clone()],
+                core::slice::from_ref(bob_key_package.key_package()),
             )
             .expect("An unexpected error occurred.");
 
@@ -148,7 +149,7 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             assert!(matches!(
                 err,
                 ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-                    MessageDecryptionError::AeadError
+                    MessageDecryptionError::SecretTreeError(SecretTreeError::TooDistantInThePast)
                 ),)
             ));
         }

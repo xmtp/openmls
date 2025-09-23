@@ -1,4 +1,8 @@
-use crate::{framing::*, group::*, *};
+use crate::{
+    framing::*,
+    group::{mls_group::tests_and_kats::utils::setup_alice_group, *},
+    *,
+};
 use mls_group::tests_and_kats::utils::{setup_alice_bob, setup_alice_bob_group, setup_client};
 use prelude::KeyPackageBundle;
 use treesync::{node::leaf_node::Capabilities, LeafNodeParameters};
@@ -23,7 +27,11 @@ fn create_commit_optional_path(
     // Even though there are only Add Proposals, this should generated a path field
     // on the Commit
     let (commit_message, _welcome, _) = alice_group
-        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_kpb.key_package()),
+        )
         .unwrap();
 
     let commit = match commit_message.body() {
@@ -42,7 +50,11 @@ fn create_commit_optional_path(
 
     // Alice adds Bob without forced self-update
     let (commit_message, welcome, _) = alice_group
-        .add_members_without_update(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members_without_update(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_kpb.key_package()),
+        )
         .unwrap();
 
     let commit = match commit_message.body() {
@@ -341,7 +353,11 @@ fn group_operations() {
         setup_client("Charlie", ciphersuite, provider);
 
     let (commit_message, welcome, _) = bob_group
-        .add_members(provider, &bob_signer, &[charlie_kpb.key_package().clone()])
+        .add_members(
+            provider,
+            &bob_signer,
+            core::slice::from_ref(charlie_kpb.key_package()),
+        )
         .expect("Could not create add commit.");
 
     bob_group.merge_pending_commit(provider).unwrap();
@@ -538,7 +554,8 @@ fn group_operations() {
     // Now alice tries to derive an exporter with too large of a key length.
     let exporter_length: usize = u16::MAX.into();
     let exporter_length = exporter_length + 1;
-    let alice_exporter = alice_group.export_secret(provider, "export test", &[], exporter_length);
+    let alice_exporter =
+        alice_group.export_secret(provider.crypto(), "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
 }
 
@@ -699,4 +716,40 @@ fn decrypt_after_leaf_index_reuse() {
     let _bob_incoming_appmsg = group_bob
         .process_message(&bob_provider, charlie_protocol_message)
         .unwrap();
+}
+
+#[openmls_test::openmls_test]
+fn create_group_info_flag() {
+    // The `use_ratchet_tree_extension` flag is set to `false` by default.
+    let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
+        setup_alice_group(ciphersuite, provider);
+
+    let commit_bundle = alice_group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    assert!(commit_bundle.group_info().is_none());
+
+    // Now we set the `create_group_info` flag to `true`.
+    let commit_bundle = alice_group
+        .commit_builder()
+        .create_group_info(true)
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    let group_info = commit_bundle.into_group_info_msg().unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
+    let exported_group_info = alice_group
+        .export_group_info(provider.crypto(), &alice_signer, false)
+        .unwrap();
+    assert_eq!(group_info, exported_group_info);
 }
