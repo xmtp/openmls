@@ -37,6 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc.js"></script>
@@ -93,10 +94,13 @@
                 sidebar = sidebar || 'visible';
             } else {
                 sidebar = 'hidden';
+                sidebar_toggle.checked = false;
             }
-            sidebar_toggle.checked = sidebar === 'visible';
-            html.classList.remove('sidebar-visible');
-            html.classList.add("sidebar-" + sidebar);
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
@@ -147,7 +151,12 @@
 
                 <div id="search-wrapper" class="hidden">
                     <form id="searchbar-outer" class="searchbar-outer">
-                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </form>
                     <div id="searchresults-outer" class="searchresults-outer hidden">
                         <div id="searchresults-header" class="searchresults-header"></div>
@@ -519,31 +528,33 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .add_members(
             provider,
             &amp;alice_signature_keys,
-            &amp;[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("Could not add members.");</code></pre>
 <p>Or from a call to a function that results in a staged commit:</p>
 <pre><code class="language-rust no_run noplayground">    let verifiable_group_info = alice_group
-        .export_group_info(provider, &amp;alice_signature_keys, true)
+        .export_group_info(provider.crypto(), &amp;alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");</code></pre>
-<p>Calling <code>join_by_external_commit</code> requires an <code>MlsGroupJoinConfig</code> (see <a href="user_manual/./group_config.html">Group configuration</a> for more details). The function creates an <code>MlsGroup</code> and leave it with a commit pending to be merged.</p>
-<pre><code class="language-rust no_run noplayground">    let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
-        provider,
-        &amp;dave_signature_keys,
-        None, // No ratchtet tree extension
-        verifiable_group_info,
-        &amp;mls_group_config,
-        None, // No special capabilities
-        None, // No special extensions
-        &amp;[],
-        dave_credential,
-    )
-    .expect("Error joining from external commit");
-    dave_group
-        .merge_pending_commit(provider)
-        .expect("Cannot merge commit");</code></pre>
+<p>External commits can be created using a builder pattern via <code>MlsGroup::external_commit_builder()</code>. The <code>ExternalCommitBuilder</code> provides more options than <code>join_by_external</code> in that it allows the inclusion of SelfRemove or PSK proposals. After its first stage, the <code>ExternalCommitBuilder</code> turns into a regular <code>CommitBuilder</code>. As external commits come with a few restrictions relative to regular commits, not all <code>CommitBuilder</code> capabilities are exposed for external commits. Also, instead of <code>stage_commit</code> this <code>CommitBuilder</code> requires a call to <code>finalize</code> before it returns the new <code>MlsGroup</code>, as well as a <code>CommitMessageBundle</code> containing the external commit, as well as a potential <code>GroupInfo</code>.</p>
+<pre><code class="language-rust no_run noplayground">    let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+        .with_ratchet_tree(tree_option.into())
+        .with_config(join_group_config.clone())
+        .with_aad(AAD.to_vec())
+        .build_group(
+            provider,
+            verifiable_group_info,
+            bob_credential_with_key.clone(),
+        )
+        .expect("error building group")
+        .leaf_node_parameters(leaf_node_parameters)
+        .load_psks(provider.storage())
+        .expect("error loading psks")
+        .build(provider.rand(), provider.crypto(), &amp;bob_signer, |_| true)
+        .expect("error building external commit")
+        .finalize(provider)
+        .expect("error finalizing external commit");</code></pre>
 <p>The resulting external commit message needs to be fanned out to the Delivery Service and accepted by the other members before merging this external commit.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="adding-members-to-a-group"><a class="header" href="#adding-members-to-a-group">Adding members to a group</a></h1>
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
@@ -552,7 +563,7 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .add_members(
             provider,
             &amp;alice_signature_keys,
-            &amp;[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("Could not add members.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Welcome, Option&lt;GroupInfo&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members, along the optional <code>GroupInfo</code> if it is available.</p>
@@ -786,8 +797,26 @@ By default, only the HPKE encryption key is updated. The application can however
         .self_update(provider, &amp;bob_signature_keys, LeafNodeParameters::default())
         .expect("Could not update own key package.")
         .into_contents();</code></pre>
-<p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
-Even though the member updates its own leaf node only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
+<p>The function returns a <code>CommitMessageBundle</code>, which consists of the Commit message that needs to be fanned out to existing group members.
+Even though the member updates its own leaf node only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the <code>CommitMessagBundle</code> can also contain a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
+<p>Members can use the <code>.self_update_with_new_signer()</code> function to also update the <code>Signer</code> used to sign future MLS messages.</p>
+<pre><code class="language-rust no_run noplayground">
+    let new_signer_bundle = NewSignerBundle {
+        signer: &amp;alice_new_signature_keys,
+        credential_with_key: alice_new_credential,
+    };
+
+    let message_bundle = alice_group
+        .self_update_with_new_signer(
+            provider,
+            &amp;alice_old_signature_keys,
+            new_signer_bundle,
+            LeafNodeParameters::default(),
+        )
+        .unwrap();
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();</code></pre>
+<p>When constructing the <code>NewSignerBundle</code>, the <code>Signer</code> must match the public key and credential in the <code>CredentialWithKey</code>. When using <code>self_update_with_new_signer</code>, <code>LeafNodeParameters</code> may not contain a <code>CredentialWithKey</code>.</p>
 <h2 id="proposal-2"><a class="header" href="#proposal-2">Proposal</a></h2>
 <p>Members can also update their leaf node as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, optional parameters can be set through <code>LeafNodeParameters</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
@@ -1653,6 +1682,7 @@ pub mod traits {
     pub trait KeyPackage&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     pub trait MlsGroupJoinConfig&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     pub trait LeafNode&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait ApplicationExportTree&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
 
     // traits for types that implement both
     pub trait ProposalRef&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; + Key&lt;VERSION&gt; {}
@@ -2258,6 +2288,7 @@ Publish the crates to crates.io</li>
             window.setTimeout(window.print, 100);
         });
         </script>
+
 
     </div>
     </body>
