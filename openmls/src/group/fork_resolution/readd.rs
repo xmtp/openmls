@@ -24,9 +24,9 @@ impl MlsGroup {
     /// partition that the initiating client is in. This should include the [`LeafNodeIndex`] of
     /// the initiating client.
     pub fn recover_fork_by_readding(
-        &mut self,
+        &'_ mut self,
         own_partition: &[LeafNodeIndex],
-    ) -> Result<CommitBuilder<ReAddExpectKeyPackages>, ReAddError> {
+    ) -> Result<CommitBuilder<'_, ReAddExpectKeyPackages>, ReAddError> {
         // Load member info. This is None if at least one of the indexes is not a valid member
         let own_partition: Option<Vec<_>> = own_partition
             .iter()
@@ -234,15 +234,15 @@ mod test {
         .unwrap();
 
         let alice_comparison = alice_group
-            .export_secret(alice_provider, "comparison", b"", 32)
+            .export_secret(alice_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 
         let bob_comparison = new_group_bob
-            .export_secret(bob_provider, "comparison", b"", 32)
+            .export_secret(bob_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 
         let charlie_comparison = new_group_charlie
-            .export_secret(charlie_provider, "comparison", b"", 32)
+            .export_secret(charlie_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 
         assert_eq!(alice_comparison, bob_comparison);

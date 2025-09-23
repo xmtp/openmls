@@ -29,7 +29,7 @@ impl MlsGroup {
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Make sure we are still a member of the group
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(
@@ -53,6 +53,10 @@ impl MlsGroup {
         // Parse the message
         let sender_ratchet_configuration = *self.configuration().sender_ratchet_configuration();
 
+        // Check if this message will modify the secret tree when decrypting a
+        // private message
+        let will_modify_secret_tree = matches!(message, ProtocolMessage::PrivateMessage(_));
+
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
@@ -74,12 +78,20 @@ impl MlsGroup {
                 (vec![], vec![])
             };
 
-        self.process_unverified_message(
+        let processed_message = self.process_unverified_message(
             provider,
             unverified_message,
             old_epoch_keypairs,
             leaf_node_keypairs,
-        )
+        )?;
+
+        // Persist the group state if the secret tree was modified to ensure forward secrecy
+        if will_modify_secret_tree {
+            self.store(provider.storage())
+                .map_err(ProcessMessageError::StorageError)?;
+        }
+
+        Ok(processed_message)
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
@@ -93,6 +105,11 @@ impl MlsGroup {
         self.proposal_store_mut().add(proposal);
 
         Ok(())
+    }
+
+    /// Returns true if there are pending proposals queued in the proposal store.
+    pub fn has_pending_proposals(&self) -> bool {
+        !self.proposal_store().is_empty()
     }
 
     /// Creates a Commit message that covers the pending proposals that are
@@ -204,7 +221,7 @@ impl MlsGroup {
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage()).map_err(|e| {
-            log::error!("Error reading epoch keypairs: {:?}", e);
+            log::error!("Error reading epoch keypairs: {e:?}");
             StageCommitError::MissingDecryptionKey
         })?;
 
@@ -256,7 +273,7 @@ impl MlsGroup {
         unverified_message: UnverifiedMessage,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
@@ -313,10 +330,30 @@ impl MlsGroup {
             Sender::External(_) => {
                 let sender = content.sender().clone();
                 let data = content.authenticated_data().to_owned();
+                // https://validation.openmls.tech/#valn1501
                 match content.content() {
                     FramedContentBody::Application(_) => {
                         Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
                     }
+                    // TODO: https://validation.openmls.tech/#valn1502
+                    FramedContentBody::Proposal(Proposal::GroupContextExtensions(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content_by_ref(
+                                self.ciphersuite(),
+                                provider.crypto(),
+                                content,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
+
                     FramedContentBody::Proposal(Proposal::Remove(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
@@ -336,11 +373,10 @@ impl MlsGroup {
                     }
                     FramedContentBody::Proposal(Proposal::Add(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
-                            QueuedProposal::from_authenticated_content(
+                            QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
                                 provider.crypto(),
                                 content,
-                                ProposalOrRefType::Proposal,
                             )?,
                         ));
                         Ok(ProcessedMessage::new(
