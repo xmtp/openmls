@@ -704,6 +704,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 }
 
+#[allow(dead_code)]
 #[derive(Serialize, Deserialize)]
 struct Aad(Vec<u8>);
 
