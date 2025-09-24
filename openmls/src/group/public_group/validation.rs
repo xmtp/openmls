@@ -658,7 +658,7 @@ impl PublicGroup {
         leaf_node: &crate::treesync::LeafNode,
     ) -> Result<(), LeafNodeValidationError> {
         // Call the validation function and validate the lifetime
-        self.validate_leaf_node_inner(leaf_node, LeafNodeLifetimePolicy::Verify)
+        self.validate_leaf_node_inner(leaf_node, LeafNodeLifetimePolicy::Skip)
     }
 
     /// Validate a leaf node.
