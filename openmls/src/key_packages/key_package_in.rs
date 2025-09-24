@@ -192,15 +192,15 @@ impl KeyPackageIn {
         }
 
         // Ensure validity of the life time extension in the leaf node.
-        if let Some(life_time) = key_package.payload.leaf_node.life_time() {
-            if !life_time.is_valid() {
-                return Err(KeyPackageVerifyError::InvalidLifetime);
-            }
-        } else {
-            // This assumes that we only verify key packages with leaf nodes
-            // that were created for the key package.
-            return Err(KeyPackageVerifyError::MissingLifetime);
-        }
+        // if let Some(life_time) = key_package.payload.leaf_node.life_time() {
+        //     if !life_time.is_valid() {
+        //         return Err(KeyPackageVerifyError::InvalidLifetime);
+        //     }
+        // } else {
+        //     // This assumes that we only verify key packages with leaf nodes
+        //     // that were created for the key package.
+        //     return Err(KeyPackageVerifyError::MissingLifetime);
+        // }
 
         Ok(key_package)
     }
