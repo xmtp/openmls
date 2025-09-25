@@ -1065,8 +1065,12 @@ fn test_valsem105() {
         let mut franken_key_package = FrankenKeyPackage::from(charlie_key_package.clone());
 
         let kpi = KeyPackageIn::from(charlie_key_package.clone());
-        kpi.validate(provider.crypto(), ProtocolVersion::Mls10)
-            .unwrap();
+        kpi.validate(
+            provider.crypto(),
+            ProtocolVersion::Mls10,
+            LeafNodeLifetimePolicy::Verify,
+        )
+        .unwrap();
 
         // Let's just pick a ciphersuite that's not the one we're testing right now.
         let wrong_ciphersuite = match ciphersuite {

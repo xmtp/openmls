@@ -1,4 +1,4 @@
-use crate::test_utils::*;
+use crate::{test_utils::*, tree::tests_and_kats::kats::secret_tree::Leaf};
 use openmls_basic_credential::SignatureKeyPair;
 
 use tls_codec::Deserialize;
@@ -35,7 +35,11 @@ fn generate_key_package() {
 
     let kpi = KeyPackageIn::from(key_package.key_package().clone());
     assert!(kpi
-        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .validate(
+            provider.crypto(),
+            ProtocolVersion::Mls10,
+            crate::group::LeafNodeLifetimePolicy::Verify
+        )
         .is_ok());
 }
 
@@ -79,7 +83,11 @@ fn application_id_extension() {
 
     let kpi = KeyPackageIn::from(key_package.key_package().clone());
     assert!(kpi
-        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .validate(
+            provider.crypto(),
+            ProtocolVersion::Mls10,
+            crate::group::LeafNodeLifetimePolicy::Verify
+        )
         .is_ok());
 
     // Check ID
@@ -111,7 +119,11 @@ fn key_package_validation() {
     let key_package_in = KeyPackageIn::from(franken_key_package);
 
     let err = key_package_in
-        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .validate(
+            provider.crypto(),
+            ProtocolVersion::Mls10,
+            crate::group::LeafNodeLifetimePolicy::Verify,
+        )
         .unwrap_err();
 
     // Expect an invalid protocol version error
@@ -127,7 +139,11 @@ fn key_package_validation() {
     let key_package_in = KeyPackageIn::from(franken_key_package);
 
     let err = key_package_in
-        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .validate(
+            provider.crypto(),
+            ProtocolVersion::Mls10,
+            crate::group::LeafNodeLifetimePolicy::Verify,
+        )
         .unwrap_err();
 
     // Expect an invalid init/encryption key error

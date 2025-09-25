@@ -11,7 +11,11 @@ macro_rules! test_valn0108 {
         let key_package_in: KeyPackageIn = $franken_key_package.into();
 
         // Validate
-        let result = key_package_in.validate($crypto, ProtocolVersion::default());
+        let result = key_package_in.validate(
+            $crypto,
+            ProtocolVersion::default(),
+            crate::group::LeafNodeLifetimePolicy::Verify,
+        );
 
         // Compare the result to expected result
         if $should_succeed {

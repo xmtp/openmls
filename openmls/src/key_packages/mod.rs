@@ -82,7 +82,7 @@
 //!     .expect("Could not deserialize KeyPackage");
 //!
 //! let key_package = key_package_in
-//!     .validate(provider.crypto(), ProtocolVersion::Mls10)
+//!     .validate(provider.crypto(), ProtocolVersion::Mls10, crate::openmls::group::LeafNodeLifetimePolicy::Verify)
 //!     .expect("Invalid KeyPackage");
 //! ```
 //!
