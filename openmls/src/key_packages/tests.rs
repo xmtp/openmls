@@ -1,4 +1,4 @@
-use crate::{test_utils::*, tree::tests_and_kats::kats::secret_tree::Leaf};
+use crate::test_utils::*;
 use openmls_basic_credential::SignatureKeyPair;
 
 use tls_codec::Deserialize;
