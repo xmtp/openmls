@@ -82,7 +82,7 @@
 <a href=#82 id=82 data-nosnippet>82</a>//!     .expect("Could not deserialize KeyPackage");
 <a href=#83 id=83 data-nosnippet>83</a>//!
 <a href=#84 id=84 data-nosnippet>84</a>//! let key_package = key_package_in
-<a href=#85 id=85 data-nosnippet>85</a>//!     .validate(provider.crypto(), ProtocolVersion::Mls10)
+<a href=#85 id=85 data-nosnippet>85</a>//!     .validate(provider.crypto(), ProtocolVersion::Mls10, crate::openmls::group::LeafNodeLifetimePolicy::Verify)
 <a href=#86 id=86 data-nosnippet>86</a>//!     .expect("Invalid KeyPackage");
 <a href=#87 id=87 data-nosnippet>87</a>//! ```
 <a href=#88 id=88 data-nosnippet>88</a>//!
