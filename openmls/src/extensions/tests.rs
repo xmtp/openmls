@@ -321,7 +321,11 @@ fn last_resort_extension() {
         .expect("error encoding key package with last resort extension");
     let decoded_kp = KeyPackageIn::tls_deserialize(&mut encoded_kp.as_slice())
         .expect("error decoding key package with last resort extension")
-        .validate(provider.crypto(), ProtocolVersion::default())
+        .validate(
+            provider.crypto(),
+            ProtocolVersion::default(),
+            crate::prelude::LeafNodeLifetimePolicy::Verify,
+        )
         .expect("error validating key package with last resort extension");
     assert!(decoded_kp.last_resort());
 

@@ -162,7 +162,11 @@ impl AddProposalIn {
         protocol_version: ProtocolVersion,
         ciphersuite: Ciphersuite,
     ) -> Result<AddProposal, ValidationError> {
-        let key_package = self.key_package.validate(crypto, protocol_version)?;
+        let key_package = self.key_package.validate(
+            crypto,
+            protocol_version,
+            crate::group::LeafNodeLifetimePolicy::Skip,
+        )?;
         // Verify that the ciphersuite is valid
         if key_package.ciphersuite() != ciphersuite {
             return Err(ValidationError::InvalidAddProposalCiphersuite);

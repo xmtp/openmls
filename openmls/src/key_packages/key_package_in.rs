@@ -5,6 +5,7 @@ use crate::{
     ciphersuite::{signable::*, *},
     credentials::*,
     extensions::Extensions,
+    group::LeafNodeLifetimePolicy,
     treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
     versions::ProtocolVersion,
 };
@@ -136,6 +137,7 @@ impl KeyPackageIn {
         self,
         crypto: &impl OpenMlsCrypto,
         protocol_version: ProtocolVersion,
+        validate_lifetimes: LeafNodeLifetimePolicy,
     ) -> Result<KeyPackage, KeyPackageVerifyError> {
         // We first need to verify the LeafNode inside the KeyPackage
         let leaf_node = self.payload.leaf_node.clone().into_verifiable_leaf_node();
@@ -191,15 +193,17 @@ impl KeyPackageIn {
             }
         }
 
-        // Ensure validity of the life time extension in the leaf node.
-        if let Some(life_time) = key_package.payload.leaf_node.life_time() {
-            if !life_time.is_valid() {
-                return Err(KeyPackageVerifyError::InvalidLifetime);
+        if validate_lifetimes == LeafNodeLifetimePolicy::Verify {
+            // Ensure validity of the life time extension in the leaf node.
+            if let Some(life_time) = key_package.payload.leaf_node.life_time() {
+                if !life_time.is_valid() {
+                    return Err(KeyPackageVerifyError::InvalidLifetime);
+                }
+            } else {
+                // This assumes that we only verify key packages with leaf nodes
+                // that were created for the key package.
+                return Err(KeyPackageVerifyError::MissingLifetime);
             }
-        } else {
-            // This assumes that we only verify key packages with leaf nodes
-            // that were created for the key package.
-            return Err(KeyPackageVerifyError::MissingLifetime);
         }
 
         Ok(key_package)

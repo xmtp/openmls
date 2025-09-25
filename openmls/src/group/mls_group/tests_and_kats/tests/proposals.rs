@@ -45,7 +45,11 @@ fn proposal_queue_functions(
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi
-        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .validate(
+            provider.crypto(),
+            ProtocolVersion::Mls10,
+            crate::group::LeafNodeLifetimePolicy::Verify
+        )
         .is_ok());
 
     let group_context = GroupContext::new(
@@ -185,7 +189,11 @@ fn proposal_queue_order() {
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi
-        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .validate(
+            provider.crypto(),
+            ProtocolVersion::Mls10,
+            crate::group::LeafNodeLifetimePolicy::Verify
+        )
         .is_ok());
 
     let group_context = GroupContext::new(
