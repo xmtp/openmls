@@ -37,6 +37,8 @@ impl MlsGroup {
     ) -> UpdateResult<Provider> {
         self.is_operational()?;
 
+        log::info!("XMTP DEBUG LOGS: Updating group membership");
+
         let bundle = self
             .commit_builder()
             .propose_adds(key_packages_to_add.iter().cloned())
