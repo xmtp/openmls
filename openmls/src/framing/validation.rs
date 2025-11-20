@@ -102,7 +102,7 @@ impl DecryptedMessage {
         // XMTP debug logging, log epoch authenticator before we decrypt
         log::info!(
             "XMTP DEBUG LOGS: Decrypting PrivateMessage epoch_authenticator={:?}",
-            group.epoch_authenticator()
+            group.epoch_authenticator().as_slice()
         );
         log::info!(
             "XMTP DEBUG LOGS: Decrypting PrivateMessage epoch={:?}",

@@ -259,10 +259,18 @@ impl PrivateMessage {
         let ciphertext_tag_short = &ciphertext_tag[..ciphertext_tag.len().min(8)];
         let sender_data_aad_tag_short = &sender_data_aad_tag[..sender_data_aad_tag.len().min(8)];
 
+        // XMTP: derive a short hint from sender_data_secret for debugging
+        let sender_data_secret_bytes = message_secrets.sender_data_secret().as_slice(); // Secret type in OpenMLS exposes as_slice()
+        let sender_data_secret_tag = crypto
+            .hash(HashType::Sha2_256, sender_data_secret_bytes)
+            .unwrap_or_default();
+        let sender_data_secret_hint =
+            &sender_data_secret_tag[..sender_data_secret_tag.len().min(8)];
+
         log::info!(
             "XMTP DEBUG LOGS: PrivateMessage handshake send: \
              group_id={:?}, epoch={:?}, sender={:?}, content_type={:?}, secret_type={:?}, \
-             generation={}, reuse_guard={:x?}, ciphertext_tag={:x?}, sender_data_aad_tag={:x?}",
+             generation={}, reuse_guard={:x?}, ciphertext_tag={:x?}, sender_data_aad_tag={:x?}, sender_data_secret_hint={:x?}",
             header.group_id,
             header.epoch,
             header.sender,
@@ -272,6 +280,7 @@ impl PrivateMessage {
             reuse_guard,
             ciphertext_tag_short,
             sender_data_aad_tag_short,
+            sender_data_secret_hint,
         );
         Ok(PrivateMessage {
             group_id: header.group_id.clone(),

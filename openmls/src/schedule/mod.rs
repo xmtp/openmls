@@ -202,7 +202,6 @@ impl EpochAuthenticator {
         Ok(Self { secret })
     }
 
-    /// Returns the secret as a slice.
     pub fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }

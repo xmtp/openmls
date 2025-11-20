@@ -613,7 +613,7 @@ impl MlsGroup {
         // XMTP debug logging, log epoch authenticator before we encrypt
         log::info!(
             "XMTP DEBUG LOGS: Encrypting PrivateMessage epoch_authenticator={:?}",
-            self.epoch_authenticator()
+            self.epoch_authenticator().as_slice()
         );
         log::info!(
             "XMTP DEBUG LOGS: Encrypting PrivateMessage epoch={:?}",

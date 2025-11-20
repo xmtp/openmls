@@ -77,10 +77,10 @@ impl PrivateMessageIn {
         // from on-the-wire values (ciphertext and sender-data AAD).
         // Still for internal debug builds only!
         let ciphertext_tag = crypto
-            .hash(ciphersuite.hash_algorithm(), self.ciphertext.as_slice())
+            .hash(HashType::Sha2_256, self.ciphertext.as_slice())
             .unwrap_or_default();
         let sender_data_aad_tag = crypto
-            .hash(ciphersuite.hash_algorithm(), &mls_sender_data_aad_bytes)
+            .hash(HashType::Sha2_256, &mls_sender_data_aad_bytes)
             .unwrap_or_default();
 
         let ciphertext_tag_short = &ciphertext_tag[..ciphertext_tag.len().min(8)];
@@ -89,7 +89,7 @@ impl PrivateMessageIn {
         // XMTP: derive a short hint from sender_data_secret for debugging
         let sender_data_secret_bytes = message_secrets.sender_data_secret().as_slice(); // Secret type in OpenMLS exposes as_slice()
         let sender_data_secret_tag = crypto
-            .hash(ciphersuite.hash_algorithm(), sender_data_secret_bytes)
+            .hash(HashType::Sha2_256, sender_data_secret_bytes)
             .unwrap_or_default();
         let sender_data_secret_hint =
             &sender_data_secret_tag[..sender_data_secret_tag.len().min(8)];
