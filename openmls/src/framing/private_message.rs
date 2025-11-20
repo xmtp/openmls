@@ -1,3 +1,4 @@
+use openmls_traits::types::HashType;
 use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
 use std::io::Write;
 use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
@@ -242,6 +243,36 @@ impl PrivateMessage {
                 &sender_data_nonce,
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
+
+        // XMTP: Debug logging to correlate AEAD failures between sender and receiver.
+        // We avoid logging raw secrets and instead log short, reproducible tags derived
+        // from on-the-wire values (ciphertext and sender-data AAD).
+        // Still for internal debug Builds only!
+        let ciphertext_tag = crypto
+            .hash(HashType::Sha2_256, &ciphertext)
+            .unwrap_or_default();
+        let sender_data_aad_tag = crypto
+            .hash(HashType::Sha2_256, &mls_sender_data_aad_bytes)
+            .unwrap_or_default();
+
+        // Truncate tags to the first 8 bytes for compact logging.
+        let ciphertext_tag_short = &ciphertext_tag[..ciphertext_tag.len().min(8)];
+        let sender_data_aad_tag_short = &sender_data_aad_tag[..sender_data_aad_tag.len().min(8)];
+
+        log::info!(
+            "XMTP DEBUG LOGS: PrivateMessage handshake send: \
+             group_id={:?}, epoch={:?}, sender={:?}, content_type={:?}, secret_type={:?}, \
+             generation={}, reuse_guard={:x?}, ciphertext_tag={:x?}, sender_data_aad_tag={:x?}",
+            header.group_id,
+            header.epoch,
+            header.sender,
+            public_message.content().content_type(),
+            secret_type,
+            generation,
+            reuse_guard,
+            ciphertext_tag_short,
+            sender_data_aad_tag_short,
+        );
         Ok(PrivateMessage {
             group_id: header.group_id.clone(),
             epoch: header.epoch,

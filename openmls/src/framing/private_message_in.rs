@@ -1,5 +1,6 @@
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
+use openmls_traits::types::HashType;
 use tls_codec::{
     Deserialize, Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
 };
@@ -70,6 +71,21 @@ impl PrivateMessageIn {
         let mls_sender_data_aad_bytes = mls_sender_data_aad
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
+
+        // XMTP: Debug logging to correlate AEAD failures between sender and receiver.
+        // We avoid logging raw secrets and instead log short, reproducible tags derived
+        // from on-the-wire values (ciphertext and sender-data AAD).
+        // Still for internal debug builds only!
+        let ciphertext_tag = crypto
+            .hash(ciphersuite.hash_algorithm(), self.ciphertext.as_slice())
+            .unwrap_or_default();
+        let sender_data_aad_tag = crypto
+            .hash(ciphersuite.hash_algorithm(), &mls_sender_data_aad_bytes)
+            .unwrap_or_default();
+
+        let ciphertext_tag_short = &ciphertext_tag[..ciphertext_tag.len().min(8)];
+        let sender_data_aad_tag_short = &sender_data_aad_tag[..sender_data_aad_tag.len().min(8)];
+
         // Decrypt sender data
         log_crypto!(
             trace,
@@ -84,12 +100,35 @@ impl PrivateMessageIn {
                 &sender_data_nonce,
             )
             .map_err(|_| {
-                log::error!("Sender data decryption error");
+                log::error!(
+                    "XMTP DEBUG LOGS: Sender data decryption error. \
+                     group_id={:?}, epoch={:?}, content_type={:?}, \
+                     ciphertext_tag={:x?}, sender_data_aad_tag={:x?}",
+                    self.group_id,
+                    self.epoch,
+                    self.content_type,
+                    ciphertext_tag_short,
+                    sender_data_aad_tag_short,
+                );
                 MessageDecryptionError::AeadError
             })?;
         log::trace!("  Successfully decrypted sender data.");
-        MlsSenderData::tls_deserialize(&mut sender_data_bytes.as_slice())
-            .map_err(|_| MessageDecryptionError::MalformedContent)
+        let sender_data = MlsSenderData::tls_deserialize(&mut sender_data_bytes.as_slice())
+            .map_err(|_| MessageDecryptionError::MalformedContent)?;
+
+        log::info!(
+            "XMTP DEBUG LOGS: PrivateMessage handshake recv (sender data): \
+             group_id={:?}, epoch={:?}, leaf_index={:?}, generation={}, \
+             ciphertext_tag={:x?}, sender_data_aad_tag={:x?}",
+            self.group_id,
+            self.epoch,
+            sender_data.leaf_index,
+            sender_data.generation,
+            ciphertext_tag_short,
+            sender_data_aad_tag_short,
+        );
+
+        Ok(sender_data)
     }
 
     /// Decrypt this [`PrivateMessage`] and return the
@@ -110,13 +149,32 @@ impl PrivateMessageIn {
         }
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
+
+        // --- XMTP: derive short tags to correlate AEAD failures with libxmtp logs ---
+        // These mirror what you’re already doing in sender_data().
+        let ciphertext_tag = crypto
+            .hash(HashType::Sha2_256, self.ciphertext.as_slice())
+            .unwrap_or_default();
+        let content_aad_tag = crypto
+            .hash(HashType::Sha2_256, &private_message_content_aad_bytes)
+            .unwrap_or_default();
+
+        let ciphertext_tag_short = &ciphertext_tag[..ciphertext_tag.len().min(8)];
+        let content_aad_tag_short = &content_aad_tag[..content_aad_tag.len().min(8)];
+        // --- end XMTP tags ---
+
         // Decrypt payload
         log_crypto!(
             trace,
             "Decryption key for private message: {ratchet_key:x?}"
         );
-        log_crypto!(trace, "Decryption of private message private_message_content_aad_bytes: {private_message_content_aad_bytes:x?} - ratchet_nonce: {ratchet_nonce:x?}");
+        log_crypto!(
+            trace,
+            "Decryption of private message private_message_content_aad_bytes: \
+             {private_message_content_aad_bytes:x?} - ratchet_nonce: {ratchet_nonce:x?}"
+        );
         log::trace!("Decrypting ciphertext {:x?}", self.ciphertext);
+
         let private_message_content_bytes = ratchet_key
             .aead_open(
                 crypto,
@@ -125,15 +183,27 @@ impl PrivateMessageIn {
                 ratchet_nonce,
             )
             .map_err(|_| {
-                log::error!("  Ciphertext decryption error");
+                // --- XMTP: upgraded AEAD failure logging for *content* ---
+                log::error!(
+                    "XMTP DEBUG LOGS:Ciphertext decryption error. \
+                     stage=content, group_id={:?}, epoch={:?}, content_type={:?}, \
+                     ciphertext_tag={:x?}, content_aad_tag={:x?}",
+                    self.group_id,
+                    self.epoch,
+                    self.content_type,
+                    ciphertext_tag_short,
+                    content_aad_tag_short,
+                );
                 debug_assert!(false, "Ciphertext decryption failed");
                 MessageDecryptionError::AeadError
             })?;
+
         log_content!(
             trace,
             "  Successfully decrypted PublicMessage bytes: {:x?}",
             private_message_content_bytes
         );
+
         deserialize_ciphertext_content(
             &mut private_message_content_bytes.as_slice(),
             self.content_type(),
@@ -174,6 +244,17 @@ impl PrivateMessageIn {
             })?;
         // Prepare the nonce by xoring with the reuse guard.
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
+
+        log::info!(
+            "XMTP DEBUG LOGS: PrivateMessage content recv (before decrypt): \
+             group_id={:?}, epoch={:?}, leaf_index={:?}, generation={}, reuse_guard={:x?}",
+            self.group_id,
+            self.epoch,
+            sender_index,
+            sender_data.generation,
+            sender_data.reuse_guard,
+        );
+
         let private_message_content = self.decrypt(crypto, ratchet_key, &prepared_nonce)?;
 
         // Extract sender. The sender type is always of type Member for PrivateMessage.
