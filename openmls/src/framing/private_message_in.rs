@@ -86,6 +86,14 @@ impl PrivateMessageIn {
         let ciphertext_tag_short = &ciphertext_tag[..ciphertext_tag.len().min(8)];
         let sender_data_aad_tag_short = &sender_data_aad_tag[..sender_data_aad_tag.len().min(8)];
 
+        // XMTP: derive a short hint from sender_data_secret for debugging
+        let sender_data_secret_bytes = message_secrets.sender_data_secret().as_slice(); // Secret type in OpenMLS exposes as_slice()
+        let sender_data_secret_tag = crypto
+            .hash(ciphersuite.hash_algorithm(), sender_data_secret_bytes)
+            .unwrap_or_default();
+        let sender_data_secret_hint =
+            &sender_data_secret_tag[..sender_data_secret_tag.len().min(8)];
+
         // Decrypt sender data
         log_crypto!(
             trace,
@@ -103,12 +111,13 @@ impl PrivateMessageIn {
                 log::error!(
                     "XMTP DEBUG LOGS: Sender data decryption error. \
                      group_id={:?}, epoch={:?}, content_type={:?}, \
-                     ciphertext_tag={:x?}, sender_data_aad_tag={:x?}",
+                     ciphertext_tag={:x?}, sender_data_aad_tag={:x?}, sender_data_secret_hint={:x?}",
                     self.group_id,
                     self.epoch,
                     self.content_type,
                     ciphertext_tag_short,
                     sender_data_aad_tag_short,
+                    sender_data_secret_hint,
                 );
                 MessageDecryptionError::AeadError
             })?;
@@ -119,13 +128,14 @@ impl PrivateMessageIn {
         log::info!(
             "XMTP DEBUG LOGS: PrivateMessage handshake recv (sender data): \
              group_id={:?}, epoch={:?}, leaf_index={:?}, generation={}, \
-             ciphertext_tag={:x?}, sender_data_aad_tag={:x?}",
+             ciphertext_tag={:x?}, sender_data_aad_tag={:x?}, sender_data_secret_hint={:x?}",
             self.group_id,
             self.epoch,
             sender_data.leaf_index,
             sender_data.generation,
             ciphertext_tag_short,
             sender_data_aad_tag_short,
+            sender_data_secret_hint,
         );
 
         Ok(sender_data)

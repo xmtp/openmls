@@ -98,6 +98,21 @@ impl DecryptedMessage {
     ) -> Result<Self, ValidationError> {
         // This will be refactored with #265.
         let ciphersuite = group.ciphersuite();
+
+        // XMTP debug logging, log epoch authenticator before we decrypt
+        log::info!(
+            "XMTP DEBUG LOGS: Decrypting PrivateMessage epoch_authenticator={:?}",
+            group.epoch_authenticator()
+        );
+        log::info!(
+            "XMTP DEBUG LOGS: Decrypting PrivateMessage epoch={:?}",
+            group.epoch()
+        );
+        log::info!(
+            "XMTP DEBUG LOGS: Decrypting PrivateMessage group_id={:?}",
+            group.group_id()
+        );
+
         // TODO: #819 The old leaves should not be needed any more.
         //       Revisit when the transition is further along.
         let (message_secrets, _old_leaves) = group

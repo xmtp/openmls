@@ -610,6 +610,19 @@ impl MlsGroup {
         provider: &Provider,
     ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
+        // XMTP debug logging, log epoch authenticator before we encrypt
+        log::info!(
+            "XMTP DEBUG LOGS: Encrypting PrivateMessage epoch_authenticator={:?}",
+            self.epoch_authenticator()
+        );
+        log::info!(
+            "XMTP DEBUG LOGS: Encrypting PrivateMessage epoch={:?}",
+            self.epoch()
+        );
+        log::info!(
+            "XMTP DEBUG LOGS: Encrypting PrivateMessage group_id={:?}",
+            self.group_id()
+        );
         let msg = PrivateMessage::try_from_authenticated_content(
             provider.crypto(),
             provider.rand(),
