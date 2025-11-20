@@ -1036,7 +1036,8 @@ impl SenderDataSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    // Commenting out for XMTP DEBUG build
+    // #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
