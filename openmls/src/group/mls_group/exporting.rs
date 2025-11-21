@@ -1,5 +1,5 @@
 use errors::{ExportGroupInfoError, ExportSecretError};
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, types::HashType};
 
 #[cfg(feature = "extensions-draft-08")]
 use crate::group::{PendingSafeExportSecretError, SafeExportSecretError};
@@ -98,6 +98,20 @@ impl MlsGroup {
     pub fn epoch_authenticator(&self) -> &EpochAuthenticator {
         self.group_epoch_secrets().epoch_authenticator()
     }
+
+    /// Returns a hint (first 8 bytes of SHA-256 hash) of the sender data secret.
+    /// XMTP ONLY USED FOR DEBUGGING PURPOSES.
+    pub fn sender_data_secret_hint<Provider: OpenMlsProvider>(&self, provider: &Provider) -> Vec<u8> {
+        let crypto = provider.crypto();
+        let message_secrets = self.message_secrets_store.message_secrets();
+        let sender_data_secret_bytes = message_secrets.sender_data_secret().as_slice(); // Secret type in OpenMLS exposes as_slice()
+        let sender_data_secret_tag = crypto
+            .hash(HashType::Sha2_256, sender_data_secret_bytes)
+            .unwrap_or_default();
+        sender_data_secret_tag[..sender_data_secret_tag.len().min(8)].to_vec()
+    }
+
+
 
     /// Returns the resumption PSK secret of the current epoch.
     pub fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
