@@ -45,7 +45,6 @@ zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
 [features]
-crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = [
     "dep:serde_json",
     "dep:itertools",
@@ -79,15 +78,16 @@ js = [
 
 extensions-draft-08 = [
     "openmls_traits/extensions-draft-08",
-    "openmls_memory_storage/extensions-draft-08",
-    "openmls_sqlite_storage/extensions-draft-08",
+    "openmls_memory_storage?/extensions-draft-08",
+    "openmls_sqlite_storage?/extensions-draft-08",
+    "openmls_libcrux_crypto?/extensions-draft-08",
 ]
 libcrux-provider-js = ["dep:getrandom", "getrandom/wasm_js"]
 # enable randomness source
 fork-resolution = []
 
 [dev-dependencies]
-criterion = { version = "^0.5", default-features = false }       # need to disable default features for wasm
+criterion = { version = "^0.7", default-features = false }       # need to disable default features for wasm
 hex = { version = "0.4", features = ["serde"] }
 lazy_static = "1.4"
 openmls_traits = { workspace = true, features = ["test-utils"] }
@@ -98,7 +98,7 @@ wasm-bindgen-test = "0.3.50"
 clap = { version = "4", features = ["derive"] }
 base64 = "0.22.1"
 flate2 = "1.0"
-indicatif = "0.17.8"
+indicatif = "0.18.3"
 
 # Disable for wasm32 and Win32
 [target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
@@ -114,3 +114,7 @@ openmls = { path = ".", features = ["test-utils"] }
 [[bench]]
 name = "benchmark"
 harness = false
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

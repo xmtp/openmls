@@ -28,7 +28,7 @@ jobs:
           - release
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: dtolnay/rust-toolchain@stable
@@ -67,6 +67,9 @@ jobs:
 
       - name: Test with Fork Resolution helpers
         run: cargo test $TEST_MODE -p openmls -F fork-resolution
+
+      - name: Test with MLS Extensions Draft feature
+        run: cargo test $TEST_MODE -p openmls -F extensions-draft-08
 
       - name: Test with libcrux provider
         if: matrix.os == 'ubuntu-latest'
