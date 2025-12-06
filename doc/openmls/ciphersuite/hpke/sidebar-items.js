@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Error"],"fn":["decrypt_with_label","encrypt_with_label"],"struct":["EncryptContext"]};
+window.SIDEBAR_ITEMS = {"enum":["Error"],"fn":["decrypt_with_label","encrypt_with_label","safe_decrypt_with_label","safe_encrypt_with_label"],"struct":["EncryptContext","SafeEncryptionContext"]};
