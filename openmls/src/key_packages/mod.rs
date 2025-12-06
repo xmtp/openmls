@@ -96,7 +96,9 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
+    extensions::{
+        errors::InvalidExtensionError, Extension, ExtensionType, Extensions, LastResortExtension,
+    },
     storage::OpenMlsProvider,
     treesync::{
         node::{
@@ -173,10 +175,26 @@ impl From<KeyPackage> for KeyPackageTbs {
 }
 
 /// The key package struct.
-#[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TlsSize)]
 pub struct KeyPackage {
     payload: KeyPackageTbs,
     signature: Signature,
+    #[serde(skip)]
+    #[tls_codec(skip)]
+    serialized_payload: Option<Vec<u8>>,
+}
+
+impl TlsSerializeTrait for KeyPackage {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let mut written = 0;
+        if let Some(ref bytes) = self.serialized_payload {
+            written += writer.write(bytes)?;
+        } else {
+            written += self.payload.tls_serialize(writer)?;
+        }
+        written += self.signature.tls_serialize(writer)?;
+        Ok(written)
+    }
 }
 
 impl PartialEq for KeyPackage {
@@ -188,8 +206,16 @@ impl PartialEq for KeyPackage {
 }
 
 impl SignedStruct<KeyPackageTbs> for KeyPackage {
-    fn from_payload(payload: KeyPackageTbs, signature: Signature) -> Self {
-        Self { payload, signature }
+    fn from_payload(
+        payload: KeyPackageTbs,
+        signature: Signature,
+        serialized_payload: Vec<u8>,
+    ) -> Self {
+        Self {
+            payload,
+            signature,
+            serialized_payload: Some(serialized_payload),
+        }
     }
 }
 
@@ -464,9 +490,17 @@ impl KeyPackageBuilder {
     }
 
     /// Set the leaf node extensions.
-    pub fn leaf_node_extensions(mut self, extensions: Extensions) -> Self {
+    ///
+    /// Returns an error if one or more of the extensions is invalid in leaf nodes.
+    pub fn leaf_node_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        // https://validation.openmls.tech/#valn1601
+        extensions.validate_extension_types_for_leaf_node()?;
         self.leaf_node_extensions.replace(extensions);
-        self
+
+        Ok(self)
     }
 
     /// Ensure that a last-resort extension is present in the key package if the

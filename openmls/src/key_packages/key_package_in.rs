@@ -59,6 +59,7 @@ impl Verifiable for VerifiableKeyPackage {
         Ok(KeyPackage {
             payload: self.payload,
             signature: self.signature,
+            serialized_payload: None,
         })
     }
 }
@@ -266,6 +267,7 @@ impl From<KeyPackageIn> for KeyPackage {
         Self {
             payload: value.payload.into(),
             signature: value.signature,
+            serialized_payload: None,
         }
     }
 }

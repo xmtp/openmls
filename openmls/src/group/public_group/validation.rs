@@ -152,12 +152,10 @@ impl PublicGroup {
                 .collect();
         }
 
-        // Check that the types of all proposals are supported by all members
+        // Check that the types of all non-default proposals are supported by all members
         for proposal in proposal_queue.queued_proposals() {
             let proposal_type = proposal.proposal().proposal_type();
-            if matches!(proposal_type, ProposalType::Custom(_))
-                && !capabilities_intersection.contains(&proposal_type)
-            {
+            if !proposal_type.is_default() && !capabilities_intersection.contains(&proposal_type) {
                 return Err(ProposalValidationError::UnsupportedProposalType);
             }
         }
@@ -477,6 +475,7 @@ impl PublicGroup {
 
             // ValSem401
             // ValSem402
+            // https://validation.openmls.tech/#valn0803
             let psk_id = psk_id.validate_in_proposal(self.ciphersuite())?;
 
             // ValSem403 (2/2)
@@ -608,6 +607,8 @@ impl PublicGroup {
         // Check that the data in the leaf node is self-consistent
         // Check that the capabilities contain the leaf node's credential
         // type (https://validation.openmls.tech/#valn0113)
+        // Check that all extension types are valid in leaf node
+        // (https://validation.openmls.tech/#valn1601)
         leaf_node.validate_locally()?;
 
         // Check if the ciphersuite and the version of the group are
