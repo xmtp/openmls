@@ -9,6 +9,8 @@ use crate::extensions::{
 };
 
 use super::{last_resort::LastResortExtension, metadata::Metadata};
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::AppDataDictionaryExtension;
 
 fn vlbytes_len_len(length: usize) -> usize {
     if length < 0x40 {
@@ -38,6 +40,8 @@ impl Size for Extension {
             Extension::ExternalSenders(e) => e.tls_serialized_len(),
             Extension::LastResort(e) => e.tls_serialized_len(),
             Extension::ImmutableMetadata(e) => e.tls_serialized_len(),
+            #[cfg(feature = "extensions-draft-08")]
+            Extension::AppDataDictionary(e) => e.tls_serialized_len(),
             Extension::Unknown(_, e) => e.0.len(),
         };
 
@@ -69,6 +73,8 @@ impl Serialize for Extension {
             Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalPub(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
+            #[cfg(feature = "extensions-draft-08")]
+            Extension::AppDataDictionary(e) => e.tls_serialize(&mut extension_data),
             Extension::LastResort(e) => e.tls_serialize(&mut extension_data),
             Extension::ImmutableMetadata(e) => e.tls_serialize(&mut extension_data),
             Extension::Unknown(_, e) => extension_data
@@ -117,14 +123,18 @@ impl Deserialize for Extension {
             ExtensionType::ExternalSenders => Extension::ExternalSenders(
                 ExternalSendersExtension::tls_deserialize(&mut extension_data)?,
             ),
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => Extension::AppDataDictionary(
+                AppDataDictionaryExtension::tls_deserialize(&mut extension_data)?,
+            ),
             ExtensionType::LastResort => {
                 Extension::LastResort(LastResortExtension::tls_deserialize(&mut extension_data)?)
             }
             ExtensionType::ImmutableMetadata => {
                 Extension::ImmutableMetadata(Metadata::tls_deserialize(&mut extension_data)?)
             }
-            ExtensionType::Unknown(unknown) => {
-                Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
+            ExtensionType::Grease(grease) | ExtensionType::Unknown(grease) => {
+                Extension::Unknown(grease, UnknownExtension(extension_data.to_vec()))
             }
         })
     }

@@ -20,10 +20,10 @@ use crate::{
     framing::{
         mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, ContentType,
     },
-    group::GroupId,
+    group::{GroupContext, GroupId},
     key_packages::*,
-    prelude::LeafNode,
     schedule::psk::*,
+    treesync::LeafNode,
     versions::ProtocolVersion,
 };
 
@@ -85,6 +85,9 @@ pub enum ProposalType {
     SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate,
+    Grease(u16),
     Custom(u16),
 }
 
@@ -100,10 +103,18 @@ impl ProposalType {
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
-            ProposalType::SelfRemove | ProposalType::Custom(_) => false,
+            ProposalType::SelfRemove | ProposalType::Grease(_) | ProposalType::Custom(_) => false,
             #[cfg(feature = "extensions-draft-08")]
-            ProposalType::AppEphemeral => false,
+            ProposalType::AppEphemeral | ProposalType::AppDataUpdate => false,
         }
+    }
+
+    /// Returns true if this is a GREASE proposal type.
+    ///
+    /// GREASE values are used to ensure implementations properly handle unknown
+    /// proposal types. See [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
+    pub fn is_grease(&self) -> bool {
+        matches!(self, ProposalType::Grease(_))
     }
 }
 
@@ -170,8 +181,11 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             #[cfg(feature = "extensions-draft-08")]
+            8 => ProposalType::AppDataUpdate,
+            #[cfg(feature = "extensions-draft-08")]
             0x0009 => ProposalType::AppEphemeral,
             0x000a => ProposalType::SelfRemove,
+            other if crate::grease::is_grease_value(other) => ProposalType::Grease(other),
             other => ProposalType::Custom(other),
         }
     }
@@ -188,8 +202,11 @@ impl From<ProposalType> for u16 {
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
             #[cfg(feature = "extensions-draft-08")]
+            ProposalType::AppDataUpdate => 8,
+            #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppEphemeral => 0x0009,
             ProposalType::SelfRemove => 0x000a,
+            ProposalType::Grease(id) => id,
             ProposalType::Custom(id) => id,
         }
     }
@@ -226,6 +243,8 @@ pub enum Proposal {
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // # Extensions
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(Box<AppDataUpdateProposal>),
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
@@ -285,6 +304,8 @@ impl Proposal {
             Proposal::ReInit(_) => ProposalType::Reinit,
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppDataUpdate(_) => ProposalType::AppDataUpdate,
             Proposal::SelfRemove => ProposalType::SelfRemove,
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(_) => ProposalType::AppEphemeral,
@@ -311,7 +332,6 @@ impl Proposal {
             (Proposal::Remove(_), Proposal::Remove(_)) => true,
             // SelfRemoves have the highest priority.
             (_, Proposal::SelfRemove) => true,
-            // All other combinations are invalid
             _ => {
                 debug_assert!(false);
                 false
@@ -491,7 +511,7 @@ pub struct ReInitProposal {
     pub(crate) group_id: GroupId,
     pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: Ciphersuite,
-    pub(crate) extensions: Extensions,
+    pub(crate) extensions: Extensions<GroupContext>,
 }
 
 /// ExternalInit Proposal.
@@ -574,6 +594,7 @@ pub struct AppEphemeralProposal {
     /// Application data.
     data: VLBytes,
 }
+
 #[cfg(feature = "extensions-draft-08")]
 impl AppEphemeralProposal {
     /// Create a new [`AppEphemeralProposal`].
@@ -605,31 +626,37 @@ impl AppEphemeralProposal {
 ///   Extension extensions<V>;
 /// } GroupContextExtensions;
 /// ```
-#[derive(
-    Debug,
-    PartialEq,
-    Eq,
-    Clone,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSerialize,
-    TlsSize,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct GroupContextExtensionProposal {
-    pub(crate) extensions: Extensions,
+    pub(crate) extensions: Extensions<GroupContext>,
+}
+
+impl Size for GroupContextExtensionProposal {
+    fn tls_serialized_len(&self) -> usize {
+        self.extensions.tls_serialized_len()
+    }
+}
+
+impl TlsSerializeTrait for GroupContextExtensionProposal {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        self.extensions.tls_serialize(writer)
+    }
 }
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
-    pub(crate) fn new(extensions: Extensions) -> Self {
+    pub(crate) fn new(extensions: Extensions<GroupContext>) -> Self {
         Self { extensions }
     }
 
     /// Get the extensions of the proposal
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<GroupContext> {
         &self.extensions
+    }
+
+    /// Consumes the proposal and returns the contained extensions.
+    pub fn into_extensions(self) -> Extensions<GroupContext> {
+        self.extensions
     }
 }
 
@@ -679,7 +706,7 @@ pub enum ProposalOrRefType {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 #[repr(u8)]
 #[allow(missing_docs)]
-pub(crate) enum ProposalOrRef {
+pub enum ProposalOrRef {
     #[tls_codec(discriminant = 1)]
     Proposal(Box<Proposal>),
     Reference(Box<ProposalRef>),
@@ -803,6 +830,11 @@ pub(crate) struct MessageRange {
     last_generation: u32,
 }
 
+#[cfg(feature = "extensions-draft-08")]
+mod app_data_update;
+#[cfg(feature = "extensions-draft-08")]
+pub use app_data_update::*;
+
 /// A custom proposal with semantics to be implemented by the application.
 #[derive(
     Debug,
@@ -848,7 +880,8 @@ mod tests {
 
     #[test]
     fn that_unknown_proposal_types_are_de_serialized_correctly() {
-        let proposal_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
+        // Use non-GREASE unknown values for testing (GREASE values have pattern 0x_A_A)
+        let proposal_types = [0x0000u16, 0x0B0B, 0x7C7C, 0xF000, 0xFFFF];
 
         for proposal_type in proposal_types.into_iter() {
             // Construct an unknown proposal type.
