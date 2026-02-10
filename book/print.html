@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-cda49bb9.js";
+            window.path_to_searchindex_js = "searchindex-175104c2.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ed38f94f.js"></script>
+        <script src="toc-e31a8293.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -234,7 +234,6 @@ details.</p>
 <summary>Developer features</summary>
 <ul>
 <li><strong>libcrux-provider</strong>: enable the libcrux crypto provider dependency</li>
-<li><strong>libcrux-provider-js</strong>: enable the libcrux crypto provider with support for compiling to wasm</li>
 <li><strong>openmls_rust_crypto</strong>: enable the rust crypto provider</li>
 <li><strong>sqlite-provider</strong>: enable the sqlite provider</li>
 <li><strong>backtrace</strong>: enable backtraces</li>
@@ -362,13 +361,13 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
-        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(vec![
-            ExternalSender::new(
+        .with_group_context_extensions(
+            Extensions::single(Extension::ExternalSenders(vec![ExternalSender::new(
                 ds_credential_with_key.signature_key.clone(),
                 ds_credential_with_key.credential.clone(),
-            ),
-        ])))
-        .expect("error adding external senders extension to group context extensions")
+            )]))
+            .expect("failed to create single-element extensions list"),
+        )
         .ciphersuite(ciphersuite)
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
@@ -379,10 +378,13 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
             Some(&amp;[CredentialType::Basic]),
         ))
         // Example leaf extension
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff00,
-            UnknownExtension(vec![0, 1, 2, 3]),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff00,
+                UnknownExtension(vec![0, 1, 2, 3]),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
         .expect("failed to configure leaf extensions")
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
@@ -449,7 +451,6 @@ Should the user want to add further extensions, they can use the <code>with_grou
                 2000, // maximum_forward_distance
             ))
             .with_group_context_extensions(extensions) // NB: the builder method returns a Result
-            .expect("failed to apply group context extensions")
             .use_ratchet_tree_extension(true)
             .build(
                 alice_provider,
@@ -545,7 +546,7 @@ with an invalid MLS group instance.</p>
     // Inspect ciphersuite...
     let _ciphersuite = group_context.ciphersuite();
     // Inspect extensions...
-    let extensions: &amp;Extensions = group_context.extensions();
+    let extensions: &amp;Extensions&lt;GroupContext&gt; = group_context.extensions();
 
     // Can check which extensions are enabled
     let _has_ratchet_extension = extensions.ratchet_tree().is_some();
@@ -1227,6 +1228,638 @@ other members in two instances:</p>
 <li>When <a href="#processing-incoming-messages">processing messages</a> (by looking at a add &amp; update proposals of a StagedCommit)</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="working-with-appdata"><a class="header" href="#working-with-appdata">Working with AppData</a></h1>
+<blockquote class="blockquote-tag blockquote-tag-important">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
+<p>Currently this functionality is behind the <code>extensions-draft-08</code> feature.</p>
+</blockquote>
+<p>So far, applications could store group state that all members should agree on in custom
+extensions.
+The <a href="https://datatracker.ietf.org/doc/draft-ietf-mls-extensions/08/">MLS Extensions</a> draft specifies a new mechanism to encode application data in the
+group state via the <code>AppDataDictionary</code> extension.
+When using custom extensions for this purpose, every update message contains the full new state,
+for example in a <code>GroupContextExtensionProposal</code>.
+The <code>AppDataUpdate</code> proposal allows sending only a diff, which the application interprets to produce
+the new state in the <code>AppDataDictionary</code>.</p>
+<p>This is very flexible and allows implementing a wide range of diff-style approaches.
+However, it puts more burden on the application, since it needs to validate and process the updates itself to produce the new state.</p>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>The extensions draft specifies ComponentIDs to be 32 bit, but after publishing this was reduced
+to 16 bit. We are using 16 bit ComponentIDs. More context in issue <a href="https://github.com/mlswg/mls-extensions/issues/69">mls-extensions#69</a></p>
+</blockquote>
+<p>To demonstrate the API, we need a custom component that we keep in the group.</p>
+<h2 id="setting-up-a-custom-component"><a class="header" href="#setting-up-a-custom-component">Setting up a custom Component</a></h2>
+<p>Each application component needs:</p>
+<ul>
+<li>A unique <code>ComponentId</code> (we’ll use <code>0xf042</code>, which is in the private range <code>0x8000..0xffff</code>)</li>
+<li>A data format for the stored state</li>
+<li>A data format for updates (the “diff”)</li>
+<li>Application logic to process updates and compute new state</li>
+</ul>
+<p>For this example, we’ll build a simple counter where:</p>
+<ul>
+<li>The stored state is the counter value as a big-endian <code>u32</code></li>
+<li>Updates are a single byte: <code>0x01</code> = increment, <code>0x02</code> = decrement</li>
+<li>Incrementing a counter that hasn’t been set yet initializes it to 1</li>
+<li>Decrementing below zero is invalid and will cause the commit to be rejected</li>
+</ul>
+<pre><code class="language-rust no_run noplayground">/// Our counter component ID (in the private range 0x8000..0xffff)
+const COUNTER_COMPONENT_ID: u16 = 0xf042;
+
+/// The operations that can be performed on the counter
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CounterOperation {
+    Increment = 0x01,
+    Decrement = 0x02,
+}
+
+impl CounterOperation {
+    fn from_byte(byte: u8) -&gt; Option&lt;Self&gt; {
+        match byte {
+            0x01 =&gt; Some(CounterOperation::Increment),
+            0x02 =&gt; Some(CounterOperation::Decrement),
+            _ =&gt; None,
+        }
+    }
+
+    fn to_bytes(self) -&gt; Vec&lt;u8&gt; {
+        vec![self as u8]
+    }
+}
+
+/// Error type for counter operations
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CounterError {
+    /// Attempted to decrement below zero
+    Underflow,
+    /// Invalid operation byte
+    InvalidOperation,
+}
+
+/// Process a list of counter updates, returning the new counter value.
+///
+/// - `current_value`: The current counter value (None if not yet set)
+/// - `updates`: Iterator of update payloads (each is a single byte)
+///
+/// Returns the new counter value, or an error if the updates are invalid.
+fn process_counter_updates&lt;'a&gt;(
+    current_value: Option&lt;&amp;[u8]&gt;,
+    updates: impl Iterator&lt;Item = &amp;'a [u8]&gt;,
+) -&gt; Result&lt;Vec&lt;u8&gt;, CounterError&gt; {
+    // Parse current value as big-endian u32, defaulting to 0
+    let mut counter: u32 = current_value
+        .map(|bytes| {
+            let arr: [u8; 4] = bytes.try_into().unwrap_or([0; 4]);
+            u32::from_be_bytes(arr)
+        })
+        .unwrap_or(0);
+
+    // Apply each update
+    for update in updates {
+        let op_byte = update.first().ok_or(CounterError::InvalidOperation)?;
+        let op = CounterOperation::from_byte(*op_byte).ok_or(CounterError::InvalidOperation)?;
+
+        match op {
+            CounterOperation::Increment =&gt; {
+                counter = counter.saturating_add(1);
+            }
+            CounterOperation::Decrement =&gt; {
+                counter = counter.checked_sub(1).ok_or(CounterError::Underflow)?;
+            }
+        }
+    }
+
+    Ok(counter.to_be_bytes().to_vec())
+}</code></pre>
+<p>Next, we crate the group.</p>
+<h2 id="group-setup"><a class="header" href="#group-setup">Group Setup</a></h2>
+<p>Both the group and its members must advertise support for <code>AppDataUpdate</code> proposals and the <code>AppDataDictionary</code> extension. This is done through capabilities and required capabilities.</p>
+<pre><code class="language-rust no_run noplayground">/// Set up a group with AppDataUpdate support.
+///
+/// This creates Alice and Bob with the required capabilities and creates
+/// a group where AppDataUpdate proposals are supported.
+fn setup_group_with_app_data_support&lt;'a, Provider: OpenMlsProvider&gt;(
+    alice_party: &amp;'a CorePartyState&lt;Provider&gt;,
+    bob_party: &amp;'a CorePartyState&lt;Provider&gt;,
+    ciphersuite: Ciphersuite,
+) -&gt; GroupState&lt;'a, Provider&gt; {
+    // Define capabilities that include AppDataDictionary extension
+    // and AppDataUpdate proposal support
+    let capabilities = Capabilities::new(
+        None, // protocol versions (default)
+        None, // ciphersuites (default)
+        Some(&amp;[ExtensionType::AppDataDictionary]),
+        Some(&amp;[ProposalType::AppDataUpdate]),
+        None, // credentials (default)
+    );
+
+    // The group context must require these capabilities so that
+    // all members are guaranteed to support them
+    let required_capabilities_extension =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+            &amp;[ExtensionType::AppDataDictionary], // required extensions
+            &amp;[ProposalType::AppDataUpdate],      // required proposals
+            &amp;[],                                 // required credentials
+        ));
+
+    // Create pre-group states with the capabilities
+    let alice_pre_group = alice_party
+        .pre_group_builder(ciphersuite)
+        .with_leaf_node_capabilities(capabilities.clone())
+        .build();
+
+    let bob_pre_group = bob_party
+        .pre_group_builder(ciphersuite)
+        .with_leaf_node_capabilities(capabilities.clone())
+        .build();
+
+    // Configure the group with required capabilities
+    let create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .capabilities(capabilities)
+        .use_ratchet_tree_extension(true)
+        .with_group_context_extensions(
+            Extensions::single(required_capabilities_extension).expect("valid extensions"),
+        )
+        .build();
+
+    let join_config = create_config.join_config().clone();
+
+    // Alice creates the group
+    let mut group_state = GroupState::new_from_party(
+        GroupId::from_slice(b"CounterGroup"),
+        alice_pre_group,
+        create_config,
+    )
+    .expect("failed to create group");
+
+    // Alice adds Bob
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config,
+            tree: None,
+        })
+        .expect("failed to add Bob");
+
+    group_state
+}</code></pre>
+<h2 id="sending-and-receiving-proposals"><a class="header" href="#sending-and-receiving-proposals">Sending and receiving proposals</a></h2>
+<p>This part doesn’t really change.</p>
+<p>Alice sends a proposal to increment the counter:</p>
+<pre><code class="language-rust no_run noplayground">./tests/book_code_app_data.rs:send_proposal}}</code></pre>
+<p>Bob receives and stores the proposal:</p>
+<pre><code class="language-rust no_run noplayground">    // Bob receives and stores the proposal
+    let processed_proposal = bob
+        .group
+        .process_message(
+            &amp;bob_party.provider,
+            proposal_message
+                .into_protocol_message()
+                .expect("failed to convert Proposal MlsMessageOut to ProtocolMessage"),
+        )
+        .expect("failed to process proposal");
+
+    // Verify it's a proposal and store it
+    match processed_proposal.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
+            bob.group
+                .store_pending_proposal(bob_party.provider.storage(), *proposal)
+                .expect("failed to store proposal");
+        }
+        _ =&gt; panic!("expected a proposal message"),
+    }</code></pre>
+<h2 id="sending-commits"><a class="header" href="#sending-commits">Sending Commits</a></h2>
+<p>Now, Alice creates a commit that includes:</p>
+<ul>
+<li>The previously sent proposal (by reference, from her proposal store)</li>
+<li>One additional increment proposal (inline)</li>
+</ul>
+<p>An important change is that Alice must compute the resulting state herself before building the commit:</p>
+<pre><code class="language-rust no_run noplayground">    // Alice creates a commit that includes:
+    // - The previously sent proposal (by reference, from her proposal store)
+    // - Two additional increment proposals (inline)
+    let mut commit_stage = alice
+        .group
+        .commit_builder()
+        .add_proposals(vec![
+            // Two more increments as inline proposals
+            Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::update(
+                COUNTER_COMPONENT_ID,
+                CounterOperation::Increment.to_bytes(),
+            ))),
+        ])
+        .load_psks(alice_party.provider.storage())
+        .expect("failed to load PSKs");
+
+    // Alice must compute the resulting state before building the commit.
+    // She iterates over all AppDataUpdate proposals (both from the proposal
+    // store and inline proposals).
+    let mut alice_updater = commit_stage.app_data_dictionary_updater();
+
+    process_app_data_proposals(&amp;mut alice_updater, commit_stage.app_data_update_proposals())
+        .expect("failed to process proposals");
+
+    // Provide the computed changes to the commit builder
+    commit_stage.with_app_data_dictionary_updates(alice_updater.changes());
+
+    // Build and stage the commit
+    let commit_bundle = commit_stage
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &amp;alice.party.signer,
+            |_proposal| true, // accept all proposals
+        )
+        .expect("failed to build commit")
+        .stage_commit(&amp;alice_party.provider)
+        .expect("failed to stage commit");
+
+    let (commit_message, _welcome, _group_info) = commit_bundle.into_contents();</code></pre>
+<h2 id="receiving-commits"><a class="header" href="#receiving-commits">Receiving Commits</a></h2>
+<p>Bob receives the commit and must independently compute the same new state. He iterates over the proposals in the commit, resolving references from his proposal store:</p>
+<pre><code class="language-rust no_run noplayground">    // Bob receives the commit and must independently compute the same new state.
+
+    // First, unprotect (decrypt) the message
+    let commit_in: MlsMessageIn = commit_message.into();
+    let unverified_message = bob
+        .group
+        .unprotect_message(
+            &amp;bob_party.provider,
+            commit_in
+                .into_protocol_message()
+                .expect("not a protocol message"),
+        )
+        .expect("failed to unprotect message");
+
+    // Create an updater for Bob
+    let mut bob_updater = bob.group.app_data_dictionary_updater();
+
+    // Get the proposals from the commit
+    let committed_proposals = unverified_message
+        .committed_proposals()
+        .expect("not a commit");
+
+    // Process each proposal, resolving references from the proposal store
+    let mut app_data_updates: Vec&lt;AppDataUpdateProposal&gt; = Vec::new();
+
+    for proposal_or_ref in committed_proposals.iter() {
+        // Validate and potentially resolve the reference
+        let validated = proposal_or_ref
+            .clone()
+            .validate(
+                bob_party.provider.crypto(),
+                ciphersuite,
+                ProtocolVersion::Mls10,
+            )
+            .expect("invalid proposal");
+
+        // Resolve to the actual proposal
+        let proposal: Box&lt;Proposal&gt; = match validated {
+            ProposalOrRef::Proposal(proposal) =&gt; proposal,
+            ProposalOrRef::Reference(reference) =&gt; {
+                // Look up the proposal in the proposal store
+                bob.group
+                    .proposal_store()
+                    .proposals()
+                    .find(|p| p.proposal_reference_ref() == &amp;*reference)
+                    .map(|p| Box::new(p.proposal().clone()))
+                    .expect("proposal not found in store")
+            }
+        };
+
+        // Collect AppDataUpdate proposals for processing
+        if let Proposal::AppDataUpdate(app_data_proposal) = *proposal {
+            app_data_updates.push(*app_data_proposal);
+        }
+    }
+
+    // Process the collected proposals
+    process_app_data_proposals(&amp;mut bob_updater, app_data_updates.iter())
+        .expect("failed to process proposals");
+
+    // Now process the message with the computed updates
+    let processed_message = bob
+        .group
+        .process_unverified_message_with_app_data_updates(
+            &amp;bob_party.provider,
+            unverified_message,
+            bob_updater.changes(),
+        )
+        .expect("failed to process commit");
+
+    // Extract and merge the staged commit
+    let staged_commit = match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(commit) =&gt; commit,
+        _ =&gt; panic!("expected a staged commit"),
+    };
+
+    bob.group
+        .merge_staged_commit(&amp;bob_party.provider, *staged_commit)
+        .expect("failed to merge commit");</code></pre>
+<p>After both parties merge, they should have identical state:</p>
+<pre><code class="language-rust no_run noplayground">    // Both parties should now have identical state
+    assert_eq!(
+        alice.group.extensions().app_data_dictionary(),
+        bob.group.extensions().app_data_dictionary(),
+        "dictionaries should match"
+    );
+
+    // Verify the counter value is 3 (three increments)
+    let alice_dict = alice
+        .group
+        .extensions()
+        .app_data_dictionary()
+        .expect("dictionary should exist");
+
+    let counter_bytes = alice_dict
+        .dictionary()
+        .get(&amp;COUNTER_COMPONENT_ID)
+        .expect("counter should exist");
+
+    let counter_value = u32::from_be_bytes(counter_bytes.try_into().expect("invalid length"));
+    assert_eq!(counter_value, 2, "counter should be 2 after two increments");</code></pre>
+<h2 id="error-handling-invalid-updates"><a class="header" href="#error-handling-invalid-updates">Error Handling: Invalid Updates</a></h2>
+<p>If an update would result in invalid state (e.g., decrementing below zero), the application should reject the commit. Here’s what happens when Alice tries to decrement an unset counter:</p>
+<pre><code class="language-rust no_run noplayground">    // Alice tries to decrement an unset counter, which should fail.
+    let commit_stage = alice
+        .group
+        .commit_builder()
+        .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
+            AppDataUpdateProposal::update(
+                COUNTER_COMPONENT_ID,
+                CounterOperation::Decrement.to_bytes(),
+            ),
+        ))])
+        .load_psks(alice_party.provider.storage())
+        .expect("failed to load PSKs");
+
+    let mut alice_updater = commit_stage.app_data_dictionary_updater();
+
+    let proposals: Vec&lt;_&gt; = commit_stage.app_data_update_proposals().collect();
+
+    // This should fail because we can't decrement below zero
+    let result = process_app_data_proposals(&amp;mut alice_updater, proposals.into_iter());
+
+    assert_eq!(
+        result,
+        Err(CounterError::Underflow),
+        "decrementing unset counter should fail"
+    );
+
+    // Alice should not proceed with the commit since the state is invalid.
+    // In a real application, you would handle this error appropriately,
+    // perhaps by notifying the user or choosing different proposals.</code></pre>
+<p>The application detects the invalid state during proposal processing and can choose not to proceed with the commit (on the sender side) or reject the message (on the receiver side).</p>
+<hr>
+<h2 id="verifying-consistency"><a class="header" href="#verifying-consistency">Verifying Consistency</a></h2>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="grease-support"><a class="header" href="#grease-support">GREASE Support</a></h1>
+<p>GREASE (Generate Random Extensions And Sustain Extensibility) is a mechanism defined in <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5">RFC 9420 Section 13.5</a> to ensure that implementations properly handle unknown values and maintain protocol extensibility.</p>
+<h2 id="what-is-grease"><a class="header" href="#what-is-grease">What is GREASE?</a></h2>
+<p>GREASE values are special reserved values that follow a specific pattern (<code>0x0A0A, 0x1A1A, 0x2A2A, ..., 0xEAEA</code>) and are used to:</p>
+<ol>
+<li><strong>Test extensibility</strong>: Ensure implementations don’t reject messages containing unknown values</li>
+<li><strong>Prevent ossification</strong>: Help maintain forward compatibility by exercising unknown value handling paths</li>
+<li><strong>Identify bugs</strong>: Catch implementations that incorrectly assume all possible values are known</li>
+</ol>
+<h3 id="rfc-defined-vs-custom-grease-values"><a class="header" href="#rfc-defined-vs-custom-grease-values">RFC-defined vs. Custom GREASE Values</a></h3>
+<p>The <a href="#grease-values">15 values defined in RFC 9420</a> are the “official” GREASE values. When OpenMLS generates GREASE values (e.g., via <code>with_grease()</code>), it uses these RFC-defined values. The <code>is_grease()</code> method only returns <code>true</code> for these specific values.</p>
+<p>However, <strong>any</strong> unknown value can serve a similar purpose. The difference is that for non-RFC values, we cannot distinguish whether they are intentionally injected “GREASE-like” values or genuinely unknown identifiers from future protocol extensions.</p>
+<h3 id="the-purpose-of-grease"><a class="header" href="#the-purpose-of-grease">The Purpose of GREASE</a></h3>
+<p><strong>Important:</strong> The entire point of GREASE is that implementations should <strong>not</strong> check for these values. GREASE values exist to ensure that your unknown-value handling code paths are exercised. Applications can inject GREASE values into their capabilities to discourage other implementations from:</p>
+<ul>
+<li>Failing on unknown values</li>
+<li>Hard-coding assumptions about which values exist</li>
+<li>Breaking when the protocol is extended</li>
+</ul>
+<p>See <a href="#important-notes">Important Notes</a> for details on how OpenMLS handles GREASE during validation.</p>
+<h2 id="grease-in-openmls"><a class="header" href="#grease-in-openmls">GREASE in OpenMLS</a></h2>
+<p>OpenMLS supports GREASE values for the following types:</p>
+<ul>
+<li><strong>Ciphersuites</strong> (<code>VerifiableCiphersuite</code>)</li>
+<li><strong>Extensions</strong> (<code>ExtensionType::Grease</code>)</li>
+<li><strong>Proposals</strong> (<code>ProposalType::Grease</code>)</li>
+<li><strong>Credentials</strong> (<code>CredentialType::Grease</code>)</li>
+</ul>
+<h3 id="grease-handling"><a class="header" href="#grease-handling">GREASE Handling</a></h3>
+<p>OpenMLS:</p>
+<ol>
+<li><strong>Recognizes GREASE values</strong> during deserialization</li>
+<li><strong>Filters GREASE values</strong> during validation to prevent false negatives (GREASE values are treated the same as unknown values)</li>
+<li><strong>Preserves GREASE values</strong> when present in capabilities</li>
+<li><strong>Provides convenience methods</strong> to inject random GREASE values into capabilities</li>
+</ol>
+<p><strong>Note:</strong> GREASE values are NOT automatically injected. Library users who wish to include GREASE values in their capabilities should use the <code>with_grease()</code> method described below.</p>
+<h2 id="using-grease-values"><a class="header" href="#using-grease-values">Using GREASE Values</a></h2>
+<h3 id="in-capabilities"><a class="header" href="#in-capabilities">In Capabilities</a></h3>
+<p>You can include GREASE values in your KeyPackage capabilities to test interoperability:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+
+let capabilities = Capabilities::builder()
+    .proposals(vec![
+        ProposalType::Add,
+        ProposalType::Update,
+        ProposalType::Remove,
+        ProposalType::Grease(0x0A0A), // Add a GREASE proposal type
+    ])
+    .extensions(vec![
+        ExtensionType::ApplicationId,
+        ExtensionType::Grease(0x1A1A), // Add a GREASE extension type
+    ])
+    .credentials(vec![
+        CredentialType::Basic,
+        CredentialType::Grease(0x2A2A), // Add a GREASE credential type
+    ])
+    .build();
+<span class="boring">}</span></code></pre>
+<h3 id="injecting-random-grease-values"><a class="header" href="#injecting-random-grease-values">Injecting Random GREASE Values</a></h3>
+<p>The easiest way to add GREASE values is using the <code>with_grease()</code> method on <code>Capabilities</code> or <code>CapabilitiesBuilder</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+
+let provider = OpenMlsRustCrypto::default();
+
+// Using CapabilitiesBuilder
+let capabilities = Capabilities::builder()
+    .with_grease(provider.rand())
+    .build();
+
+// Or on an existing Capabilities instance
+let capabilities = Capabilities::default()
+    .with_grease(provider.rand());
+<span class="boring">}</span></code></pre>
+<p>This will add one random GREASE value to each capability list (ciphersuites, extensions, proposals, and credentials) if no GREASE value is already present.</p>
+<h3 id="generating-individual-random-grease-values"><a class="header" href="#generating-individual-random-grease-values">Generating Individual Random GREASE Values</a></h3>
+<p>OpenMLS also provides a helper function to generate individual random GREASE values:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::grease::random_grease_value;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+
+let crypto = OpenMlsRustCrypto::default();
+let grease_value = random_grease_value(&amp;crypto);
+
+// Use in capabilities
+let grease_proposal = ProposalType::Grease(grease_value);
+<span class="boring">}</span></code></pre>
+<h3 id="checking-for-grease-values"><a class="header" href="#checking-for-grease-values">Checking for GREASE Values</a></h3>
+<p>All GREASE-capable types provide an <code>is_grease()</code> method. Note that this method only identifies the <a href="#grease-values">RFC-defined GREASE values</a>—it cannot detect custom unknown values that serve a similar purpose.</p>
+<p><strong>Caution:</strong> As explained in <a href="#the-purpose-of-grease">The Purpose of GREASE</a>, applications should generally <strong>not</strong> use <code>is_grease()</code> for filtering or decision-making. The method exists primarily for OpenMLS’s internal validation logic and for testing/debugging purposes.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+
+let proposal = ProposalType::Grease(0x0A0A);
+assert!(proposal.is_grease());
+
+let extension = ExtensionType::Grease(0x1A1A);
+assert!(extension.is_grease());
+
+let credential = CredentialType::Grease(0x2A2A);
+assert!(credential.is_grease());
+
+use openmls_traits::types::VerifiableCiphersuite;
+let ciphersuite = VerifiableCiphersuite::new(0x3A3A);
+assert!(ciphersuite.is_grease());
+<span class="boring">}</span></code></pre>
+<h2 id="grease-values"><a class="header" href="#grease-values">GREASE Values</a></h2>
+<p>The following 15 values are defined as GREASE values in RFC 9420:</p>
+<ul>
+<li><code>0x0A0A</code></li>
+<li><code>0x1A1A</code></li>
+<li><code>0x2A2A</code></li>
+<li><code>0x3A3A</code></li>
+<li><code>0x4A4A</code></li>
+<li><code>0x5A5A</code></li>
+<li><code>0x6A6A</code></li>
+<li><code>0x7A7A</code></li>
+<li><code>0x8A8A</code></li>
+<li><code>0x9A9A</code></li>
+<li><code>0xAAAA</code></li>
+<li><code>0xBABA</code></li>
+<li><code>0xCACA</code></li>
+<li><code>0xDADA</code></li>
+<li><code>0xEAEA</code></li>
+</ul>
+<h2 id="important-notes"><a class="header" href="#important-notes">Important Notes</a></h2>
+<h3 id="grease-values-cannot-be-used-for-operations"><a class="header" href="#grease-values-cannot-be-used-for-operations">GREASE Values Cannot Be Used for Operations</a></h3>
+<p>GREASE ciphersuites, in particular, cannot be used for actual cryptographic operations. They exist only to test capability negotiation and should never be selected as the active ciphersuite for a group.</p>
+<h3 id="validation-automatically-filters-grease"><a class="header" href="#validation-automatically-filters-grease">Validation Automatically Filters GREASE</a></h3>
+<p>When OpenMLS validates capabilities, it automatically filters out GREASE values. This means:</p>
+<ul>
+<li>Two members with different GREASE values in their capabilities can still interoperate</li>
+<li>GREASE values don’t affect capability intersection or matching</li>
+<li>Required capabilities never include GREASE values</li>
+</ul>
+<h3 id="interoperability-testing"><a class="header" href="#interoperability-testing">Interoperability Testing</a></h3>
+<p>Including GREASE values in your capabilities is recommended for testing interoperability with other MLS implementations. It helps ensure that:</p>
+<ol>
+<li>Other implementations correctly handle unknown values</li>
+<li>Your implementation correctly filters GREASE during validation</li>
+<li>Protocol extensibility is maintained</li>
+</ol>
+<h2 id="example-full-usage"><a class="header" href="#example-full-usage">Example: Full Usage</a></h2>
+<p>Here’s a complete example showing GREASE usage with the recommended <code>with_grease()</code> method:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::Ciphersuite;
+
+let provider = OpenMlsRustCrypto::default();
+
+// Create a credential
+let credential = BasicCredential::new(b"Alice".to_vec());
+let signature_keys = SignatureKeyPair::new(
+    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.signature_algorithm()
+).unwrap();
+
+// Create capabilities with automatic random GREASE values
+let capabilities = Capabilities::builder()
+    .with_grease(provider.rand())
+    .build();
+
+// Create a KeyPackage with GREASE values
+let key_package = KeyPackage::builder()
+    .leaf_node_capabilities(capabilities)
+    .build(
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        &amp;provider,
+        &amp;signature_keys,
+        CredentialWithKey {
+            credential: credential.into(),
+            signature_key: signature_keys.public().into(),
+        },
+    )
+    .unwrap();
+
+// The KeyPackage can be used normally - GREASE values are handled during validation
+<span class="boring">}</span></code></pre>
+<h3 id="example-manually-specifying-grease-values"><a class="header" href="#example-manually-specifying-grease-values">Example: Manually Specifying GREASE Values</a></h3>
+<p>If you need to specify particular GREASE values (e.g., for testing or interoperability):</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::Ciphersuite;
+
+let provider = OpenMlsRustCrypto::default();
+
+// Create a credential
+let credential = BasicCredential::new(b"Alice".to_vec());
+let signature_keys = SignatureKeyPair::new(
+    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.signature_algorithm()
+).unwrap();
+
+// Create capabilities with specific GREASE values
+let capabilities = Capabilities::builder()
+    .proposals(vec![
+        ProposalType::Add,
+        ProposalType::Update,
+        ProposalType::Remove,
+        ProposalType::Grease(0x0A0A),
+        ProposalType::Grease(0x1A1A),
+    ])
+    .extensions(vec![
+        ExtensionType::ApplicationId,
+        ExtensionType::Grease(0x2A2A),
+    ])
+    .credentials(vec![
+        CredentialType::Basic,
+        CredentialType::Grease(0x3A3A),
+    ])
+    .build();
+
+// Create a KeyPackage with these capabilities
+let key_package = KeyPackage::builder()
+    .leaf_node_capabilities(capabilities)
+    .build(
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        &amp;provider,
+        &amp;signature_keys,
+        CredentialWithKey {
+            credential: credential.into(),
+            signature_key: signature_keys.public().into(),
+        },
+    )
+    .unwrap();
+<span class="boring">}</span></code></pre>
+<h2 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h2>
+<ul>
+<li><a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5">RFC 9420 Section 13.5: GREASE</a></li>
+<li><a href="https://www.rfc-editor.org/rfc/rfc8701.html">RFC 8701: Applying GREASE to TLS Extensibility</a> - The original GREASE specification for TLS</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="webassembly"><a class="header" href="#webassembly">WebAssembly</a></h1>
 <p>OpenMLS can be built for WebAssembly. However, it does require two features that WebAssembly itself does not provide: access to secure randomness and the current time. Currently, this means that it can only run in a runtime that provides common JavaScript APIs (e.g. in the browser or node.js), accessed through the <code>web_sys</code> crate.
 You can enable the <code>js</code> feature on the <code>openmls</code> crate to signal that the APIs are available.</p>
@@ -1400,7 +2033,11 @@ Notice how Alice needs to provide a new key package for Bob.</p>
     // Make Bob re-join the group and Alice and Charlie merge the commit that adds Bob.
     let (commit, welcome, _) = readd_messages.into_contents();
     let welcome = welcome.unwrap();
-    let bob_group = StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome, None)
+    let processed_welcome =
+        ProcessedWelcome::new_from_welcome(bob_provider, &amp;mls_group_config, welcome).unwrap();
+    let bob_group = JoinBuilder::new(bob_provider, processed_welcome)
+        .replace_old_group()
+        .build()
         .unwrap()
         .into_group(bob_provider)
         .unwrap();
@@ -1696,10 +2333,20 @@ do, we provide two implementations that can be used.</p>
 <p><strong>Rust Crypto Provider</strong>
 The go-to default at the moment is an implementation using commonly used, native
 Rust crypto implementations.</p>
+<p>Supported ciphersuites</p>
+<ul>
+<li>MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</li>
+<li>MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519</li>
+<li>MLS_128_DHKEMP256_AES128GCM_SHA256_P256</li>
+</ul>
 <p><strong>Libcrux Crypto Provider</strong>
-A crypto provider backed by the high-assurance cryptography library [libcrux].
-Currently only supports relatively modern x86 and amd64 CPUs, as it requires
-AES-NI, SIMD and AVX.</p>
+A crypto provider backed by the high-assurance cryptography library [libcrux].</p>
+<p>Supported ciphersuites</p>
+<ul>
+<li>MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</li>
+<li>MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519</li>
+<li>MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519</li>
+</ul>
 <h2 id="the-traits"><a class="header" href="#the-traits">The Traits</a></h2>
 <p>There are 4 different traits defined in the <a href="https://crates.io/crates/openmls_traits">OpenMLS traits crate</a>.</p>
 <h3 id="openmlsrand"><a class="header" href="#openmlsrand">OpenMlsRand</a></h3>
