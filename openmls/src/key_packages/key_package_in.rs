@@ -4,7 +4,7 @@
 use crate::{
     ciphersuite::{signable::*, *},
     credentials::*,
-    extensions::Extensions,
+    extensions::{AnyObject, Extensions},
     group::LeafNodeLifetimePolicy,
     treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
     versions::ProtocolVersion,
@@ -93,7 +93,7 @@ struct KeyPackageTbsIn {
     ciphersuite: Ciphersuite,
     init_key: InitKey,
     leaf_node: LeafNodeIn,
-    extensions: Extensions,
+    extensions: Extensions<AnyObject>,
 }
 
 /// The key package struct.
@@ -173,7 +173,7 @@ impl KeyPackageIn {
             ciphersuite: self.payload.ciphersuite,
             init_key: self.payload.init_key,
             leaf_node,
-            extensions: self.payload.extensions,
+            extensions: self.payload.extensions.try_into()?,
         };
 
         // Verify the KeyPackage signature
@@ -225,7 +225,7 @@ impl From<KeyPackageTbsIn> for KeyPackageTbs {
             ciphersuite: value.ciphersuite,
             init_key: value.init_key,
             leaf_node: value.leaf_node.into(),
-            extensions: value.extensions,
+            extensions: value.extensions.coerce(),
         }
     }
 }
@@ -237,7 +237,7 @@ impl From<KeyPackageTbs> for KeyPackageTbsIn {
             ciphersuite: value.ciphersuite,
             init_key: value.init_key,
             leaf_node: value.leaf_node.into(),
-            extensions: value.extensions,
+            extensions: value.extensions.into(),
         }
     }
 }

@@ -33,7 +33,7 @@ impl MlsGroup {
         signer: &impl Signer,
         key_packages_to_add: &[KeyPackage],
         leaf_nodes_to_remove: &[LeafNodeIndex],
-        new_extensions: Extensions,
+        new_extensions: Extensions<GroupContext>,
     ) -> UpdateResult<Provider> {
         self.is_operational()?;
 
@@ -41,7 +41,7 @@ impl MlsGroup {
             .commit_builder()
             .propose_adds(key_packages_to_add.iter().cloned())
             .propose_removals(leaf_nodes_to_remove.iter().cloned())
-            .propose_group_context_extensions(new_extensions)
+            .propose_group_context_extensions(new_extensions)?
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)?;
