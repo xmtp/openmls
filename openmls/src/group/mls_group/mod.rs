@@ -39,7 +39,7 @@ use crate::{
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{
         node::{encryption_keys::EncryptionKeyPair, leaf_node::LeafNode},
-        RatchetTree,
+        RatchetTree, TreeSync,
     },
     versions::ProtocolVersion,
 };
@@ -347,6 +347,11 @@ impl MlsGroup {
         self.proposal_store().proposals()
     }
 
+    /// Returns the current tree state of the group, in the form of a [`TreeSync`].
+    pub fn treesync(&self) -> &TreeSync {
+        self.public_group.treesync()
+    }
+
     /// Returns a reference to the [`StagedCommit`] of the most recently created
     /// commit. If there was no commit created in this epoch, either because
     /// this commit or another commit was merged, it returns `None`.
@@ -413,6 +418,15 @@ impl MlsGroup {
     /// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
     pub fn extensions(&self) -> &Extensions<GroupContext> {
         self.public_group().group_context().extensions()
+    }
+
+    /// Returns a [`crate::treesync::errors::LeafNodeValidationError`] if an [`crate::extensions::ExtensionType`]
+    /// in `extensions` is not supported by a leaf in this group.
+    pub fn check_extension_support(
+        &self,
+        extensions: &[crate::extensions::ExtensionType],
+    ) -> Result<(), crate::treesync::errors::LeafNodeValidationError> {
+        self.public_group.check_extension_support(extensions)
     }
 
     /// Returns the index of the sender of a staged, external commit.
