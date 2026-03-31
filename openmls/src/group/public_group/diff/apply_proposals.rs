@@ -294,9 +294,7 @@ impl PublicGroupDiff<'_> {
             .add_or_replace(Extension::AppDataDictionary(
                 AppDataDictionaryExtension::new(dictionary),
             ))
-            .map_err(|_| {
-                ApplyAppDataUpdateError::LibraryError(LibraryError::custom("Invalid extension"))
-            })?;
+            .map_err(|_| LibraryError::custom("Failed to update AppDataDictionary extension"))?;
 
         Ok(())
     }
