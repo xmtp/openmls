@@ -30,6 +30,11 @@ use crate::{
 };
 use std::time::Duration;
 
+#[cfg(target_arch = "wasm32")]
+use web_time::{Instant, SystemTime};
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{Instant, SystemTime};
+
 const INTERVAL: Duration = Duration::from_millis(100);
 
 /// Helper function to set up an MlsGroup configured with the provided past epoch deletion policy
@@ -108,7 +113,7 @@ fn max_epochs_with_duration<Provider: crate::storage::OpenMlsProvider>(
     let (alice_provider, alice_signer, mut alice_group) =
         setup::<Provider>(ciphersuite, policy.clone());
 
-    let start = std::time::Instant::now();
+    let start = Instant::now();
 
     // apply and merge commits to advance the group epoch
     apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
@@ -152,7 +157,7 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
 
     // === Test the `delete_past_epoch_secrets()` API with a timestamp ===
 
-    let start = std::time::SystemTime::now();
+    let start = SystemTime::now();
 
     // apply and merge commits to advance the group epoch
     apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
@@ -189,7 +194,7 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
     alice_group
         .delete_past_epoch_secrets(
             &alice_provider,
-            PastEpochDeletion::before_timestamp(std::time::SystemTime::now()),
+            PastEpochDeletion::before_timestamp(SystemTime::now()),
         )
         .expect("error deleting past epoch secrets");
     // assert all past secrets deleted
@@ -222,7 +227,7 @@ fn keep_all_policy_with_duration<Provider: crate::storage::OpenMlsProvider>(
     let (alice_provider, alice_signer, mut alice_group) =
         setup::<Provider>(ciphersuite, policy.clone());
 
-    let start = std::time::Instant::now();
+    let start = Instant::now();
 
     // apply and merge commits to advance the group epoch
     apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
@@ -275,7 +280,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     alice_group
         .delete_past_epoch_secrets(
             &alice_provider,
-            PastEpochDeletion::before_timestamp(std::time::SystemTime::UNIX_EPOCH)
+            PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH)
                 .max_past_epochs(5),
         )
         .expect("error deleting past epoch secrets");
@@ -289,7 +294,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     alice_group
         .delete_past_epoch_secrets(
             &alice_provider,
-            PastEpochDeletion::before_timestamp(std::time::SystemTime::UNIX_EPOCH)
+            PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH)
                 .max_past_epochs(3),
         )
         .expect("error deleting past epoch secrets");
@@ -303,7 +308,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     alice_group
         .delete_past_epoch_secrets(
             &alice_provider,
-            PastEpochDeletion::before_timestamp(std::time::SystemTime::UNIX_EPOCH)
+            PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH)
                 .max_past_epochs(1),
         )
         .expect("error deleting past epoch secrets");
@@ -317,7 +322,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     alice_group
         .delete_past_epoch_secrets(
             &alice_provider,
-            PastEpochDeletion::before_timestamp(std::time::SystemTime::now()),
+            PastEpochDeletion::before_timestamp(SystemTime::now()),
         )
         .expect("error deleting past epoch secrets");
     // assert all past secrets deleted
@@ -382,7 +387,7 @@ fn delete_all<Provider: crate::storage::OpenMlsProvider>() {
 fn setup_tree_store_with_timestamps<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
-    entries: &[Option<std::time::SystemTime>],
+    entries: &[Option<SystemTime>],
 ) -> MessageSecretsStore {
     // Create a store
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
@@ -586,13 +591,13 @@ fn test_secret_tree_store_migration_next_epoch_timestamp() {
 
     // test deletion of all message secrets before the timestamp
     message_secrets_store.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(
-        std::time::SystemTime::UNIX_EPOCH,
+        SystemTime::UNIX_EPOCH,
     ));
     assert_eq!(message_secrets_store.num_past_epoch_trees(), 2);
 
     // test deletion of all message secrets before the timestamp
     message_secrets_store.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(
-        std::time::SystemTime::now(),
+        SystemTime::now(),
     ));
     assert_eq!(message_secrets_store.num_past_epoch_trees(), 0);
 }
@@ -634,7 +639,7 @@ fn test_secret_tree_store_migration_next_epoch_duration() {
 fn test_secret_tree_store_mixed_delete_by_timestamp() {
     let provider = &Provider::default();
 
-    let timestamp_before = std::time::SystemTime::now();
+    let timestamp_before = SystemTime::now();
 
     // Set up a secret tree store with mixed Some and None timestamps
     // NOTE: For completeness, this sequence of epoch tree timestamps is tested.
@@ -644,11 +649,11 @@ fn test_secret_tree_store_mixed_delete_by_timestamp() {
         provider,
         &[
             None,                                    //0
-            Some(std::time::SystemTime::UNIX_EPOCH), //1
+            Some(SystemTime::UNIX_EPOCH), //1
             None,                                    //2
-            Some(std::time::SystemTime::UNIX_EPOCH), //3
+            Some(SystemTime::UNIX_EPOCH), //3
             None,                                    //4
-            Some(std::time::SystemTime::now()),      //5
+            Some(SystemTime::now()),      //5
             None,                                    //6
         ],
     );
@@ -680,11 +685,11 @@ fn test_secret_tree_store_mixed_delete_by_duration() {
         provider,
         &[
             None,                                    //0
-            Some(std::time::SystemTime::UNIX_EPOCH), //1
+            Some(SystemTime::UNIX_EPOCH), //1
             None,                                    //2
-            Some(std::time::SystemTime::UNIX_EPOCH), //3
+            Some(SystemTime::UNIX_EPOCH), //3
             None,                                    //4
-            Some(std::time::SystemTime::now()),      //5
+            Some(SystemTime::now()),      //5
             None,                                    //6
         ],
     );
@@ -717,7 +722,7 @@ fn test_secret_tree_store() {
     message_secrets_store.add_past_epoch_tree(
         0,
         MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
-            .with_timestamp(std::time::SystemTime::now()),
+            .with_timestamp(SystemTime::now()),
         Vec::new(),
     );
 
@@ -729,7 +734,7 @@ fn test_secret_tree_store() {
         message_secrets_store.add_past_epoch_tree(
             i,
             MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
-                .with_timestamp(std::time::SystemTime::now()),
+                .with_timestamp(SystemTime::now()),
             Vec::new(),
         );
     }
@@ -759,7 +764,7 @@ fn test_empty_secret_tree_store() {
     message_secrets_store.add_past_epoch_tree(
         0,
         MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
-            .with_timestamp(std::time::SystemTime::now()),
+            .with_timestamp(SystemTime::now()),
         Vec::new(),
     );
 
