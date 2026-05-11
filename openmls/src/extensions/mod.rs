@@ -88,6 +88,9 @@ mod tests;
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A        | N/A         | RFC XXXX  |
 ///
 /// Note: OpenMLS does not provide a `Reserved` variant in [ExtensionType].
+// Variant order is part of the serde wire format for non-self-describing
+// serializers like bincode. Do not reorder existing variants; append new
+// variants at the end of the enum.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 pub enum ExtensionType {
     /// The application id extension allows applications to add an explicit,
@@ -118,15 +121,18 @@ pub enum ExtensionType {
     /// This can only be set on creation of the group.
     ImmutableMetadata,
 
-    #[cfg(feature = "extensions-draft-08")]
-    /// AppDataDictionary extension
-    AppDataDictionary,
+    /// A currently unknown extension type.
+    Unknown(u16),
 
+    // --- Variants appended after openmls-0.7.x ---
+    // New variants MUST be added below this line to preserve the serde wire
+    // format with older persisted data.
     /// A GREASE extension type for ensuring extensibility.
     Grease(u16),
 
-    /// A currently unknown extension type.
-    Unknown(u16),
+    #[cfg(feature = "extensions-draft-08")]
+    /// AppDataDictionary extension
+    AppDataDictionary,
 }
 
 impl ExtensionType {
@@ -321,6 +327,9 @@ impl ExtensionType {
 ///     opaque extension_data<V>;
 /// } Extension;
 /// ```
+// Variant order is part of the serde wire format for non-self-describing
+// serializers like bincode. Do not reorder existing variants; append new
+// variants at the end of the enum.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Extension {
     /// An [`ApplicationIdExtension`]
@@ -338,10 +347,6 @@ pub enum Extension {
     /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
 
-    /// An [`AppDataDictionaryExtension`]
-    #[cfg(feature = "extensions-draft-08")]
-    AppDataDictionary(AppDataDictionaryExtension),
-
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
 
@@ -350,6 +355,13 @@ pub enum Extension {
 
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
+
+    // --- Variants appended after openmls-0.7.x ---
+    // New variants MUST be added below this line to preserve the serde wire
+    // format with older persisted data.
+    /// An [`AppDataDictionaryExtension`]
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataDictionary(AppDataDictionaryExtension),
 }
 
 /// A unknown/unparsed extension represented by raw bytes.
