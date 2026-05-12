@@ -142,6 +142,7 @@ const EXTENSION_TYPE_VARIANTS: &[&str] = &[
     "ExternalPub",
     "ExternalSenders",
     "LastResort",
+    "ImmutableMetadata",
     "Unknown",
     "Grease",
     #[cfg(feature = "extensions-draft-08")]
@@ -167,15 +168,18 @@ impl Serialize for ExtensionType {
                 serializer.serialize_unit_variant("ExtensionType", 4, "ExternalSenders")
             }
             Self::LastResort => serializer.serialize_unit_variant("ExtensionType", 5, "LastResort"),
+            Self::ImmutableMetadata => {
+                serializer.serialize_unit_variant("ExtensionType", 6, "ImmutableMetadata")
+            }
             Self::Unknown(v) => {
-                serializer.serialize_newtype_variant("ExtensionType", 6, "Unknown", v)
+                serializer.serialize_newtype_variant("ExtensionType", 7, "Unknown", v)
             }
             Self::Grease(v) => {
-                serializer.serialize_newtype_variant("ExtensionType", 7, "Grease", v)
+                serializer.serialize_newtype_variant("ExtensionType", 8, "Grease", v)
             }
             #[cfg(feature = "extensions-draft-08")]
             Self::AppDataDictionary => {
-                serializer.serialize_unit_variant("ExtensionType", 8, "AppDataDictionary")
+                serializer.serialize_unit_variant("ExtensionType", 9, "AppDataDictionary")
             }
         }
     }
@@ -199,6 +203,7 @@ enum ExtensionTypeId {
     ExternalPub,
     ExternalSenders,
     LastResort,
+    ImmutableMetadata,
     Unknown,
     Grease,
     #[cfg(feature = "extensions-draft-08")]
@@ -223,10 +228,11 @@ impl<'de> Deserialize<'de> for ExtensionTypeId {
                     3 => Ok(ExtensionTypeId::ExternalPub),
                     4 => Ok(ExtensionTypeId::ExternalSenders),
                     5 => Ok(ExtensionTypeId::LastResort),
-                    6 => Ok(ExtensionTypeId::Unknown),
-                    7 => Ok(ExtensionTypeId::Grease),
+                    6 => Ok(ExtensionTypeId::ImmutableMetadata),
+                    7 => Ok(ExtensionTypeId::Unknown),
+                    8 => Ok(ExtensionTypeId::Grease),
                     #[cfg(feature = "extensions-draft-08")]
-                    8 => Ok(ExtensionTypeId::AppDataDictionary),
+                    9 => Ok(ExtensionTypeId::AppDataDictionary),
                     other => Err(E::invalid_value(
                         serde::de::Unexpected::Unsigned(other),
                         &"valid ExtensionType variant index",
@@ -242,6 +248,7 @@ impl<'de> Deserialize<'de> for ExtensionTypeId {
                     "ExternalPub" => Ok(ExtensionTypeId::ExternalPub),
                     "ExternalSenders" => Ok(ExtensionTypeId::ExternalSenders),
                     "LastResort" => Ok(ExtensionTypeId::LastResort),
+                    "ImmutableMetadata" => Ok(ExtensionTypeId::ImmutableMetadata),
                     "Unknown" => Ok(ExtensionTypeId::Unknown),
                     "Grease" => Ok(ExtensionTypeId::Grease),
                     #[cfg(feature = "extensions-draft-08")]
@@ -294,6 +301,10 @@ impl<'de> serde::de::Visitor<'de> for ExtensionTypeVisitor {
             ExtensionTypeId::LastResort => {
                 access.unit_variant()?;
                 Ok(ExtensionType::LastResort)
+            }
+            ExtensionTypeId::ImmutableMetadata => {
+                access.unit_variant()?;
+                Ok(ExtensionType::ImmutableMetadata)
             }
             ExtensionTypeId::Unknown => Ok(ExtensionType::Unknown(access.newtype_variant()?)),
             ExtensionTypeId::Grease => Ok(ExtensionType::Grease(access.newtype_variant()?)),
@@ -538,6 +549,7 @@ const EXTENSION_VARIANTS: &[&str] = &[
     "ExternalPub",
     "ExternalSenders",
     "LastResort",
+    "ImmutableMetadata",
     "Unknown",
     #[cfg(feature = "extensions-draft-08")]
     "AppDataDictionary",
@@ -565,15 +577,18 @@ impl Serialize for Extension {
             Self::LastResort(e) => {
                 serializer.serialize_newtype_variant("Extension", 5, "LastResort", e)
             }
+            Self::ImmutableMetadata(e) => {
+                serializer.serialize_newtype_variant("Extension", 6, "ImmutableMetadata", e)
+            }
             Self::Unknown(t, data) => {
-                let mut tv = serializer.serialize_tuple_variant("Extension", 6, "Unknown", 2)?;
+                let mut tv = serializer.serialize_tuple_variant("Extension", 7, "Unknown", 2)?;
                 tv.serialize_field(t)?;
                 tv.serialize_field(data)?;
                 tv.end()
             }
             #[cfg(feature = "extensions-draft-08")]
             Self::AppDataDictionary(e) => {
-                serializer.serialize_newtype_variant("Extension", 7, "AppDataDictionary", e)
+                serializer.serialize_newtype_variant("Extension", 8, "AppDataDictionary", e)
             }
         }
     }
@@ -593,6 +608,7 @@ enum ExtensionId {
     ExternalPub,
     ExternalSenders,
     LastResort,
+    ImmutableMetadata,
     Unknown,
     #[cfg(feature = "extensions-draft-08")]
     AppDataDictionary,
@@ -616,9 +632,10 @@ impl<'de> Deserialize<'de> for ExtensionId {
                     3 => Ok(ExtensionId::ExternalPub),
                     4 => Ok(ExtensionId::ExternalSenders),
                     5 => Ok(ExtensionId::LastResort),
-                    6 => Ok(ExtensionId::Unknown),
+                    6 => Ok(ExtensionId::ImmutableMetadata),
+                    7 => Ok(ExtensionId::Unknown),
                     #[cfg(feature = "extensions-draft-08")]
-                    7 => Ok(ExtensionId::AppDataDictionary),
+                    8 => Ok(ExtensionId::AppDataDictionary),
                     other => Err(E::invalid_value(
                         serde::de::Unexpected::Unsigned(other),
                         &"valid Extension variant index",
@@ -634,6 +651,7 @@ impl<'de> Deserialize<'de> for ExtensionId {
                     "ExternalPub" => Ok(ExtensionId::ExternalPub),
                     "ExternalSenders" => Ok(ExtensionId::ExternalSenders),
                     "LastResort" => Ok(ExtensionId::LastResort),
+                    "ImmutableMetadata" => Ok(ExtensionId::ImmutableMetadata),
                     "Unknown" => Ok(ExtensionId::Unknown),
                     #[cfg(feature = "extensions-draft-08")]
                     "AppDataDictionary" => Ok(ExtensionId::AppDataDictionary),
@@ -672,6 +690,9 @@ impl<'de> serde::de::Visitor<'de> for ExtensionVisitor {
                 Ok(Extension::ExternalSenders(access.newtype_variant()?))
             }
             ExtensionId::LastResort => Ok(Extension::LastResort(access.newtype_variant()?)),
+            ExtensionId::ImmutableMetadata => {
+                Ok(Extension::ImmutableMetadata(access.newtype_variant()?))
+            }
             ExtensionId::Unknown => {
                 struct UnknownPayload;
                 impl<'de> serde::de::Visitor<'de> for UnknownPayload {
