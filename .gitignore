@@ -17,3 +17,6 @@ fuzz/artifacts
 
 # AI
 .cursor/
+.envrc
+.direnv/**
+**/.direnv/**

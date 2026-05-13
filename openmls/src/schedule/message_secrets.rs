@@ -1,8 +1,27 @@
 //! This module defines the [`MessageSecrets`] struct that can be used for message decryption & verification
 
+#[cfg(target_arch = "wasm32")]
+use web_time::SystemTime;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::SystemTime;
+
 use super::*;
 
 /// Combined message secrets that need to be stored for later decryption/verification
+//
+// IMPORTANT: this struct is part of the persisted on-disk format (it lives
+// inside `MessageSecretsStore`, which is written by the storage provider).
+// The five serialized fields are the openmls-0.7.x shape and MUST NOT be
+// reordered or have fields inserted between them — the wire format is
+// `bincode`/`postcard` positional encoding and any change breaks all stored
+// state.
+//
+// The `added_at` timestamp is a fork-only extension. It is NOT serialized as
+// part of `MessageSecrets` itself (doing so would corrupt the byte stream of
+// any containing struct that has fields after `message_secrets`). Instead it
+// is carried as a trailing, tolerantly-deserialized field on the *containing*
+// structs (`EpochTree` and `MessageSecretsStore`) and re-hydrated back onto
+// the `MessageSecrets` during deserialization. See `past_secrets.rs`.
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
@@ -12,11 +31,28 @@ pub(crate) struct MessageSecrets {
     confirmation_key: ConfirmationKey,
     serialized_context: Vec<u8>,
     secret_tree: SecretTree,
-    /// When the secrets were added to the store
-    /// `None` if no timestamp is available
+    /// When the secrets were added to the store.
+    ///
+    /// `None` if no timestamp is available — including when reading data
+    /// that predates this field.
+    ///
+    /// Skipped during serde: persisted out-of-band as a trailing optional
+    /// field on the containing struct (see module-level doc).
+    ///
     /// NOTE: SystemTime is not guaranteed to be monotonic.
-    #[serde(default)]
-    added_at: Option<std::time::SystemTime>,
+    #[serde(skip)]
+    pub(crate) added_at: Option<SystemTime>,
+}
+
+// In tests we allow comparing secrets.
+#[cfg(any(test, feature = "test-utils"))]
+impl PartialEq for MessageSecrets {
+    fn eq(&self, other: &Self) -> bool {
+        self.sender_data_secret == other.sender_data_secret
+            && self.membership_key == other.membership_key
+            && self.confirmation_key == other.confirmation_key
+            && self.secret_tree == other.secret_tree
+    }
 }
 
 #[cfg(not(feature = "crypto-debug"))]
@@ -77,13 +113,13 @@ impl MessageSecrets {
         &mut self.secret_tree
     }
 
-    pub(crate) fn timestamp(&self) -> Option<std::time::SystemTime> {
+    pub(crate) fn timestamp(&self) -> Option<SystemTime> {
         self.added_at
     }
 
     pub(crate) fn with_timestamp(
         self,
-        timestamp: impl Into<Option<std::time::SystemTime>>,
+        timestamp: impl Into<Option<SystemTime>>,
     ) -> Self {
         Self {
             added_at: timestamp.into(),
@@ -143,16 +179,5 @@ impl MessageSecrets {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn replace_secret_tree(&mut self, secret_tree: SecretTree) -> SecretTree {
         std::mem::replace(&mut self.secret_tree, secret_tree)
-    }
-}
-
-// In tests we allow comparing secrets.
-#[cfg(any(test, feature = "test-utils"))]
-impl PartialEq for MessageSecrets {
-    fn eq(&self, other: &Self) -> bool {
-        self.sender_data_secret == other.sender_data_secret
-            && self.membership_key == other.membership_key
-            && self.confirmation_key == other.confirmation_key
-            && self.secret_tree == other.secret_tree
     }
 }

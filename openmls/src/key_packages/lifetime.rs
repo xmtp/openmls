@@ -1,5 +1,5 @@
 #[cfg(target_arch = "wasm32")]
-use fluvio_wasm_timer::{SystemTime, UNIX_EPOCH};
+use web_time::{SystemTime, UNIX_EPOCH};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -138,7 +138,7 @@ impl Default for Lifetime {
 mod tests {
     use core::time::Duration;
     #[cfg(target_arch = "wasm32")]
-    use fluvio_wasm_timer::SystemTime;
+    use web_time::SystemTime;
     #[cfg(not(target_arch = "wasm32"))]
     use std::time::SystemTime;
 
