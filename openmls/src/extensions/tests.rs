@@ -503,10 +503,11 @@ fn extension_type_variant_indices() {
     check(ExtensionType::ExternalPub, 3, "ExternalPub");
     check(ExtensionType::ExternalSenders, 4, "ExternalSenders");
     check(ExtensionType::LastResort, 5, "LastResort");
-    check(ExtensionType::Unknown(0), 6, "Unknown");
-    check(ExtensionType::Grease(0), 7, "Grease");
+    check(ExtensionType::ImmutableMetadata, 6, "ImmutableMetadata");
+    check(ExtensionType::Unknown(0), 7, "Unknown");
+    check(ExtensionType::Grease(0), 8, "Grease");
     #[cfg(feature = "extensions-draft-08")]
-    check(ExtensionType::AppDataDictionary, 8, "AppDataDictionary");
+    check(ExtensionType::AppDataDictionary, 9, "AppDataDictionary");
 }
 
 /// Locks the `(variant_index, variant_name)` pair for each [`Extension`]
@@ -560,14 +561,19 @@ fn extension_variant_indices() {
         "LastResort",
     );
     check(
-        Extension::Unknown(0, UnknownExtension(vec![])),
+        Extension::ImmutableMetadata(crate::extensions::Metadata::new(vec![])),
         6,
+        "ImmutableMetadata",
+    );
+    check(
+        Extension::Unknown(0, UnknownExtension(vec![])),
+        7,
         "Unknown",
     );
     #[cfg(feature = "extensions-draft-08")]
     check(
         Extension::AppDataDictionary(AppDataDictionaryExtension::new(AppDataDictionary::new())),
-        7,
+        8,
         "AppDataDictionary",
     );
 }
