@@ -129,6 +129,27 @@ impl PublicGroupDiff<'_> {
             }
         }
 
+        // For external commits, reserve the joiner's own leaf with a placeholder
+        // before processing Add proposals. Otherwise the by-value Adds would
+        // race for the leftmost-free slot and collide with the joiner's slot
+        // (which was chosen by `leftmost_free_index` at external-commit-builder
+        // time, before the joiner was aware of any subsequent by-value Adds).
+        //
+        // After Removes and SelfRemoves are processed above, `free_leaf_index`
+        // on the diff matches the `leftmost_free_index` computation used both
+        // by the joiner (when populating `own_leaf_index` for the new group)
+        // and by receivers (when validating the commit, see
+        // `PublicGroup::leftmost_free_index`). The placeholder we plant here
+        // is later overwritten by the joiner's freshly-signed LeafNode in
+        // `apply_own_update_path` on the send side, or by
+        // `apply_received_update_path` on the receive side.
+        if external_init_proposal_option.is_some() {
+            let placeholder = LeafNode::new_placeholder();
+            self.diff
+                .add_leaf(placeholder)
+                .map_err(|_| LibraryError::custom("Tree full: cannot reserve joiner leaf"))?;
+        }
+
         // Process adds
         let add_proposals = proposal_queue
             .filtered_by_type(ProposalType::Add)
