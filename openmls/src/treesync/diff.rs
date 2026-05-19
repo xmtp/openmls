@@ -323,14 +323,20 @@ impl TreeSyncDiff<'_> {
         leaf_index: LeafNodeIndex,
         leaf_node_params: UpdateLeafNodeParams,
     ) -> Result<UpdatePathResult, TreeSyncAddLeaf> {
-        // For External Commits, we temporarily add a placeholder leaf node to the tree, because it
-        // might be required to make the tree grow to the right size. If we
-        // don't do that, calculating the direct path might fail. It's important
-        // to not do anything with the value of that leaf until it has been
-        // replaced.
+        // For External Commits, the joiner's leaf is reserved with a placeholder
+        // earlier, during `apply_proposals`, so that any by-value Add proposals
+        // committed alongside the ExternalInit do not race for the leftmost-free
+        // slot. We only need to grow the tree here if the placeholder somehow
+        // didn't get inserted (e.g. a regular commit path is being computed).
+        // It's important to not do anything with the value of that leaf until
+        // it has been replaced below.
         if let CommitType::External(_) = commit_type {
-            let leaf_node = LeafNode::new_placeholder();
-            self.add_leaf(leaf_node)?;
+            if self.diff.leaf(leaf_index).node().is_none()
+                || leaf_index.u32() >= self.leaf_count()
+            {
+                let leaf_node = LeafNode::new_placeholder();
+                self.add_leaf(leaf_node)?;
+            }
         }
 
         // We calculate the parent hash so that we can use it for a fresh leaf
