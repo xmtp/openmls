@@ -240,17 +240,6 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         self
     }
 
-    /// Adds an Add proposal to the provided [`KeyPackage`] to the list of proposals to be
-    /// committed.
-    pub fn propose_adds(mut self, key_packages: impl IntoIterator<Item = KeyPackage>) -> Self {
-        self.stage.own_proposals.extend(
-            key_packages
-                .into_iter()
-                .map(|key_package| Proposal::add(AddProposal { key_package })),
-        );
-        self
-    }
-
     /// Adds a Remove proposal for the provided [`LeafNodeIndex`]es to the list of proposals to be
     /// committed.
     pub fn propose_removals(mut self, removed: impl IntoIterator<Item = LeafNodeIndex>) -> Self {
@@ -274,19 +263,6 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             .push(Proposal::group_context_extensions(proposal));
         Ok(self)
     }
-
-    /// Adds a proposal to the proposals to be committed. To add multiple
-    /// proposals, use [`Self::add_proposals`].
-    pub fn add_proposal(mut self, proposal: Proposal) -> Self {
-        self.stage.own_proposals.push(proposal);
-        self
-    }
-
-    /// Adds the proposals in the iterator to the proposals to be committed.
-    pub fn add_proposals(mut self, proposals: impl IntoIterator<Item = Proposal>) -> Self {
-        self.stage.own_proposals.extend(proposals);
-        self
-    }
 }
 
 // Impls that apply to regular and external commits.
@@ -301,6 +277,30 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             stage,
             pd: PhantomData,
         }
+    }
+
+    /// Adds an Add proposal to the provided [`KeyPackage`] to the list of proposals to be
+    /// committed.
+    pub fn propose_adds(mut self, key_packages: impl IntoIterator<Item = KeyPackage>) -> Self {
+        self.stage.own_proposals.extend(
+            key_packages
+                .into_iter()
+                .map(|key_package| Proposal::add(AddProposal { key_package })),
+        );
+        self
+    }
+
+    /// Adds a proposal to the proposals to be committed. To add multiple
+    /// proposals, use [`Self::add_proposals`].
+    pub fn add_proposal(mut self, proposal: Proposal) -> Self {
+        self.stage.own_proposals.push(proposal);
+        self
+    }
+
+    /// Adds the proposals in the iterator to the proposals to be committed.
+    pub fn add_proposals(mut self, proposals: impl IntoIterator<Item = Proposal>) -> Self {
+        self.stage.own_proposals.extend(proposals);
+        self
     }
 
     /// Sets the leaf node parameters for the new leaf node in a self-update. Implies that a

@@ -269,26 +269,10 @@ fn test_valsem242() {
         ContentType::Commit
     ));
 
+    // Note: Add proposals are intentionally allowed in external commits in this fork (so that a
+    // joiner can atomically introduce co-resident leaves). ReInit and GroupContextExtensions
+    // remain denied by ValSem242.
     let deny_list = {
-        let add_proposal = {
-            let charlie_provider = &Provider::default();
-            let charlie_credential = generate_credential_with_key(
-                "Charlie".into(),
-                ciphersuite.signature_algorithm(),
-                charlie_provider,
-            );
-            let charlie_key_package = generate_key_package(
-                ciphersuite,
-                Extensions::empty(),
-                charlie_provider,
-                charlie_credential,
-            );
-
-            ProposalOrRef::proposal(Proposal::add(AddProposal {
-                key_package: charlie_key_package.key_package().clone(),
-            }))
-        };
-
         let reinit_proposal = {
             ProposalOrRef::proposal(Proposal::re_init(ReInitProposal {
                 group_id: alice_group.group_id().clone(),
@@ -306,7 +290,7 @@ fn test_valsem242() {
             ))
         };
 
-        vec![add_proposal, reinit_proposal, gce_proposal]
+        vec![reinit_proposal, gce_proposal]
     };
 
     for proposal in deny_list {
