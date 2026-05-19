@@ -530,7 +530,8 @@ impl PublicGroup {
     /// Validate constraints on an external commit. This function implements the following checks:
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-    ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+    ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit,
+    ///    Add, Remove, PreSharedKey, AppDataUpdate, Custom)
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
@@ -547,17 +548,30 @@ impl PublicGroup {
             return Err(ExternalCommitValidationError::MultipleExternalInitProposals);
         }
 
-        // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+        // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit,
+        // Add, Remove, PreSharedKey, AppDataUpdate, Custom).
+        //
+        // RFC 9420 Section 12.2 only permits ExternalInit, Remove, and PreSharedKey by-value for
+        // external commits. We additionally allow Add (so a non-member can atomically introduce
+        // co-resident leaves on join) and AppDataUpdate (a draft-08 proposal type that updates the
+        // AppDataDictionary, which is meaningful to combine with the join). Both are gated on the
+        // committer's leaf node capabilities and on the standard proposal validators run before
+        // this function.
+        //
         // [valn0404](https://validation.openmls.tech/#valn0404)
         let contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
             let is_allowed_type = matches!(
                 p.proposal(),
                 Proposal::ExternalInit(_)
+                    | Proposal::Add(_)
                     | Proposal::Remove(_)
                     | Proposal::PreSharedKey(_)
                     | Proposal::Custom(_)
             );
+            #[cfg(feature = "extensions-draft-08")]
+            let is_allowed_type =
+                is_allowed_type || matches!(p.proposal(), Proposal::AppDataUpdate(_));
             is_inline && !is_allowed_type
         });
         if contains_denied_proposal {
