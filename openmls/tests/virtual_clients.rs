@@ -1,0 +1,4586 @@
+#![cfg(feature = "virtual-clients-draft")]
+use openmls::{
+    components::vc_derivation_info::{EpochId, VcEmulationBindings, VC_COMPONENT_ID},
+    credentials::NewSignerBundle,
+    extensions::{
+        AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
+    },
+    framing::errors::{MessageDecryptionError, SecretTreeError},
+    group::{
+        ConfirmMessageError, GroupEpoch, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig,
+        Propose, StagedWelcome, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+    },
+    key_packages::KeyPackage,
+    prelude::{
+        test_utils::new_credential, Capabilities, LeafNode, LeafNodeParameters,
+        ProcessMessageError, ProcessedMessageContent, ProposalOrRefType, ValidationError,
+    },
+};
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_test::openmls_test;
+use openmls_traits::storage::StorageProvider as _;
+use openmls_traits::OpenMlsProvider;
+use tls_codec::Serialize as _;
+
+mod mls_group;
+
+/// `Capabilities` declaring `AppDataDictionary` support.
+fn vc_capabilities() -> Capabilities {
+    Capabilities::builder()
+        .extensions(vec![ExtensionType::AppDataDictionary])
+        .build()
+}
+
+/// Build the `AppDataDictionary` leaf-node extensions a VC-sending leaf must
+/// carry: an `AppComponents` entry (component id 1) whose body is the
+/// TLS-encoded list `[VC_COMPONENT_ID]`. Per the mls-extensions draft,
+/// `AppComponents` is a per-leaf advertisement.
+fn vc_leaf_extensions() -> Extensions<LeafNode> {
+    let supported_components: Vec<u16> = vec![VC_COMPONENT_ID];
+    let app_components_body = supported_components
+        .tls_serialize_detached()
+        .expect("serialize AppComponents body");
+    let mut dictionary = AppDataDictionary::new();
+    // ComponentType::AppComponents == 1
+    dictionary.insert(1, app_components_body);
+    let ext = Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary));
+    Extensions::from_vec(vec![ext]).expect("build leaf-node Extensions")
+}
+
+/// Build an Alice + Bob group on two providers. Alice creates the group,
+/// adds Bob, merges. Bob joins from the welcome. After this, `alice_group`
+/// (on `alice_provider`) and `bob_group` (on `bob_provider`) both
+/// represent the same MLS group at the same epoch.
+fn setup_alice_bob_group<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_provider: &P,
+    bob_provider: &P,
+) -> (MlsGroup, SignatureKeyPair, MlsGroup, SignatureKeyPair) {
+    setup_alice_bob_group_with_policy(
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+    )
+}
+
+/// Like [`setup_alice_bob_group`], but with an explicit wire format policy on
+/// both the create and join configs, so tests can exercise private (ciphertext)
+/// handshake framing between the two members.
+fn setup_alice_bob_group_with_policy<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_provider: &P,
+    bob_provider: &P,
+    wire_format_policy: openmls::group::WireFormatPolicy,
+) -> (MlsGroup, SignatureKeyPair, MlsGroup, SignatureKeyPair) {
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(wire_format_policy)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions on alice config")
+        .build();
+
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_signer,
+        &group_config,
+        alice_credential,
+    )
+    .expect("alice create group");
+
+    let bob_key_package = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+
+    let (_commit, welcome, _gi) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("alice add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("alice merge add");
+
+    let join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(wire_format_policy)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &join_config,
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(bob_provider))
+    .expect("bob join via welcome");
+
+    (alice_group, alice_signer, bob_group, bob_signer)
+}
+
+/// Build a single-member emulator group on `provider` with VC
+/// capabilities and an `AppComponents` entry listing `VC_COMPONENT_ID`.
+/// Used as the source of `safe_export_secret(VC_COMPONENT_ID)` when
+/// registering an emulation epoch.
+fn make_emulator_group<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider: &P,
+    label: &[u8],
+) -> (MlsGroup, SignatureKeyPair) {
+    let (credential, signer) = new_credential(provider, label, ciphersuite.signature_algorithm());
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions on emulator config")
+        .build();
+    let group =
+        MlsGroup::new(provider, &signer, &group_config, credential).expect("create emulator group");
+    (group, signer)
+}
+
+/// Register a fresh emulation epoch on `emulator_group` (sourcing the
+/// root secret from its `safe_export_secret(VC_COMPONENT_ID)`) and send
+/// a VC-flavoured commit on `sender_group` referencing that epoch.
+/// `register_vc_emulation_epoch` captures `own_leaf_index` of the
+/// emulator group at registration time, so callers no longer pass it.
+fn send_vc_commit<P: OpenMlsProvider>(
+    sender_group: &mut MlsGroup,
+    emulator_group: &mut MlsGroup,
+    sender_provider: &P,
+    sender_signer: &SignatureKeyPair,
+) -> (openmls::prelude::MlsMessageOut, EpochId) {
+    let epoch_id = emulator_group
+        .register_vc_emulation_epoch(sender_provider.crypto(), sender_provider.storage())
+        .expect("register vc epoch (sender)");
+    let commit = send_vc_commit_with_epoch(
+        sender_group,
+        sender_provider,
+        sender_signer,
+        epoch_id.clone(),
+    );
+    (commit, epoch_id)
+}
+
+/// Send a VC-flavoured commit on `sender_group` referencing an
+/// already-registered `epoch_id`. Useful for tests that want to issue
+/// multiple commits against the same emulation epoch without
+/// re-puncturing the emulator group's application-export tree.
+fn send_vc_commit_with_epoch<P: OpenMlsProvider>(
+    sender_group: &mut MlsGroup,
+    sender_provider: &P,
+    sender_signer: &SignatureKeyPair,
+    epoch_id: EpochId,
+) -> openmls::prelude::MlsMessageOut {
+    let bundle = sender_group
+        .commit_builder()
+        .vc_emulation(
+            sender_provider.crypto(),
+            sender_provider.storage(),
+            epoch_id,
+        )
+        .unwrap()
+        .load_psks(sender_provider.storage())
+        .unwrap()
+        .build(
+            sender_provider.rand(),
+            sender_provider.crypto(),
+            sender_signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(sender_provider)
+        .unwrap();
+
+    sender_group
+        .merge_pending_commit(sender_provider)
+        .expect("sender merge");
+
+    bundle.into_commit()
+}
+
+/// The shared signing identity of a virtual client, stored in both emulator
+/// clients' providers so either can sign for the shared higher-level leaf.
+fn shared_vc_identity<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider_a: &P,
+    provider_b: &P,
+) -> (SignatureKeyPair, openmls::credentials::CredentialWithKey) {
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(provider_a.storage())
+        .expect("store vc signer on alice_a");
+    vc_signer
+        .store(provider_b.storage())
+        .expect("store vc signer on alice_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+    (vc_signer, vc_credential)
+}
+
+/// Found a higher-level group on the shared virtual-client leaf.
+fn new_vc_main_group<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    credential: openmls::credentials::CredentialWithKey,
+) -> MlsGroup {
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    MlsGroup::new(provider, signer, &group_config, credential).expect("create vc main group")
+}
+
+/// A VC main group created with an explicit wire format policy. Used to frame
+/// handshake messages as PrivateMessage while still accepting the incoming
+/// sibling-resync external commit, which is always a PublicMessage.
+fn new_vc_main_group_with_policy<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    credential: openmls::credentials::CredentialWithKey,
+    wire_format_policy: openmls::group::WireFormatPolicy,
+) -> MlsGroup {
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(wire_format_policy)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    MlsGroup::new(provider, signer, &group_config, credential).expect("create vc main group")
+}
+
+/// The join config used by emulator clients resyncing into a higher-level
+/// group: pure-plaintext framing with the ratchet tree carried inline.
+fn vc_join_config() -> MlsGroupJoinConfig {
+    MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build()
+}
+
+/// A second emulator client brought in alongside an existing one, sharing the
+/// virtual client's emulation epoch.
+struct SiblingEmulators {
+    emulator_a: MlsGroup,
+    emulator_a_signer: SignatureKeyPair,
+    emulator_b: MlsGroup,
+    alice_b_main: MlsGroup,
+    epoch_id: EpochId,
+}
+
+/// Bring a second emulator client (alice_b) into an existing virtual client
+/// without cloning storage. alice_a founds the emulation group and alice_b
+/// joins it via Welcome; both register the same emulation epoch; then alice_b
+/// resyncs into the higher-level group via an external commit. Returns the
+/// emulator state plus that resync commit, which the caller delivers to
+/// `alice_a_main` (and any other higher-level members) so they converge on
+/// the new virtual-client leaf.
+fn join_sibling_emulator<P: OpenMlsProvider>(
+    emulator_ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_a_provider: &P,
+    alice_b_provider: &P,
+    vc_signer: &SignatureKeyPair,
+    vc_credential: openmls::credentials::CredentialWithKey,
+    alice_a_main: &MlsGroup,
+    main_join_config: MlsGroupJoinConfig,
+) -> (SiblingEmulators, openmls::prelude::MlsMessageOut) {
+    use openmls::prelude::{LeafNodeParameters, MlsMessageIn};
+    use tls_codec::Deserialize as _;
+
+    // alice_a founds the emulation group; alice_b joins it via Welcome.
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(emulator_ciphersuite, alice_a_provider, b"AliceEmulatorA");
+    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        alice_b_provider,
+        b"AliceEmulatorB",
+        emulator_ciphersuite.signature_algorithm(),
+    );
+    let emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            emulator_ciphersuite,
+            alice_b_provider,
+            &emulator_b_signer,
+            emulator_b_credential,
+        )
+        .expect("emulator_b KP build")
+        .key_package()
+        .to_owned();
+    let (_e_commit, e_welcome, _e_gi) = emulator_a
+        .add_members(alice_a_provider, &emulator_a_signer, &[emulator_b_kp])
+        .expect("emulator_a add alice_b");
+    emulator_a
+        .merge_pending_commit(alice_a_provider)
+        .expect("emulator_a merge add");
+    let join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        alice_b_provider,
+        &join_config,
+        e_welcome.into_welcome().expect("emulator welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(alice_b_provider))
+    .expect("alice_b join emulator group");
+
+    // Both clients independently register the same emulation epoch.
+    let epoch_id = emulator_a
+        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .expect("alice_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .expect("alice_b register vc epoch");
+    assert_eq!(
+        epoch_id, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
+
+    // alice_b resyncs into the higher-level group via an external commit.
+    let verifiable_group_info = {
+        let group_info_msg = alice_a_main
+            .export_group_info(alice_a_provider.crypto(), vc_signer, true)
+            .expect("export group info");
+        let serialized = group_info_msg
+            .tls_serialize_detached()
+            .expect("serialize group info");
+        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .expect("deserialize group info message")
+            .into_verifiable_group_info()
+            .expect("into verifiable group info")
+    };
+    let (alice_b_main, bundle) = MlsGroup::external_commit_builder()
+        .with_config(main_join_config)
+        .build_group(alice_b_provider, verifiable_group_info, vc_credential)
+        .expect("build_group")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(vc_capabilities())
+                .with_extensions(vc_leaf_extensions())
+                .build(),
+        )
+        .vc_emulation(
+            alice_b_provider.crypto(),
+            alice_b_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation")
+        .load_psks(alice_b_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_b_provider.rand(),
+            alice_b_provider.crypto(),
+            vc_signer,
+            |_| true,
+        )
+        .expect("build external commit")
+        .finalize(alice_b_provider)
+        .expect("finalize external commit");
+
+    (
+        SiblingEmulators {
+            emulator_a,
+            emulator_a_signer,
+            emulator_b,
+            alice_b_main,
+            epoch_id,
+        },
+        bundle.into_commit(),
+    )
+}
+
+/// Send an application message from `sender` and process it on `receiver`,
+/// returning the processed message for inspection (e.g. the recovered
+/// emulator sender leaf index).
+fn send_and_process_app_message<P: OpenMlsProvider>(
+    sender: &mut MlsGroup,
+    sender_provider: &P,
+    sender_signer: &SignatureKeyPair,
+    receiver: &mut MlsGroup,
+    receiver_provider: &P,
+    plaintext: &[u8],
+) -> openmls::prelude::ProcessedMessage {
+    let app_msg = sender
+        .create_message(sender_provider, sender_signer, plaintext)
+        .expect("sender creates application message");
+    receiver
+        .process_message(receiver_provider, app_msg.into_protocol_message().unwrap())
+        .expect("receiver processes application message")
+}
+
+/// Focused ratchet-persistence test: after the sender builds a VC commit,
+/// the per-epoch operation secret tree must remain registered with its
+/// advanced ratchet head. A *second* VC commit on the same `epoch_id` must
+/// succeed and consume the next generation. That the generations are
+/// consumed in order is covered behaviorally by
+/// `vc_two_alice_clients_in_group_with_bob_and_charly`, where a sibling
+/// processes generations 0 and 1 positionally.
+#[openmls_test]
+fn vc_operation_tree_persists_across_own_commits() {
+    let provider = Provider::default();
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    let mut alice = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
+        .expect("create group");
+    let (mut emulator, _emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+
+    // Register the emulation epoch once; both commits reference it.
+    // `safe_export_secret(VC_COMPONENT_ID)` punctures the emulator
+    // group's application-export tree, so registering twice in the same
+    // emulator-group epoch would fail with `PuncturedInput`. The point
+    // of this test is that the per-emulation-epoch operation secret tree
+    // survives, with its advanced ratchet head, across build boundaries.
+    let epoch_id = emulator
+        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .expect("register vc epoch");
+
+    let _msg1 = send_vc_commit_with_epoch(&mut alice, &provider, &alice_signer, epoch_id.clone());
+    let epoch_after_first = alice.epoch();
+
+    // A *second* VC commit on the same emulation epoch must still
+    // succeed and consume generation 1. If `build` had wiped the
+    // registration or failed to persist the ratchet advance, this would
+    // fail at tree lookup or when the consumed generation is re-derived.
+    let _msg2 = send_vc_commit_with_epoch(&mut alice, &provider, &alice_signer, epoch_id);
+    assert_eq!(
+        alice.epoch().as_u64(),
+        epoch_after_first.as_u64() + 1,
+        "second VC commit on the same emulation epoch must succeed"
+    );
+}
+
+/// A non-emulator group member processes a VC commit through the normal HPKE
+/// path, without holding any per-emulation-epoch VC state.
+#[openmls_test]
+fn non_emulator_processes_vc_commit_without_registering_state() {
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let (mut alice, alice_signer, mut bob, _bob_signer) =
+        setup_alice_bob_group(ciphersuite, &alice_provider, &bob_provider);
+    let (mut emulator, _emulator_signer) =
+        make_emulator_group(ciphersuite, &alice_provider, b"AliceEmulator");
+
+    let (commit_msg, _epoch_id) =
+        send_vc_commit(&mut alice, &mut emulator, &alice_provider, &alice_signer);
+
+    let processed = bob
+        .process_message(&bob_provider, commit_msg.into_protocol_message().unwrap())
+        .expect("non-emulator must process VC commit via the normal HPKE path");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        _ => panic!("expected staged commit"),
+    };
+    bob.merge_staged_commit(&bob_provider, staged)
+        .expect("bob merge");
+    assert_eq!(alice.epoch(), bob.epoch());
+}
+
+/// A sibling-resync external commit requires VC state on the receiving
+/// sibling. The receiver identifies itself as a sibling from the commit
+/// shape (`Sender::NewMemberCommit` plus an inline `Remove` of its own
+/// leaf), then *must* load the per-epoch operation secret tree and
+/// emulation-epoch state to derive the path. If the receiver hasn't yet
+/// registered the matching emulation epoch (e.g. it joined the emulator
+/// group but skipped the `register_vc_emulation_epoch` step before the
+/// sibling attempted the resync), processing must fail loudly with a
+/// virtual-clients error rather than silently fall through to HPKE.
+#[openmls_test]
+fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+    use openmls::prelude::{LeafNodeParameters, MlsMessageIn};
+    use tls_codec::Deserialize as _;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    // Shared VC signer + credential. Both alice clients hold a copy of the
+    // signer so the external-commit auto-Remove targets the existing leaf.
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(alice_a_provider.storage())
+        .expect("store vc signer on alice_a");
+    vc_signer
+        .store(alice_b_provider.storage())
+        .expect("store vc signer on alice_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+
+    // Emulator group with alice_a as creator and alice_b as the second
+    // member (joined via Welcome).
+    let (mut emulator_a, alice_emulator_a_signer) =
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
+    let (alice_emulator_b_credential, alice_emulator_b_signer) = new_credential(
+        &alice_b_provider,
+        b"AliceEmulatorB",
+        ciphersuite.signature_algorithm(),
+    );
+    let alice_emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            ciphersuite,
+            &alice_b_provider,
+            &alice_emulator_b_signer,
+            alice_emulator_b_credential,
+        )
+        .expect("alice_b emulator KP build")
+        .key_package()
+        .to_owned();
+    let (_, e_welcome, _) = emulator_a
+        .add_members(
+            &alice_a_provider,
+            &alice_emulator_a_signer,
+            &[alice_emulator_b_kp],
+        )
+        .expect("emulator_a add alice_b");
+    emulator_a
+        .merge_pending_commit(&alice_a_provider)
+        .expect("emulator_a merge add");
+
+    let join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &join_config,
+        e_welcome.into_welcome().expect("welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&alice_b_provider))
+    .expect("alice_b join emulator group");
+
+    // Higher-level group: alice_a is the sole VC member.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions on higher-level config")
+        .build();
+    let mut alice_a_main = MlsGroup::new(
+        &alice_a_provider,
+        &vc_signer,
+        &group_config,
+        vc_credential.clone(),
+    )
+    .expect("alice_a create higher-level group");
+
+    // Only alice_b registers the VC epoch. alice_a "forgets" to register
+    // on her side, manufacturing the failure scenario.
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .expect("alice_b register vc epoch");
+
+    // alice_a exports the higher-level GroupInfo for alice_b's external commit.
+    let verifiable_group_info = {
+        let group_info_msg = alice_a_main
+            .export_group_info(alice_a_provider.crypto(), &vc_signer, true)
+            .expect("export group info");
+        let serialized = group_info_msg
+            .tls_serialize_detached()
+            .expect("serialize group info");
+        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .expect("deserialize group info message")
+            .into_verifiable_group_info()
+            .expect("into verifiable group info")
+    };
+
+    // alice_b builds the resync external commit. The auto-Remove targets
+    // alice_a's leaf (same signature key), so alice_a's
+    // `is_sibling_vc_commit` predicate fires when processing.
+    let (_alice_b_main, bundle) = MlsGroup::external_commit_builder()
+        .with_config(
+            MlsGroupJoinConfig::builder()
+                .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+                .use_ratchet_tree_extension(true)
+                .build(),
+        )
+        .build_group(&alice_b_provider, verifiable_group_info, vc_credential)
+        .expect("build_group")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(vc_capabilities())
+                .with_extensions(vc_leaf_extensions())
+                .build(),
+        )
+        .vc_emulation(
+            alice_b_provider.crypto(),
+            alice_b_provider.storage(),
+            epoch_id_b,
+        )
+        .expect("vc emulation")
+        .load_psks(alice_b_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_b_provider.rand(),
+            alice_b_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build external commit")
+        .finalize(&alice_b_provider)
+        .expect("finalize external commit");
+    let commit_msg = bundle.into_commit();
+
+    let err = alice_a_main
+        .process_message(
+            &alice_a_provider,
+            commit_msg.into_protocol_message().unwrap(),
+        )
+        .expect_err("must fail without VC state");
+    let msg = format!("{err:?}");
+    assert!(
+        msg.contains("MissingEmulationEpochState")
+            || msg.contains("MissingOperationTree")
+            || msg.contains("VirtualClients"),
+        "expected a virtual-clients error, got {msg}"
+    );
+}
+
+/// End-to-end realistic VC scenario: Alice has *two* clients sharing one
+/// MLS leaf in a main group with Bob and Charly. Both Alice clients also
+/// share an *emulator group* (a separate two-member MLS group) used as the
+/// source of `safe_export_secret(VC_COMPONENT_ID)` from which both clients
+/// derive the same `EpochId`, operation secret tree, and AEAD key.
+///
+/// alice_b bootstraps into the higher-level group via a sibling-resync VC
+/// external commit (auto-Remove targeting alice_a's existing leaf). After
+/// that we exercise five commits in order:
+///   1. Bob's commit: processed by alice_a, alice_b, charly via HPKE.
+///   2. Charly's commit: processed by alice_a, alice_b, bob via HPKE.
+///   3. alice_a's VC commit: alice_b uses own-leaf VC path, bob+charly HPKE.
+///   4. alice_b's VC commit: alice_a uses own-leaf VC path, bob+charly HPKE.
+///   5. alice_a's second VC commit on the same emulation epoch: alice_b
+///      derives generation 1 of alice_a's ratchet positionally, having
+///      derived generation 0 for commit 3.
+///
+/// All four parties must agree on the epoch authenticator after each
+/// commit.
+#[openmls_test]
+fn vc_two_alice_clients_in_group_with_bob_and_charly() {
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+    use openmls::prelude::{LeafNodeParameters, MlsMessageIn};
+    use tls_codec::Deserialize as _;
+
+    // ---- Providers (independent storage per client) ----
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charly_provider = Provider::default();
+
+    // ---- Credentials ----
+    // The virtual client's shared signing key. Both alice clients hold a
+    // copy in their own provider storage so either can sign for the shared
+    // higher-level leaf; this is also what triggers the auto-Remove of
+    // alice_a's existing leaf when alice_b later joins via external commit.
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(alice_a_provider.storage())
+        .expect("store vc signer on alice_a");
+    vc_signer
+        .store(alice_b_provider.storage())
+        .expect("store vc signer on alice_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charly_credential, charly_signer) = new_credential(
+        &charly_provider,
+        b"Charly",
+        ciphersuite.signature_algorithm(),
+    );
+
+    // ---- Main group: alice_a creates with full VC capabilities + extensions ----
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions on alice main group config")
+        .build();
+    let mut alice_a_main = MlsGroup::new(
+        &alice_a_provider,
+        &vc_signer,
+        &group_config,
+        vc_credential.clone(),
+    )
+    .expect("alice create main group");
+
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let charly_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(
+            ciphersuite,
+            &charly_provider,
+            &charly_signer,
+            charly_credential,
+        )
+        .expect("charly KP build")
+        .key_package()
+        .to_owned();
+
+    // Single multi-add: Bob and Charly join in one welcome.
+    let (_commit, welcome, _gi) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp, charly_kp])
+        .expect("alice add bob+charly");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice merge add");
+
+    let join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let welcome_msg = welcome.into_welcome().expect("welcome present");
+    let ratchet_tree = alice_a_main.export_ratchet_tree();
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &join_config,
+        welcome_msg.clone(),
+        Some(ratchet_tree.clone().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join");
+    let mut charly_main = StagedWelcome::new_from_welcome(
+        &charly_provider,
+        &join_config,
+        welcome_msg,
+        Some(ratchet_tree.into()),
+    )
+    .and_then(|s| s.into_group(&charly_provider))
+    .expect("charly join");
+
+    // ---- Emulator group: alice_a creates, alice_b joins via Welcome ----
+    let (mut emulator_a, alice_emulator_a_signer) =
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
+    let (alice_emulator_b_credential, alice_emulator_b_signer) = new_credential(
+        &alice_b_provider,
+        b"AliceEmulatorB",
+        ciphersuite.signature_algorithm(),
+    );
+    let alice_emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            ciphersuite,
+            &alice_b_provider,
+            &alice_emulator_b_signer,
+            alice_emulator_b_credential,
+        )
+        .expect("alice_b emulator KP build")
+        .key_package()
+        .to_owned();
+    let (_e_commit, e_welcome, _e_gi) = emulator_a
+        .add_members(
+            &alice_a_provider,
+            &alice_emulator_a_signer,
+            &[alice_emulator_b_kp],
+        )
+        .expect("emulator_a add alice_b");
+    emulator_a
+        .merge_pending_commit(&alice_a_provider)
+        .expect("emulator_a merge add");
+
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &join_config,
+        e_welcome.into_welcome().expect("emulator welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&alice_b_provider))
+    .expect("alice_b join emulator group");
+
+    // ---- Both Alice clients independently register the same VC epoch ----
+    let epoch_id_a = emulator_a
+        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .expect("alice_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .expect("alice_b register vc epoch");
+    assert_eq!(
+        epoch_id_a, epoch_id_b,
+        "deterministic derivation must yield the same EpochId on both Alice clients"
+    );
+
+    // ---- alice_b bootstraps into the higher-level group via VC resync
+    // external commit. The auto-Remove targets alice_a's existing leaf
+    // (same vc_signer). alice_a, bob, and charly process the commit and
+    // converge.
+    let verifiable_group_info = {
+        let group_info_msg = alice_a_main
+            .export_group_info(alice_a_provider.crypto(), &vc_signer, true)
+            .expect("export group info");
+        let serialized = group_info_msg
+            .tls_serialize_detached()
+            .expect("serialize group info");
+        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .expect("deserialize group info message")
+            .into_verifiable_group_info()
+            .expect("into verifiable group info")
+    };
+    let (mut alice_b_main, bundle) = MlsGroup::external_commit_builder()
+        .with_config(
+            MlsGroupJoinConfig::builder()
+                .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+                .use_ratchet_tree_extension(true)
+                .build(),
+        )
+        .build_group(&alice_b_provider, verifiable_group_info, vc_credential)
+        .expect("build_group")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(vc_capabilities())
+                .with_extensions(vc_leaf_extensions())
+                .build(),
+        )
+        .vc_emulation(
+            alice_b_provider.crypto(),
+            alice_b_provider.storage(),
+            epoch_id_b.clone(),
+        )
+        .expect("vc emulation")
+        .load_psks(alice_b_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_b_provider.rand(),
+            alice_b_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build external commit")
+        .finalize(&alice_b_provider)
+        .expect("finalize external commit");
+    let resync_commit = bundle.into_commit();
+    for (group, provider) in [
+        (&mut alice_a_main, &alice_a_provider),
+        (&mut bob_main, &bob_provider),
+        (&mut charly_main, &charly_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                resync_commit.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process resync commit");
+        let staged = match processed.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(s) => *s,
+            _ => panic!("expected staged commit"),
+        };
+        group
+            .merge_staged_commit(provider, staged)
+            .expect("merge resync");
+    }
+
+    // Sanity: all four parties agree after the resync.
+    fn assert_all_agree(groups: &[&MlsGroup], label: &str) {
+        let mut iter = groups.iter();
+        let reference = iter
+            .next()
+            .expect("at least one party")
+            .epoch_authenticator();
+        for group in iter {
+            assert_eq!(
+                group.epoch_authenticator(),
+                reference,
+                "epoch authenticator divergence at {label}"
+            );
+        }
+    }
+
+    let baseline_epoch = alice_a_main.epoch();
+    assert_all_agree(
+        &[&alice_a_main, &alice_b_main, &bob_main, &charly_main],
+        "post resync",
+    );
+
+    // Helper: deliver one commit (already merged on the sender side) to a
+    // single receiver group via the regular process path.
+    fn deliver_commit<P: OpenMlsProvider>(
+        receiver: &mut MlsGroup,
+        provider: &P,
+        commit_msg: &openmls::prelude::MlsMessageOut,
+    ) {
+        let processed = receiver
+            .process_message(
+                provider,
+                commit_msg.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process commit");
+        let staged = match processed.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(s) => *s,
+            _ => panic!("expected staged commit"),
+        };
+        receiver
+            .merge_staged_commit(provider, staged)
+            .expect("merge staged commit");
+    }
+
+    // Helper: build a regular self-update commit on `sender_group`.
+    fn build_regular_commit<P: OpenMlsProvider>(
+        sender_group: &mut MlsGroup,
+        provider: &P,
+        signer: &SignatureKeyPair,
+    ) -> openmls::prelude::MlsMessageOut {
+        let bundle = sender_group
+            .commit_builder()
+            .force_self_update(true)
+            .load_psks(provider.storage())
+            .expect("load psks")
+            .build(provider.rand(), provider.crypto(), signer, |_| true)
+            .expect("build commit")
+            .stage_commit(provider)
+            .expect("stage commit");
+        sender_group
+            .merge_pending_commit(provider)
+            .expect("sender merge");
+        bundle.into_commit()
+    }
+
+    // ---- Commit 1: Bob's regular commit ----
+    let bob_commit = build_regular_commit(&mut bob_main, &bob_provider, &bob_signer);
+    deliver_commit(&mut alice_a_main, &alice_a_provider, &bob_commit);
+    deliver_commit(&mut alice_b_main, &alice_b_provider, &bob_commit);
+    deliver_commit(&mut charly_main, &charly_provider, &bob_commit);
+    assert_all_agree(
+        &[&alice_a_main, &alice_b_main, &bob_main, &charly_main],
+        "post Bob commit",
+    );
+
+    // ---- Commit 2: Charly's regular commit ----
+    let charly_commit = build_regular_commit(&mut charly_main, &charly_provider, &charly_signer);
+    deliver_commit(&mut alice_a_main, &alice_a_provider, &charly_commit);
+    deliver_commit(&mut alice_b_main, &alice_b_provider, &charly_commit);
+    deliver_commit(&mut bob_main, &bob_provider, &charly_commit);
+    assert_all_agree(
+        &[&alice_a_main, &alice_b_main, &bob_main, &charly_main],
+        "post Charly commit",
+    );
+
+    // ---- Commit 3: alice_a's VC commit ----
+    // alice_a's first own LeafNode operation on this emulation epoch
+    // consumes generation 0 of her emulation-leaf ratchet.
+    let alice_a_vc_commit = send_vc_commit_with_epoch(
+        &mut alice_a_main,
+        &alice_a_provider,
+        &vc_signer,
+        epoch_id_a.clone(),
+    );
+    // alice_b processes via the own-leaf VC path, deriving generation 0 of
+    // alice_a's ratchet positionally.
+    deliver_commit(&mut alice_b_main, &alice_b_provider, &alice_a_vc_commit);
+    // Bob and Charly process via the normal HPKE path.
+    deliver_commit(&mut bob_main, &bob_provider, &alice_a_vc_commit);
+    deliver_commit(&mut charly_main, &charly_provider, &alice_a_vc_commit);
+    assert_all_agree(
+        &[&alice_a_main, &alice_b_main, &bob_main, &charly_main],
+        "post alice_a VC commit",
+    );
+
+    // ---- Commit 4: alice_b's VC commit ----
+    let alice_b_vc_commit = send_vc_commit_with_epoch(
+        &mut alice_b_main,
+        &alice_b_provider,
+        &vc_signer,
+        epoch_id_b.clone(),
+    );
+    // alice_a processes via the own-leaf VC path.
+    deliver_commit(&mut alice_a_main, &alice_a_provider, &alice_b_vc_commit);
+    // Bob and Charly process via the normal HPKE path.
+    deliver_commit(&mut bob_main, &bob_provider, &alice_b_vc_commit);
+    deliver_commit(&mut charly_main, &charly_provider, &alice_b_vc_commit);
+    assert_all_agree(
+        &[&alice_a_main, &alice_b_main, &bob_main, &charly_main],
+        "post alice_b VC commit",
+    );
+
+    // ---- Commit 5: alice_a's second VC commit on the same emulation
+    // epoch. alice_b already derived generation 0 of alice_a's ratchet for
+    // commit 3, so she now derives generation 1 positionally. This is the
+    // behavioral check that two successive VC commits from the same
+    // emulation epoch consume successive generations.
+    let alice_a_second_vc_commit = send_vc_commit_with_epoch(
+        &mut alice_a_main,
+        &alice_a_provider,
+        &vc_signer,
+        epoch_id_a.clone(),
+    );
+    deliver_commit(
+        &mut alice_b_main,
+        &alice_b_provider,
+        &alice_a_second_vc_commit,
+    );
+    deliver_commit(&mut bob_main, &bob_provider, &alice_a_second_vc_commit);
+    deliver_commit(
+        &mut charly_main,
+        &charly_provider,
+        &alice_a_second_vc_commit,
+    );
+    assert_all_agree(
+        &[&alice_a_main, &alice_b_main, &bob_main, &charly_main],
+        "post alice_a second VC commit",
+    );
+
+    // After five commits, the epoch counter has advanced by 5 from the
+    // post-resync baseline.
+    assert_eq!(
+        alice_a_main.epoch().as_u64(),
+        baseline_epoch.as_u64() + 5,
+        "expected five-epoch advance across the five commits"
+    );
+}
+
+/// Sibling-resync via VC external commit:
+///
+///   * `alice_a` is the existing emulator client in the higher-level group
+///     (with bob). `alice_b` is a fresh emulator client that joins the
+///     emulation group of `alice_a` via Welcome but has no higher-level
+///     group state.
+///   * Both alice clients register the same emulation epoch on their copy
+///     of the emulator group (deterministic derivation from
+///     `safe_export_secret(VC_COMPONENT_ID)`).
+///   * `alice_b` joins the higher-level group via an external commit signed
+///     by the virtual client's shared signature key. The auto-Remove
+///     machinery in `build_group` picks up `alice_a`'s existing leaf
+///     (same signature key) and inlines a `Remove` for it. `alice_b`
+///     attaches a `vc_emulation(.., epoch_id)` so the path leaf
+///     is derived from the per-commit `OperationSecret`.
+///   * `alice_a` processes the external commit. The sibling-resync
+///     discriminator (registered VC epoch state + `NewMemberCommit` sender
+///     + `Remove(self)` in the queue) triggers: she derives the path from
+///     her operation secret tree, skips the `self_removed` short-circuit,
+///     and after merging
+///     her `own_leaf_index` points at the joiner's new leaf. She remains
+///     active.
+///   * `bob` processes the same commit via the regular HPKE path.
+///   * Followup commits from both `alice_b` (own-leaf VC, processed by
+///     `alice_a`) and `bob` (HPKE, processed by both alices) converge.
+#[openmls_test]
+fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+    use openmls::prelude::{LeafNodeParameters, MlsMessageIn};
+    use tls_codec::Deserialize as _;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    // The virtual client's shared signature key + credential. Both
+    // emulator clients have a copy of the signing key in their own
+    // provider storage, so either can sign for the shared higher-level leaf.
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(alice_a_provider.storage())
+        .expect("store vc signer on alice_a");
+    vc_signer
+        .store(alice_b_provider.storage())
+        .expect("store vc signer on alice_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+
+    // Emulator group: alice_a creates, adds alice_b via Welcome.
+    let (mut emulator_a, alice_emulator_a_signer) =
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
+    let (alice_emulator_b_credential, alice_emulator_b_signer) = new_credential(
+        &alice_b_provider,
+        b"AliceEmulatorB",
+        ciphersuite.signature_algorithm(),
+    );
+    let alice_emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            ciphersuite,
+            &alice_b_provider,
+            &alice_emulator_b_signer,
+            alice_emulator_b_credential,
+        )
+        .expect("alice_b emulator KP build")
+        .key_package()
+        .to_owned();
+    let (_, e_welcome, _) = emulator_a
+        .add_members(
+            &alice_a_provider,
+            &alice_emulator_a_signer,
+            &[alice_emulator_b_kp],
+        )
+        .expect("emulator_a add alice_b");
+    emulator_a
+        .merge_pending_commit(&alice_a_provider)
+        .expect("emulator_a merge add");
+
+    let join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &join_config,
+        e_welcome.into_welcome().expect("welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&alice_b_provider))
+    .expect("alice_b join emulator group");
+
+    // Higher-level group: alice_a creates as the sole VC member,
+    // signing with the VC's shared signer. Adds bob via Welcome.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions on higher-level config")
+        .build();
+    let mut alice_a_main = MlsGroup::new(
+        &alice_a_provider,
+        &vc_signer,
+        &group_config,
+        vc_credential.clone(),
+    )
+    .expect("alice_a create higher-level group");
+
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice_a add bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &join_config,
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join higher-level group");
+
+    // Both alice clients register the same VC emulation epoch.
+    let epoch_id_a = emulator_a
+        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .expect("alice_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .expect("alice_b register vc epoch");
+    assert_eq!(
+        epoch_id_a, epoch_id_b,
+        "deterministic derivation must yield the same EpochId on both Alice clients"
+    );
+
+    // alice_a exports the higher-level group's VerifiableGroupInfo for
+    // alice_b's external commit.
+    let verifiable_group_info = {
+        let group_info_msg = alice_a_main
+            .export_group_info(alice_a_provider.crypto(), &vc_signer, true)
+            .expect("export group info");
+        let serialized = group_info_msg
+            .tls_serialize_detached()
+            .expect("serialize group info");
+        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .expect("deserialize group info message")
+            .into_verifiable_group_info()
+            .expect("into verifiable group info")
+    };
+
+    // alice_b builds the resync external commit. The auto-Remove
+    // machinery picks up alice_a's existing leaf (same signature key)
+    // and inlines a Remove for it.
+    let (mut alice_b_main, bundle) = MlsGroup::external_commit_builder()
+        .with_config(
+            MlsGroupJoinConfig::builder()
+                .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+                .use_ratchet_tree_extension(true)
+                .build(),
+        )
+        .build_group(&alice_b_provider, verifiable_group_info, vc_credential)
+        .expect("build_group")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(vc_capabilities())
+                .with_extensions(vc_leaf_extensions())
+                .build(),
+        )
+        .vc_emulation(
+            alice_b_provider.crypto(),
+            alice_b_provider.storage(),
+            epoch_id_b.clone(),
+        )
+        .expect("vc emulation")
+        .load_psks(alice_b_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_b_provider.rand(),
+            alice_b_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build external commit")
+        .finalize(&alice_b_provider)
+        .expect("finalize external commit");
+    let commit_msg = bundle.into_commit();
+
+    let new_leaf_index = alice_b_main.own_leaf_index();
+    let new_epoch = alice_b_main.epoch();
+
+    // alice_a processes the resync external commit via the sibling-VC path.
+    {
+        let processed = alice_a_main
+            .process_message(
+                &alice_a_provider,
+                commit_msg.clone().into_protocol_message().unwrap(),
+            )
+            .expect("alice_a process resync external commit");
+        let staged = match processed.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(s) => *s,
+            _ => panic!("expected staged commit"),
+        };
+        assert!(
+            !staged.self_removed(),
+            "sibling-resync external commit must not mark alice_a as self-removed"
+        );
+        alice_a_main
+            .merge_staged_commit(&alice_a_provider, staged)
+            .expect("alice_a merge resync");
+    }
+    assert!(alice_a_main.is_active(), "alice_a must stay active");
+    assert_eq!(alice_a_main.epoch(), new_epoch);
+    assert_eq!(
+        alice_a_main.own_leaf_index(),
+        new_leaf_index,
+        "alice_a's own_leaf_index must point to the joiner's new leaf"
+    );
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator(),
+        "alice_a and alice_b must agree on the epoch authenticator"
+    );
+
+    // bob processes via the normal HPKE path.
+    {
+        let processed = bob_main
+            .process_message(&bob_provider, commit_msg.into_protocol_message().unwrap())
+            .expect("bob process resync external commit");
+        let staged = match processed.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(s) => *s,
+            _ => panic!("expected staged commit"),
+        };
+        bob_main
+            .merge_staged_commit(&bob_provider, staged)
+            .expect("bob merge resync");
+    }
+    assert_eq!(
+        bob_main.epoch_authenticator(),
+        alice_a_main.epoch_authenticator()
+    );
+
+    let mut reloaded_alice_a = MlsGroup::load(alice_a_provider.storage(), alice_a_main.group_id())
+        .expect("reload alice_a after resync")
+        .expect("alice_a group present after resync");
+    assert_eq!(
+        reloaded_alice_a.own_leaf_index(),
+        new_leaf_index,
+        "resync must persist alice_a's new own_leaf_index"
+    );
+
+    // alice_a must be able to send from the leaf installed by the resync.
+    // This exercises the SecretTree own-ratchet index, not just epoch
+    // authenticator convergence.
+    let alice_a_app = reloaded_alice_a
+        .create_message(&alice_a_provider, &vc_signer, b"alice_a after resync")
+        .expect("alice_a create app message after resync");
+    for (group, provider) in [
+        (&mut alice_b_main, &alice_b_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                alice_a_app.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process alice_a app message after resync");
+        let ProcessedMessageContent::ApplicationMessage(message) = processed.into_content() else {
+            panic!("expected application message");
+        };
+        assert_eq!(message.into_bytes(), b"alice_a after resync");
+    }
+
+    // Followup VC commit from alice_b. alice_a now processes via the
+    // own-leaf VC path because both Alice clients share `own_leaf_index`.
+    // Bob processes via HPKE.
+    let alice_b_followup = send_vc_commit_with_epoch(
+        &mut alice_b_main,
+        &alice_b_provider,
+        &vc_signer,
+        epoch_id_b.clone(),
+    );
+    for (group, provider) in [
+        (&mut alice_a_main, &alice_a_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                alice_b_followup.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process alice_b followup");
+        let staged = match processed.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(s) => *s,
+            _ => panic!("expected staged commit"),
+        };
+        group
+            .merge_staged_commit(provider, staged)
+            .expect("merge alice_b followup");
+    }
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator()
+    );
+    assert_eq!(
+        bob_main.epoch_authenticator(),
+        alice_a_main.epoch_authenticator()
+    );
+
+    // Followup regular commit from bob. Both Alice clients process via HPKE.
+    let bob_followup = {
+        let bundle = bob_main
+            .commit_builder()
+            .force_self_update(true)
+            .load_psks(bob_provider.storage())
+            .expect("load psks")
+            .build(
+                bob_provider.rand(),
+                bob_provider.crypto(),
+                &bob_signer,
+                |_| true,
+            )
+            .expect("build")
+            .stage_commit(&bob_provider)
+            .expect("stage");
+        bob_main
+            .merge_pending_commit(&bob_provider)
+            .expect("bob merge own");
+        bundle.into_commit()
+    };
+    for (group, provider) in [
+        (&mut alice_a_main, &alice_a_provider),
+        (&mut alice_b_main, &alice_b_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                bob_followup.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process bob followup");
+        let staged = match processed.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(s) => *s,
+            _ => panic!("expected staged commit"),
+        };
+        group
+            .merge_staged_commit(provider, staged)
+            .expect("merge bob followup");
+    }
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator()
+    );
+    assert_eq!(
+        bob_main.epoch_authenticator(),
+        alice_a_main.epoch_authenticator()
+    );
+}
+
+/// A virtual client's **second** emulator client bootstraps into a higher-level
+/// group by **processing** the first emulator client's external commit.
+///
+/// `charly_a` joins the higher-level group (Alice + Bob) via a plain external
+/// commit. Per the mls-virtual-clients draft the commit's leaf carries the
+/// external init secret in its derivation info. `charly_b`, which shares the
+/// emulation epoch but is not a member, calls
+/// [`MlsGroup::vc_join_via_sibling_external_commit`] with the prior-epoch
+/// GroupInfo and that commit: it rebuilds the prior-epoch public group,
+/// recreates the commit path from the shared operation secret tree, and uses
+/// the carried external init secret as the new epoch's external init secret
+/// (it never held the previous epoch's `external_secret`). It lands on the
+/// shared virtual-client leaf, and all four parties converge.
+#[openmls_test]
+fn vc_second_emulator_client_onboards_via_external_commit() {
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+    use openmls::prelude::{LeafNodeParameters, MlsMessageIn};
+    use tls_codec::Deserialize as _;
+
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charly_a_provider = Provider::default();
+    let charly_b_provider = Provider::default();
+
+    // Alice founds the higher-level group and adds Bob. Neither is the virtual
+    // client; they are ordinary members who process Charly's commits via HPKE.
+    let (alice_credential, alice_signer) =
+        new_credential(&alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let mut alice_main = new_vc_main_group(
+        ciphersuite,
+        &alice_provider,
+        &alice_signer,
+        alice_credential,
+    );
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_main
+        .add_members(&alice_provider, &alice_signer, &[bob_kp])
+        .expect("alice add bob");
+    alice_main
+        .merge_pending_commit(&alice_provider)
+        .expect("alice merge add bob");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join higher-level group");
+
+    // Charly is one virtual client with two emulator clients. They share a
+    // signing identity (stored in both providers) ...
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(charly_a_provider.storage())
+        .expect("store vc signer on charly_a");
+    vc_signer
+        .store(charly_b_provider.storage())
+        .expect("store vc signer on charly_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Charly (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+
+    // ... and a two-member emulator group from which both derive the same
+    // emulation epoch (operation secret tree + AEAD key + EpochId).
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, &charly_a_provider, b"CharlyEmulatorA");
+    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        &charly_b_provider,
+        b"CharlyEmulatorB",
+        ciphersuite.signature_algorithm(),
+    );
+    let emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            ciphersuite,
+            &charly_b_provider,
+            &emulator_b_signer,
+            emulator_b_credential,
+        )
+        .expect("charly_b emulator KP build")
+        .key_package()
+        .to_owned();
+    let (_, e_welcome, _) = emulator_a
+        .add_members(&charly_a_provider, &emulator_a_signer, &[emulator_b_kp])
+        .expect("emulator_a add charly_b");
+    emulator_a
+        .merge_pending_commit(&charly_a_provider)
+        .expect("emulator_a merge add");
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        &charly_b_provider,
+        &vc_join_config(),
+        e_welcome.into_welcome().expect("emulator welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&charly_b_provider))
+    .expect("charly_b join emulator group");
+    let epoch_id = emulator_a
+        .register_vc_emulation_epoch(charly_a_provider.crypto(), charly_a_provider.storage())
+        .expect("charly_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(charly_b_provider.crypto(), charly_b_provider.storage())
+        .expect("charly_b register vc epoch");
+    assert_eq!(
+        epoch_id, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
+
+    // Export the prior-epoch GroupInfo twice: one copy is consumed by
+    // charly_a's external commit, the other is handed to charly_b so it can
+    // rebuild the prior-epoch public group when bootstrapping. Both carry the
+    // ratchet tree as an extension (the group uses `use_ratchet_tree_extension`).
+    let export_prior_epoch_vgi = |label: &str| {
+        let gi = alice_main
+            .export_group_info(alice_provider.crypto(), &alice_signer, true)
+            .unwrap_or_else(|_| panic!("export group info ({label})"));
+        let serialized = gi.tls_serialize_detached().expect("serialize gi");
+        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .expect("deserialize gi")
+            .into_verifiable_group_info()
+            .expect("into vgi")
+    };
+    let vgi_charly_a = export_prior_epoch_vgi("charly_a");
+    let vgi_charly_b = export_prior_epoch_vgi("charly_b");
+    let pre_join_message = alice_main
+        .create_message(&alice_provider, &alice_signer, b"before charly joins")
+        .expect("alice create pre-join app message");
+
+    // Phase 1: charly_a (the first emulator client) joins the higher-level
+    // group via an external commit. No prior Charly leaf exists, so this is a
+    // plain external join, not a resync. Its leaf carries the external init
+    // secret in the derivation info. Alice and Bob process it via HPKE.
+    let (charly_a_main, bundle) = MlsGroup::external_commit_builder()
+        .with_config(vc_join_config())
+        .build_group(&charly_a_provider, vgi_charly_a, vc_credential.clone())
+        .expect("build_group charly_a")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(vc_capabilities())
+                .with_extensions(vc_leaf_extensions())
+                .build(),
+        )
+        .vc_emulation(
+            charly_a_provider.crypto(),
+            charly_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation charly_a")
+        .load_psks(charly_a_provider.storage())
+        .expect("load psks")
+        .build(
+            charly_a_provider.rand(),
+            charly_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build external commit charly_a")
+        .finalize(&charly_a_provider)
+        .expect("finalize charly_a join");
+    let charly_a_join = bundle.into_commit();
+    // A copy of charly_a's external commit for charly_b to process.
+    let charly_a_commit_for_b = charly_a_join
+        .clone()
+        .into_protocol_message()
+        .expect("charly_a commit as protocol message");
+    process_and_merge_commit(&mut alice_main, &alice_provider, charly_a_join.clone());
+    process_and_merge_commit(&mut bob_main, &bob_provider, charly_a_join);
+
+    let auth_after_join = charly_a_main.epoch_authenticator();
+    assert_eq!(alice_main.epoch_authenticator(), auth_after_join);
+    assert_eq!(bob_main.epoch_authenticator(), auth_after_join);
+
+    // Phase 2: charly_b bootstraps by *processing* charly_a's external commit.
+    // It is not a member, so it rebuilds the prior-epoch public group from
+    // `vgi_charly_b`, recreates the path from the shared operation secret tree,
+    // and uses the external init secret carried in the commit. It lands on the
+    // same virtual-client leaf charly_a occupies.
+    let bootstrap_join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .max_past_epochs(1)
+        .build();
+    let mut charly_b_main = MlsGroup::vc_join_via_sibling_external_commit(
+        &charly_b_provider,
+        &bootstrap_join_config,
+        vgi_charly_b,
+        None,
+        charly_a_commit_for_b,
+        epoch_id_b.clone(),
+    )
+    .expect("charly_b bootstraps by processing charly_a's external commit");
+    let err = charly_b_main
+        .process_message(
+            &charly_b_provider,
+            pre_join_message.into_protocol_message().unwrap(),
+        )
+        .expect_err("bootstrapped sibling must not retain fake prior-epoch secrets");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::TooDistantInThePast),
+    )) = err
+    else {
+        panic!("expected no usable past epoch secret for pre-bootstrap message");
+    };
+
+    // Both emulator clients now hold the VC's higher-level group state on one
+    // shared leaf, and the whole group converges.
+    assert!(charly_a_main.is_active() && charly_b_main.is_active());
+    assert_eq!(
+        charly_b_main.own_leaf_index(),
+        charly_a_main.own_leaf_index(),
+        "the bootstrapped sibling must land on the shared VC leaf"
+    );
+    let auth = charly_b_main.epoch_authenticator();
+    assert_eq!(charly_a_main.epoch_authenticator(), auth);
+    assert_eq!(alice_main.epoch_authenticator(), auth);
+    assert_eq!(bob_main.epoch_authenticator(), auth);
+
+    // The bootstrapped sibling is a working member: it decrypts an application
+    // message from Alice, and a message it sends is decrypted by Alice and Bob.
+    let alice_app = alice_main
+        .create_message(&alice_provider, &alice_signer, b"hello charly_b")
+        .expect("alice create app message");
+    let processed = charly_b_main
+        .process_message(
+            &charly_b_provider,
+            alice_app.into_protocol_message().unwrap(),
+        )
+        .expect("charly_b processes alice's app message");
+    let ProcessedMessageContent::ApplicationMessage(message) = processed.into_content() else {
+        panic!("expected application message");
+    };
+    assert_eq!(message.into_bytes(), b"hello charly_b");
+
+    let charly_b_app = charly_b_main
+        .create_message(&charly_b_provider, &vc_signer, b"charly_b bootstrapped")
+        .expect("charly_b create app message");
+    for (group, provider) in [
+        (&mut alice_main, &alice_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                charly_b_app.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process charly_b app message");
+        let ProcessedMessageContent::ApplicationMessage(message) = processed.into_content() else {
+            panic!("expected application message");
+        };
+        assert_eq!(message.into_bytes(), b"charly_b bootstrapped");
+    }
+}
+
+/// A sibling emulator joins a higher-level group via a virtual client's
+/// KeyPackage that another emulator published.
+///
+///   * `alice_a` and `alice_b` share an emulator group and both register the
+///     same emulation epoch, so both hold its `EmulationEpochState` and
+///     `OperationSecretTree`.
+///   * `alice_a` builds a one-KeyPackage batch with `build_vc_batch`
+///     (consuming generation 0 of its `key_package` operation ratchet) and
+///     hands the resulting `KeyPackageUpload` to `alice_b`, who stores a
+///     `RetainedKeyPackageMaterial` per ref via
+///     `process_vc_key_package_upload`.
+///   * An ordinary MLS client, `bob`, founds a higher-level group and adds the
+///     virtual client using that KeyPackage, producing a Welcome and ratchet
+///     tree.
+///   * `alice_b` (the *sibling*, not the KeyPackage's creator) processes the
+///     Welcome: the first stage rederives the init key from the operation tree
+///     to decrypt the group secrets, then staging locates and validates its
+///     own leaf via the derivation info and the derived encryption key.
+///   * `alice_b` joins as the virtual client at the expected leaf, and an
+///     application message round-trips between `bob` and `alice_b`.
+#[openmls_test]
+fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
+    use openmls::components::vc_derivation_info::{
+        assemble_vc_key_package_upload, process_vc_key_package_upload,
+    };
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    // Shared virtual-client signer + credential, held by both emulator
+    // clients so either could sign for the shared higher-level leaf.
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    // Emulator group: alice_a creates, alice_b joins via Welcome.
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
+    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        &alice_b_provider,
+        b"AliceEmulatorB",
+        ciphersuite.signature_algorithm(),
+    );
+    let emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            ciphersuite,
+            &alice_b_provider,
+            &emulator_b_signer,
+            emulator_b_credential,
+        )
+        .expect("emulator_b KP build")
+        .key_package()
+        .to_owned();
+    let (_e_commit, e_welcome, _e_gi) = emulator_a
+        .add_members(&alice_a_provider, &emulator_a_signer, &[emulator_b_kp])
+        .expect("emulator_a add alice_b");
+    emulator_a
+        .merge_pending_commit(&alice_a_provider)
+        .expect("emulator_a merge add");
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &vc_join_config(),
+        e_welcome.into_welcome().expect("emulator welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&alice_b_provider))
+    .expect("alice_b join emulator group");
+
+    // Both emulators register the same emulation epoch.
+    let epoch_id_a = emulator_a
+        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .expect("alice_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .expect("alice_b register vc epoch");
+    assert_eq!(
+        epoch_id_a, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
+
+    // alice_a publishes a virtual-client KeyPackage and hands the upload to
+    // alice_b. alice_b only learns about the KeyPackage through the upload, it
+    // never stores the bundle.
+    let mut batch = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            ciphersuite,
+            &alice_a_provider,
+            &vc_signer,
+            vc_credential.clone(),
+            epoch_id_a.clone(),
+            1,
+        )
+        .expect("alice_a build_vc_batch");
+    let generation = batch.generation;
+    let (vc_key_package_bundle, kp_info) = batch.key_packages.remove(0);
+    let upload = assemble_vc_key_package_upload(
+        alice_a_provider.storage(),
+        epoch_id_a.clone(),
+        generation,
+        vec![kp_info],
+    )
+    .expect("assemble upload");
+    process_vc_key_package_upload(&alice_b_provider, &upload).expect("alice_b process upload");
+
+    // Bob founds a higher-level group and adds the virtual client via the
+    // published KeyPackage.
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut bob_main = MlsGroup::new(
+        &bob_provider,
+        &bob_signer,
+        &bob_group_config,
+        bob_credential,
+    )
+    .expect("bob create higher-level group");
+    let (_commit, welcome, _gi) = bob_main
+        .add_members(
+            &bob_provider,
+            &bob_signer,
+            &[vc_key_package_bundle.key_package().clone()],
+        )
+        .expect("bob add virtual client");
+    bob_main
+        .merge_pending_commit(&bob_provider)
+        .expect("bob merge add");
+    let ratchet_tree = bob_main.export_ratchet_tree();
+
+    // alice_b, the sibling that only holds the RetainedKeyPackageMaterial,
+    // processes the Welcome and joins as the virtual client.
+    let processed = openmls::group::ProcessedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome present"),
+    )
+    .expect("alice_b process welcome");
+    let mut alice_b_main = processed
+        .into_staged_welcome(&alice_b_provider, Some(ratchet_tree.into()))
+        .expect("alice_b stage welcome")
+        .into_group(&alice_b_provider)
+        .expect("alice_b join higher-level group");
+
+    // alice_b's leaf carries the virtual client's signature key.
+    let vc_signature_key = vc_signer.public().to_vec();
+    let own_member = alice_b_main
+        .members()
+        .find(|m| m.index == alice_b_main.own_leaf_index())
+        .expect("own member present");
+    assert_eq!(
+        own_member.signature_key, vc_signature_key,
+        "alice_b's joined leaf must carry the virtual client's signature key"
+    );
+    assert_eq!(
+        bob_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator(),
+        "bob and the joined virtual client must agree on the epoch"
+    );
+
+    // An application message round-trips both ways.
+    let to_vc = send_and_process_app_message(
+        &mut bob_main,
+        &bob_provider,
+        &bob_signer,
+        &mut alice_b_main,
+        &alice_b_provider,
+        b"hello virtual client",
+    );
+    match to_vc.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), b"hello virtual client");
+        }
+        _ => panic!("expected application message from bob"),
+    }
+    let from_vc = send_and_process_app_message(
+        &mut alice_b_main,
+        &alice_b_provider,
+        &vc_signer,
+        &mut bob_main,
+        &bob_provider,
+        b"hello bob",
+    );
+    match from_vc.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), b"hello bob");
+        }
+        _ => panic!("expected application message from virtual client"),
+    }
+}
+
+/// Regression test for the batch-model switch. A virtual client builds one
+/// batch of KeyPackages larger than the operation tree's
+/// `OUT_OF_ORDER_TOLERANCE` (32), so the old per-KeyPackage-generation model
+/// would have evicted the lowest generations before they could be used at
+/// Welcome time. The sibling then joins two separate higher-level groups via
+/// KeyPackages from that batch, picking a HIGH batch index first and a LOW one
+/// second. Both joins must succeed because the batch shares a single
+/// generation and every per-index seed is pinned in the retained material at
+/// upload-processing time, independent of Welcome order.
+#[openmls_test]
+fn vc_batch_key_packages_join_in_any_order() {
+    use openmls::components::vc_derivation_info::{
+        assemble_vc_key_package_upload, process_vc_key_package_upload,
+    };
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    // Emulator group: alice_a creates, alice_b joins via Welcome.
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
+    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        &alice_b_provider,
+        b"AliceEmulatorB",
+        ciphersuite.signature_algorithm(),
+    );
+    let emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            ciphersuite,
+            &alice_b_provider,
+            &emulator_b_signer,
+            emulator_b_credential,
+        )
+        .expect("emulator_b KP build")
+        .key_package()
+        .to_owned();
+    let (_e_commit, e_welcome, _e_gi) = emulator_a
+        .add_members(&alice_a_provider, &emulator_a_signer, &[emulator_b_kp])
+        .expect("emulator_a add alice_b");
+    emulator_a
+        .merge_pending_commit(&alice_a_provider)
+        .expect("emulator_a merge add");
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &vc_join_config(),
+        e_welcome.into_welcome().expect("emulator welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&alice_b_provider))
+    .expect("alice_b join emulator group");
+
+    let epoch_id_a = emulator_a
+        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .expect("alice_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .expect("alice_b register vc epoch");
+    assert_eq!(
+        epoch_id_a, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
+
+    // One batch of 40 KeyPackages, larger than OUT_OF_ORDER_TOLERANCE (32).
+    let count = 40;
+    let batch = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            ciphersuite,
+            &alice_a_provider,
+            &vc_signer,
+            vc_credential.clone(),
+            epoch_id_a.clone(),
+            count,
+        )
+        .expect("alice_a build_vc_batch");
+    let generation = batch.generation;
+    assert_eq!(generation, 0, "the batch consumes a single generation");
+    assert_eq!(batch.key_packages.len(), count);
+
+    let kp_infos = batch
+        .key_packages
+        .iter()
+        .map(|(_bundle, info)| info)
+        .map(
+            |info| openmls::components::vc_derivation_info::KeyPackageInfo {
+                key_package_ref: info.key_package_ref.clone(),
+                cipher_suite: info.cipher_suite,
+                key_package_index: info.key_package_index,
+            },
+        )
+        .collect::<Vec<_>>();
+    let upload = assemble_vc_key_package_upload(
+        alice_a_provider.storage(),
+        epoch_id_a.clone(),
+        generation,
+        kp_infos,
+    )
+    .expect("assemble upload");
+    process_vc_key_package_upload(&alice_b_provider, &upload).expect("alice_b process upload");
+
+    // The sibling joins via a HIGH batch index first and a LOW one second,
+    // each through a separate higher-level group.
+    let high_bundle = batch.key_packages[count - 1].0.key_package().clone();
+    let low_bundle = batch.key_packages[0].0.key_package().clone();
+
+    for (label, kp) in [
+        (b"BobHigh".as_slice(), high_bundle),
+        (b"BobLow".as_slice(), low_bundle),
+    ] {
+        let bob_provider = Provider::default();
+        let (bob_credential, bob_signer) =
+            new_credential(&bob_provider, label, ciphersuite.signature_algorithm());
+        let bob_group_config = MlsGroupCreateConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .ciphersuite(ciphersuite)
+            .use_ratchet_tree_extension(true)
+            .build();
+        let mut bob_main = MlsGroup::new(
+            &bob_provider,
+            &bob_signer,
+            &bob_group_config,
+            bob_credential,
+        )
+        .expect("bob create higher-level group");
+        let (_commit, welcome, _gi) = bob_main
+            .add_members(&bob_provider, &bob_signer, &[kp])
+            .expect("bob add virtual client");
+        bob_main
+            .merge_pending_commit(&bob_provider)
+            .expect("bob merge add");
+        let ratchet_tree = bob_main.export_ratchet_tree();
+
+        let processed = openmls::group::ProcessedWelcome::new_from_welcome(
+            &alice_b_provider,
+            &vc_join_config(),
+            welcome.into_welcome().expect("welcome present"),
+        )
+        .expect("alice_b process welcome");
+        let alice_b_main = processed
+            .into_staged_welcome(&alice_b_provider, Some(ratchet_tree.into()))
+            .expect("alice_b stage welcome")
+            .into_group(&alice_b_provider)
+            .expect("alice_b join higher-level group");
+
+        assert_eq!(
+            bob_main.epoch_authenticator(),
+            alice_b_main.epoch_authenticator(),
+            "bob and the joined virtual client must agree on the epoch"
+        );
+    }
+}
+
+#[openmls_test::openmls_test]
+fn processing_own_application_message() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential.clone())
+        .expect("An unexpected error occurred.");
+
+    // Alice sends an application message and decrypts it herself
+    let alice_message = b"Hello, this is Alice!";
+    let unconfirmed = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
+        .unwrap();
+    assert!(
+        unconfirmed.generation_id.is_none(),
+        "a group with no emulation binding must not produce a generation id"
+    );
+    let ciphertext = unconfirmed.message;
+
+    let processed_message = alice_group
+        .process_message(
+            alice_provider,
+            ciphertext.clone().into_protocol_message().unwrap(),
+        )
+        .unwrap();
+
+    let ProcessedMessageContent::ApplicationMessage(msg) = processed_message.into_content() else {
+        panic!("Expected an application message.");
+    };
+    assert!(alice_message.as_slice() == msg.into_bytes().as_slice());
+
+    // Processing the message again cannot decrypt it because the generation
+    // has already been consumed. In a group without virtual clients this
+    // surfaces as OwnPrivateMessage.
+    let processed_message = alice_group
+        .process_message(alice_provider, ciphertext.into_protocol_message().unwrap())
+        .expect("Expected processing the same message again to succeed.");
+    assert!(matches!(
+        processed_message.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
+
+    // Alice sends another application message and confirms it. Its secret is
+    // deleted, so processing it also surfaces as OwnPrivateMessage.
+    let alice_message = b"Hello, this is Alice again!";
+    let unconfirmed = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
+        .unwrap();
+    let ciphertext = unconfirmed.message;
+    alice_group
+        .confirm_application_message(
+            alice_provider.storage(),
+            unconfirmed.epoch,
+            unconfirmed.generation,
+        )
+        .unwrap();
+
+    let processed_message = alice_group
+        .process_message(
+            alice_provider,
+            ciphertext.clone().into_protocol_message().unwrap(),
+        )
+        .expect("Expected processing a confirmed message to succeed.");
+    assert!(matches!(
+        processed_message.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
+}
+
+/// Confirming a message deletes the secret of its own creation epoch, even
+/// after the group has advanced past that epoch, and never the secret of a
+/// different message that happens to share the generation number in a newer
+/// epoch.
+#[openmls_test::openmls_test]
+fn confirm_targets_creation_epoch() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+    // Alice keeps one past epoch so the secret retained at epoch N survives
+    // into epoch N+1.
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .max_past_epochs(1)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("alice create group");
+
+    let bob_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+
+    let (_commit, welcome, _gi) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("alice add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("alice merge add");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(bob_provider))
+    .expect("bob join");
+
+    // Epoch N: Alice creates the first application message of the epoch.
+    let msg1 = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, b"epoch N message")
+        .expect("create msg1");
+
+    // Bob commits, Alice processes and merges, moving to epoch N+1.
+    let bob_commit = bob_group
+        .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
+        .expect("bob self-update")
+        .into_commit();
+    bob_group
+        .merge_pending_commit(bob_provider)
+        .expect("bob merge self-update");
+    let processed = alice_group
+        .process_message(alice_provider, bob_commit.into_protocol_message().unwrap())
+        .expect("alice process bob commit");
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("expected a staged commit");
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, *staged)
+        .expect("alice merge bob commit");
+
+    // Epoch N+1: Alice creates the first application message of the epoch.
+    let msg2 = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, b"epoch N+1 message")
+        .expect("create msg2");
+
+    assert_ne!(
+        msg1.epoch, msg2.epoch,
+        "the commit must have advanced the epoch"
+    );
+    assert_eq!(
+        msg1.generation, msg2.generation,
+        "both are the first application send of their epoch"
+    );
+
+    // Confirming msg1 at its creation epoch must not touch msg2's secret,
+    // which shares the generation number in the newer epoch.
+    alice_group
+        .confirm_application_message(alice_provider.storage(), msg1.epoch, msg1.generation)
+        .expect("confirm msg1");
+
+    // msg2's secret is intact, so its echo decrypts.
+    let processed = alice_group
+        .process_message(
+            alice_provider,
+            msg2.message.into_protocol_message().unwrap(),
+        )
+        .expect("process msg2 echo");
+    let ProcessedMessageContent::ApplicationMessage(app) = processed.into_content() else {
+        panic!("expected msg2 to decrypt to an application message");
+    };
+    assert_eq!(app.into_bytes().as_slice(), b"epoch N+1 message");
+
+    // msg1's secret was deleted, so its echo surfaces OwnPrivateMessage.
+    let processed = alice_group
+        .process_message(
+            alice_provider,
+            msg1.message.into_protocol_message().unwrap(),
+        )
+        .expect("process msg1 echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
+}
+
+/// Confirming a message whose creation epoch has aged out of the message
+/// secrets store is a no-op success.
+#[openmls_test::openmls_test]
+fn confirm_aged_out_epoch_is_noop() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+    // Default config keeps no past epochs.
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("alice create group");
+
+    let bob_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+
+    let (_commit, welcome, _gi) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("alice add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("alice merge add");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(bob_provider))
+    .expect("bob join");
+
+    let msg = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, b"epoch N message")
+        .expect("create msg");
+
+    // Bob commits, Alice advances to epoch N+1. With no retained past epochs,
+    // the epoch-N secret tree is dropped.
+    let bob_commit = bob_group
+        .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
+        .expect("bob self-update")
+        .into_commit();
+    bob_group
+        .merge_pending_commit(bob_provider)
+        .expect("bob merge self-update");
+    let processed = alice_group
+        .process_message(alice_provider, bob_commit.into_protocol_message().unwrap())
+        .expect("alice process bob commit");
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("expected a staged commit");
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, *staged)
+        .expect("alice merge bob commit");
+
+    alice_group
+        .confirm_application_message(alice_provider.storage(), msg.epoch, msg.generation)
+        .expect("confirming an aged-out epoch must be a no-op success");
+}
+
+/// Confirming a message whose secret was already consumed by processing its
+/// own echo is a no-op success.
+#[openmls_test::openmls_test]
+fn confirm_after_processing_own_echo_is_noop() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("alice create group");
+
+    let unconfirmed = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, b"echo me")
+        .expect("create unconfirmed message");
+    let epoch = unconfirmed.epoch;
+    let generation = unconfirmed.generation;
+
+    let processed = alice_group
+        .process_message(
+            alice_provider,
+            unconfirmed.message.into_protocol_message().unwrap(),
+        )
+        .expect("process own echo");
+    let ProcessedMessageContent::ApplicationMessage(app) = processed.into_content() else {
+        panic!("expected the own echo to decrypt");
+    };
+    assert_eq!(app.into_bytes().as_slice(), b"echo me");
+
+    alice_group
+        .confirm_application_message(alice_provider.storage(), epoch, generation)
+        .expect("confirming an already-consumed generation must be a no-op success");
+}
+
+/// Confirming an epoch newer than the group's current epoch errors.
+#[openmls_test::openmls_test]
+fn confirm_future_epoch_errors() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("alice create group");
+
+    let future_epoch = GroupEpoch::from(alice_group.epoch().as_u64() + 1);
+    let err = alice_group
+        .confirm_application_message(alice_provider.storage(), future_epoch, 0)
+        .expect_err("confirming a future epoch must error");
+    assert!(matches!(err, ConfirmMessageError::FutureEpoch));
+}
+
+/// A retained own handshake secret decrypts the message's own echo, and
+/// `confirm_handshake_message` deletes it.
+#[openmls_test::openmls_test]
+fn confirm_handshake_message_deletes_retained_secret() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signer) = new_credential(
+        alice_provider,
+        b"Charlie",
+        ciphersuite.signature_algorithm(),
+    );
+    let (dave_credential, dave_signer) =
+        new_credential(alice_provider, b"Dave", ciphersuite.signature_algorithm());
+
+    // Pure-ciphertext framing so proposals are sent and accepted as
+    // PrivateMessage.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_signer,
+        &group_config,
+        alice_credential,
+    )
+    .expect("alice create group");
+
+    let bob_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_commit, _welcome, _gi) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("alice add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("alice merge add");
+
+    let charlie_key_package = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            alice_provider,
+            &charlie_signer,
+            charlie_credential,
+        )
+        .expect("charlie KP build")
+        .key_package()
+        .to_owned();
+    let dave_key_package = KeyPackage::builder()
+        .build(ciphersuite, alice_provider, &dave_signer, dave_credential)
+        .expect("dave KP build")
+        .key_package()
+        .to_owned();
+
+    let epoch = alice_group.epoch();
+
+    // The first handshake send of this epoch uses generation 0.
+    // `propose_unconfirmed` retains the handshake secret.
+    let (proposal_a, _ref_a, _confirmation_a) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::Add(charlie_key_package),
+            ProposalOrRefType::Reference,
+        )
+        .expect("propose add charlie");
+
+    // Processing proposal A's own echo without confirming decrypts it, which
+    // proves the own handshake ratchet retains the secret.
+    let processed = alice_group
+        .process_message(alice_provider, proposal_a.into_protocol_message().unwrap())
+        .expect("process proposal A echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+
+    // Proposal B uses handshake generation 1.
+    let (proposal_b, _ref_b, _confirmation_b) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::Add(dave_key_package),
+            ProposalOrRefType::Reference,
+        )
+        .expect("propose add dave");
+    alice_group
+        .confirm_handshake_message(alice_provider.storage(), epoch, 1)
+        .expect("confirm proposal B");
+
+    // Proposal B's secret was deleted, so its echo surfaces OwnPrivateMessage.
+    let processed = alice_group
+        .process_message(alice_provider, proposal_b.into_protocol_message().unwrap())
+        .expect("process proposal B echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
+}
+
+#[openmls_test::openmls_test]
+fn unconfirmed_message_decrypts_after_next_message_is_confirmed() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("An unexpected error occurred.");
+
+    let first_message = b"first unconfirmed message";
+    let first = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, first_message)
+        .expect("Could not create first unconfirmed message.");
+    assert_eq!(first.generation, 0);
+
+    let second_message = b"second confirmed message";
+    let second = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, second_message)
+        .expect("Could not create second message.");
+    assert_eq!(second.generation, 1);
+    alice_group
+        .confirm_application_message(alice_provider.storage(), second.epoch, second.generation)
+        .expect("Could not confirm second message.");
+
+    let processed_message = alice_group
+        .process_message(
+            alice_provider,
+            first.message.into_protocol_message().unwrap(),
+        )
+        .expect("Expected first unconfirmed message to decrypt.");
+
+    let ProcessedMessageContent::ApplicationMessage(msg) = processed_message.into_content() else {
+        panic!("Expected an application message.");
+    };
+    assert_eq!(first_message.as_slice(), msg.into_bytes().as_slice());
+}
+
+#[openmls_test::openmls_test]
+fn old_unconfirmed_own_message_survives_later_confirmations() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("An unexpected error occurred.");
+
+    let first_message = b"first unconfirmed message";
+    let first = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, first_message)
+        .expect("Could not create first unconfirmed message.");
+
+    let tolerance = alice_group
+        .configuration()
+        .sender_ratchet_configuration()
+        .out_of_order_tolerance();
+
+    for i in 0..tolerance + 2 {
+        let later = alice_group
+            .create_unconfirmed_message(
+                alice_provider,
+                &alice_signer,
+                format!("later confirmed message {i}").as_bytes(),
+            )
+            .expect("Could not create later unconfirmed message.");
+        alice_group
+            .confirm_application_message(alice_provider.storage(), later.epoch, later.generation)
+            .expect("Could not confirm later message.");
+    }
+
+    let processed_message = alice_group
+        .process_message(
+            alice_provider,
+            first.message.into_protocol_message().unwrap(),
+        )
+        .expect("Expected old unconfirmed own message to decrypt.");
+
+    let ProcessedMessageContent::ApplicationMessage(msg) = processed_message.into_content() else {
+        panic!("Expected an application message.");
+    };
+    assert_eq!(first_message.as_slice(), msg.into_bytes().as_slice());
+}
+
+/// End-to-end recipient-side reuse-guard inversion across two sibling
+/// emulators. The receiving sibling is a genuinely separate client: it joins
+/// the emulation group and resyncs into the higher-level group via an
+/// external commit, with no storage cloning.
+#[openmls_test::openmls_test]
+fn reuse_guard_recovers_emulator_leaf_index() {
+    let _ = ciphersuite;
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+    let alice_a_provider = OpenMlsRustCrypto::default();
+    let alice_b_provider = OpenMlsRustCrypto::default();
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
+
+    let (sib, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        vc_join_config(),
+    );
+    let SiblingEmulators {
+        emulator_a,
+        mut alice_b_main,
+        ..
+    } = sib;
+    // alice_a processes the resync and converges on the shared VC leaf.
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, resync_commit);
+
+    // alice_a is emulation leaf 0; its reuse guard must resolve to it.
+    let expected_emulation_leaf = emulator_a.own_leaf_index();
+
+    // alice_a sends an application message; alice_b recovers alice_a's
+    // emulation leaf index from the reuse guard.
+    let plaintext = b"reuse-guard recovery payload";
+    let processed_app = send_and_process_app_message(
+        &mut alice_a_main,
+        &alice_a_provider,
+        &vc_signer,
+        &mut alice_b_main,
+        &alice_b_provider,
+        plaintext,
+    );
+
+    assert_eq!(
+        processed_app.emulator_sender_leaf_index(),
+        Some(expected_emulation_leaf),
+    );
+    match processed_app.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), plaintext);
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
+/// A group with no emulation binding returns `None` from
+/// `emulator_sender_leaf_index` on application messages.
+#[openmls_test::openmls_test]
+fn emulator_sender_leaf_index_none_without_binding() {
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let (mut alice, _alice_signer, mut bob, bob_signer) =
+        setup_alice_bob_group(ciphersuite, &alice_provider, &bob_provider);
+
+    let plaintext = b"non-emulator application message";
+    let bob_msg = bob
+        .create_message(&bob_provider, &bob_signer, plaintext)
+        .expect("bob creates application message");
+
+    let processed = alice
+        .process_message(&alice_provider, bob_msg.into_protocol_message().unwrap())
+        .expect("alice processes bob's application message");
+
+    assert_eq!(processed.emulator_sender_leaf_index(), None);
+    match processed.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), plaintext);
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
+/// A higher-level group with an emulation binding must not send with a
+/// random reuse guard if the bound emulation state is missing.
+#[test]
+fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    let mut alice_group = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
+        .expect("create alice group");
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+
+    let (_commit_msg, epoch_id) = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        &provider,
+        &alice_signer,
+    );
+    let deleted = provider
+        .storage()
+        .delete_vc_emulation_state_if_unreferenced(&epoch_id)
+        .expect("delete emulation state");
+    assert!(
+        deleted,
+        "no retained material, so the epoch state is deleted"
+    );
+
+    let err = alice_group
+        .create_message(&provider, &alice_signer, b"must not send")
+        .expect_err("bound group without emulation state must fail closed");
+
+    assert!(
+        matches!(
+            err,
+            openmls::group::CreateMessageError::MessageEncryptionError(
+                openmls::framing::errors::MessageEncryptionError::VirtualClientsError(
+                    openmls::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState
+                )
+            )
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+/// On a group bound to an emulation epoch, `create_unconfirmed_message`
+/// returns a generation ID, and consecutive ratchet generations produce
+/// distinct generation IDs.
+#[test]
+fn create_unconfirmed_message_returns_generation_id_when_bound() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group =
+        new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+
+    // Bind alice_group's current epoch to the emulation epoch.
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        &provider,
+        &alice_signer,
+    );
+
+    let first = alice_group
+        .create_unconfirmed_message(&provider, &alice_signer, b"first")
+        .expect("create first unconfirmed message");
+    let generation_id_first = first
+        .generation_id
+        .expect("a bound group must produce a generation id");
+    assert_eq!(
+        generation_id_first.as_slice().len(),
+        ciphersuite.hash_length()
+    );
+    alice_group
+        .confirm_application_message(provider.storage(), first.epoch, first.generation)
+        .expect("confirm first message");
+
+    let second = alice_group
+        .create_unconfirmed_message(&provider, &alice_signer, b"second")
+        .expect("create second unconfirmed message");
+    let generation_id_second = second
+        .generation_id
+        .expect("a bound group must produce a generation id");
+
+    assert_ne!(
+        generation_id_first, generation_id_second,
+        "distinct ratchet generations must yield distinct generation ids"
+    );
+}
+
+/// `vc_emulation` validates the leaf configuration before allocating an
+/// operation secret. A leaf that supports `AppDataDictionary` but does not
+/// list `VC_COMPONENT_ID` is rejected at the builder step rather than at
+/// `build`, so no generation is burned on this deterministic failure.
+#[test]
+fn vc_emulation_rejects_misconfigured_leaf_before_allocating() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+
+    // The leaf advertises `AppDataDictionary` support but carries no
+    // `AppComponents` entry, so `VC_COMPONENT_ID` is not listed.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .build();
+    let mut alice_group = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
+        .expect("create alice group");
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+
+    let epoch_id = emulator_group
+        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .expect("register vc epoch");
+
+    let err = alice_group
+        .commit_builder()
+        .vc_emulation(provider.crypto(), provider.storage(), epoch_id)
+        .expect_err("misconfigured leaf must be rejected at the builder step");
+
+    assert!(
+        matches!(
+            err,
+            openmls::group::CreateCommitError::VirtualClientsError(
+                openmls::components::vc_derivation_info::VirtualClientsError::VcComponentNotListed
+            )
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+/// End-to-end reuse-guard recovery with the emulator group and the
+/// higher-level group on different ciphersuites with different AEAD key
+/// lengths. The emulation epoch's AEAD and operation-tree material must
+/// use the
+/// emulation ciphersuite, while the generated update path remains in the
+/// higher-level group's ciphersuite.
+#[test]
+fn reuse_guard_recovery_across_mismatched_ciphersuites() {
+    let _ = pretty_env_logger::try_init();
+    let higher_level_ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let emulator_ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+    assert_ne!(higher_level_ciphersuite, emulator_ciphersuite);
+
+    let alice_a_provider = OpenMlsRustCrypto::default();
+    let alice_b_provider = OpenMlsRustCrypto::default();
+    let (vc_signer, vc_credential) = shared_vc_identity(
+        higher_level_ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+    );
+
+    let mut alice_a_main = new_vc_main_group(
+        higher_level_ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
+
+    // The emulation group runs a different ciphersuite from the higher-level
+    // group, so the operation tree and reuse-guard PRP key are derived under
+    // the emulation ciphersuite while the update path stays in the
+    // higher-level ciphersuite.
+    let (sib, resync_commit) = join_sibling_emulator(
+        emulator_ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        vc_join_config(),
+    );
+    let SiblingEmulators {
+        emulator_a,
+        mut alice_b_main,
+        ..
+    } = sib;
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, resync_commit);
+
+    let expected_emulation_leaf = emulator_a.own_leaf_index();
+
+    let plaintext = b"mismatched-ciphersuite reuse-guard recovery payload";
+    let processed_app = send_and_process_app_message(
+        &mut alice_a_main,
+        &alice_a_provider,
+        &vc_signer,
+        &mut alice_b_main,
+        &alice_b_provider,
+        plaintext,
+    );
+
+    assert_eq!(
+        processed_app.emulator_sender_leaf_index(),
+        Some(expected_emulation_leaf),
+    );
+    match processed_app.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), plaintext);
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
+/// Process a commit on `receiver` and merge it.
+fn process_and_merge_commit<P: OpenMlsProvider>(
+    receiver: &mut MlsGroup,
+    provider: &P,
+    commit_msg: openmls::prelude::MlsMessageOut,
+) {
+    let processed = receiver
+        .process_message(provider, commit_msg.into_protocol_message().unwrap())
+        .expect("process commit");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        _ => panic!("expected staged commit"),
+    };
+    receiver
+        .merge_staged_commit(provider, staged)
+        .expect("merge staged commit");
+}
+
+/// Emulation bindings are kept per higher-level epoch: a delayed application
+/// message from a previous epoch is deprotected with the emulation epoch that
+/// was bound when it was sent, even after a later VC commit re-bound the
+/// group to a newer emulation epoch.
+///
+/// Setup mirrors `vc_two_alice_clients_in_group_with_bob_and_charly`: two
+/// Alice clients share the main-group leaf and a two-member emulation group,
+/// so the emulation group can advance epochs with commits the sibling
+/// processes through its own leaf.
+#[test]
+fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let alice_a_provider = OpenMlsRustCrypto::default();
+    let alice_b_provider = OpenMlsRustCrypto::default();
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    // Keep past epochs so the delayed message stays decryptable across the
+    // second commit.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .max_past_epochs(2)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    let mut alice_a_main = MlsGroup::new(
+        &alice_a_provider,
+        &vc_signer,
+        &group_config,
+        vc_credential.clone(),
+    )
+    .expect("alice_a create main group");
+    let main_group_id = alice_a_main.group_id().clone();
+
+    // alice_b joins the emulation group and resyncs into the higher-level
+    // group. Its resync keeps two past epochs so it can still decrypt the
+    // delayed message after the group advances.
+    let (sib, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        MlsGroupJoinConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .use_ratchet_tree_extension(true)
+            .max_past_epochs(2)
+            .build(),
+    );
+    let SiblingEmulators {
+        mut emulator_a,
+        emulator_a_signer,
+        mut emulator_b,
+        mut alice_b_main,
+        epoch_id: epoch_id_one,
+    } = sib;
+    let expected_emulation_leaf = emulator_a.own_leaf_index();
+
+    // ---- The resync is the first VC commit: it binds the new main-group
+    // epoch to the first emulation epoch. alice_a converges by processing
+    // it. ----
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, resync_commit);
+    let first_bound_epoch = alice_a_main.epoch();
+
+    // ---- Delayed message, sent in the first bound epoch but delivered
+    // only after the second commit below. ----
+    let plaintext = b"delayed across an epoch change";
+    let delayed_msg = alice_a_main
+        .create_message(&alice_a_provider, &vc_signer, plaintext)
+        .expect("alice_a creates delayed application message");
+
+    // ---- Advance the emulation group and register a second emulation
+    // epoch on both emulator clients. ----
+    let emulator_commit = {
+        let bundle = emulator_a
+            .commit_builder()
+            .force_self_update(true)
+            .load_psks(alice_a_provider.storage())
+            .expect("load psks")
+            .build(
+                alice_a_provider.rand(),
+                alice_a_provider.crypto(),
+                &emulator_a_signer,
+                |_| true,
+            )
+            .expect("build emulator commit")
+            .stage_commit(&alice_a_provider)
+            .expect("stage emulator commit");
+        emulator_a
+            .merge_pending_commit(&alice_a_provider)
+            .expect("emulator_a merge");
+        bundle.into_commit()
+    };
+    process_and_merge_commit(&mut emulator_b, &alice_b_provider, emulator_commit);
+
+    let epoch_id_two = emulator_a
+        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .expect("register second vc epoch (alice_a)");
+    let epoch_id_two_b = emulator_b
+        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .expect("register second vc epoch (alice_b)");
+    assert_eq!(epoch_id_two, epoch_id_two_b);
+    assert_ne!(epoch_id_one, epoch_id_two);
+
+    // ---- Second VC commit: re-binds the group to the second emulation
+    // epoch. ----
+    let commit_two = send_vc_commit_with_epoch(
+        &mut alice_a_main,
+        &alice_a_provider,
+        &vc_signer,
+        epoch_id_two.clone(),
+    );
+    let second_bound_epoch = alice_a_main.epoch();
+    process_and_merge_commit(&mut alice_b_main, &alice_b_provider, commit_two);
+
+    // ---- Both bindings are recorded, each under its own epoch. ----
+    let bindings: VcEmulationBindings = alice_b_provider
+        .storage()
+        .vc_emulation_bindings(&main_group_id)
+        .expect("read emulation bindings")
+        .expect("emulation bindings present");
+    assert_eq!(bindings.get(first_bound_epoch), Some(&epoch_id_one));
+    assert_eq!(bindings.get(second_bound_epoch), Some(&epoch_id_two));
+
+    // ---- The delayed message is attributed via the first emulation
+    // epoch's state. ----
+    let processed_app = alice_b_main
+        .process_message(
+            &alice_b_provider,
+            delayed_msg.into_protocol_message().unwrap(),
+        )
+        .expect("alice_b processes delayed application message");
+    assert_eq!(
+        processed_app.emulator_sender_leaf_index(),
+        Some(expected_emulation_leaf),
+    );
+    match processed_app.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), plaintext);
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
+/// A commit by another member leaves the virtual client's leaf untouched, so
+/// the emulation binding of the previous epoch must carry forward to the new
+/// epoch: the sender keeps deriving deterministic reuse guards and the
+/// sibling keeps attributing them.
+#[test]
+fn vc_binding_carries_forward_across_foreign_commits() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let alice_a_provider = OpenMlsRustCrypto::default();
+    let alice_b_provider = OpenMlsRustCrypto::default();
+    let bob_provider = OpenMlsRustCrypto::default();
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    // alice (the virtual client) founds the group on the shared leaf and adds
+    // Bob, a regular member.
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_commit, welcome, _gi) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice add bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice merge add");
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome present"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join");
+
+    // alice_b joins as a sibling emulator and resyncs into the group; alice_a
+    // and Bob process the resync and converge on the new virtual-client leaf.
+    let (sib, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        vc_join_config(),
+    );
+    let SiblingEmulators {
+        emulator_a,
+        mut alice_b_main,
+        ..
+    } = sib;
+    let expected_emulation_leaf = emulator_a.own_leaf_index();
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, resync_commit.clone());
+    process_and_merge_commit(&mut bob_group, &bob_provider, resync_commit);
+
+    // ---- Bob commits; the VC leaf is untouched. ----
+    let bob_commit = {
+        let bundle = bob_group
+            .commit_builder()
+            .force_self_update(true)
+            .load_psks(bob_provider.storage())
+            .expect("load psks")
+            .build(
+                bob_provider.rand(),
+                bob_provider.crypto(),
+                &bob_signer,
+                |_| true,
+            )
+            .expect("build bob commit")
+            .stage_commit(&bob_provider)
+            .expect("stage bob commit");
+        bob_group
+            .merge_pending_commit(&bob_provider)
+            .expect("bob merge");
+        bundle.into_commit()
+    };
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, bob_commit.clone());
+    process_and_merge_commit(&mut alice_b_main, &alice_b_provider, bob_commit);
+
+    // ---- alice_a still derives deterministic reuse guards in the new epoch,
+    // and the sibling still attributes them. ----
+    let plaintext = b"carried-forward binding";
+    let processed_app = send_and_process_app_message(
+        &mut alice_a_main,
+        &alice_a_provider,
+        &vc_signer,
+        &mut alice_b_main,
+        &alice_b_provider,
+        plaintext,
+    );
+    assert_eq!(
+        processed_app.emulator_sender_leaf_index(),
+        Some(expected_emulation_leaf),
+    );
+    match processed_app.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), plaintext);
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
+/// A virtual client issues a Commit *without* an UpdatePath (an add-only
+/// commit) and a sibling emulator client applies it.
+///
+///   * `alice_a` and `alice_b` are two emulator clients of one virtual client,
+///     sharing a single leaf in a higher-level group that also contains `bob`.
+///   * `alice_a` adds `charly` with `add_members_without_update`, producing a
+///     commit with no UpdatePath. A Commit without an UpdatePath cannot
+///     carry a virtual-clients `DerivationInfo`, so on shape alone it is
+///     indistinguishable from `alice_a`'s own commit echoed back.
+///   * `alice_b` (the sibling) processes it. Because the group's current epoch
+///     is bound to the emulation epoch and `alice_b` holds no pending commit of
+///     its own, the commit is recognized as a sibling's Commit without an
+///     UpdatePath and staged as a regular commit rather than rejected as a
+///     mismatched own commit. `bob` processes it through the ordinary path.
+///   * All four parties converge on the same epoch authenticator, and an
+///     application message round-trips from the new member to the sibling.
+#[openmls_test]
+fn vc_sibling_applies_commit_without_update_path() {
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charly_provider = Provider::default();
+
+    // The virtual client's shared signature key and credential, stored on both
+    // emulator clients so either can sign for the shared higher-level leaf.
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(alice_a_provider.storage())
+        .expect("store vc signer on alice_a");
+    vc_signer
+        .store(alice_b_provider.storage())
+        .expect("store vc signer on alice_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+
+    // alice_a founds the higher-level group and adds bob.
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice_a add bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add bob");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join");
+
+    // alice_b joins as a sibling emulator and resyncs into the higher-level
+    // group, so both Alice clients share `own_leaf_index`.
+    let (siblings, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        vc_join_config(),
+    );
+    let mut alice_b_main = siblings.alice_b_main;
+
+    for (group, provider) in [
+        (&mut alice_a_main, &alice_a_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                resync_commit.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process resync commit");
+        let staged = match processed.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(s) => *s,
+            _ => panic!("expected staged commit"),
+        };
+        group
+            .merge_staged_commit(provider, staged)
+            .expect("merge resync commit");
+    }
+    assert_eq!(
+        alice_a_main.own_leaf_index(),
+        alice_b_main.own_leaf_index(),
+        "both Alice clients must share the higher-level leaf"
+    );
+
+    // alice_a issues a Commit without an UpdatePath: an add-only commit for
+    // charly.
+    let (charly_credential, charly_signer) = new_credential(
+        &charly_provider,
+        b"Charly",
+        ciphersuite.signature_algorithm(),
+    );
+    let charly_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(
+            ciphersuite,
+            &charly_provider,
+            &charly_signer,
+            charly_credential,
+        )
+        .expect("charly KP build")
+        .key_package()
+        .to_owned();
+    let (commit, charly_welcome, _) = alice_a_main
+        .add_members_without_update(&alice_a_provider, &vc_signer, &[charly_kp])
+        .expect("alice_a add charly without an UpdatePath");
+    let staged_pending = alice_a_main
+        .pending_commit()
+        .expect("alice_a has a pending commit");
+    assert!(
+        staged_pending.update_path_leaf_node().is_none(),
+        "the add-only commit must not carry a path"
+    );
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add without an UpdatePath");
+
+    // The sibling (alice_b) applies alice_a's Commit without an UpdatePath. It
+    // is staged as a regular commit, not surfaced as an own pending commit.
+    let processed = alice_b_main
+        .process_message(
+            &alice_b_provider,
+            commit.clone().into_protocol_message().unwrap(),
+        )
+        .expect("alice_b processes sibling commit without an UpdatePath");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        other => panic!("expected staged commit, got {other:?}"),
+    };
+    assert!(
+        !staged.self_removed(),
+        "a sibling's add-only commit must not remove alice_b"
+    );
+    alice_b_main
+        .merge_staged_commit(&alice_b_provider, staged)
+        .expect("alice_b merge sibling commit without an UpdatePath");
+
+    // bob applies it through the ordinary path.
+    let processed = bob_main
+        .process_message(&bob_provider, commit.into_protocol_message().unwrap())
+        .expect("bob processes commit without an UpdatePath");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        _ => panic!("expected staged commit"),
+    };
+    bob_main
+        .merge_staged_commit(&bob_provider, staged)
+        .expect("bob merge commit without an UpdatePath");
+
+    // charly joins from the welcome the add produced.
+    let mut charly_main = StagedWelcome::new_from_welcome(
+        &charly_provider,
+        &vc_join_config(),
+        charly_welcome.into_welcome().expect("charly welcome"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&charly_provider))
+    .expect("charly join");
+
+    // All parties agree on the new epoch.
+    let authenticator = alice_a_main.epoch_authenticator();
+    assert_eq!(
+        alice_b_main.epoch_authenticator(),
+        authenticator,
+        "sibling must converge with the committer"
+    );
+    assert_eq!(bob_main.epoch_authenticator(), authenticator);
+    assert_eq!(charly_main.epoch_authenticator(), authenticator);
+
+    // The new member can message the sibling that applied the commit without an
+    // UpdatePath.
+    let processed = send_and_process_app_message(
+        &mut charly_main,
+        &charly_provider,
+        &charly_signer,
+        &mut alice_b_main,
+        &alice_b_provider,
+        b"hello from charly",
+    );
+    match processed.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), b"hello from charly");
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
+/// Regression test: a virtual client's own VC commit fanned back by the
+/// delivery service must surface as `OwnPendingCommit`, not fail while loading
+/// sibling-commit material.
+///
+/// alice_a and alice_b are sibling emulators sharing the higher-level leaf and
+/// one emulation epoch, in a group that also holds the regular member bob.
+/// alice_a builds a VC commit and, before merging it, processes the copy the
+/// delivery service echoed back. The commit is framed as
+/// `Sender::Member(own_leaf_index)` with an UpdatePath carrying VC material, so
+/// its shape is indistinguishable from a sibling's commit. Because it matches
+/// alice_a's pending commit it must be reported as `OwnPendingCommit` without
+/// consuming an operation-secret generation. Before the fix this failed with
+/// `VirtualClientsError::OperationGenerationConsumed`.
+#[openmls_test]
+fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    // alice_a founds the higher-level group and adds bob.
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice_a add bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add bob");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join");
+
+    // alice_b joins as a sibling emulator and resyncs into the higher-level
+    // group, so both Alice clients share `own_leaf_index` and the same
+    // emulation epoch.
+    let (siblings, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        vc_join_config(),
+    );
+    let mut alice_b_main = siblings.alice_b_main;
+    let epoch_id = siblings.epoch_id;
+
+    for (group, provider) in [
+        (&mut alice_a_main, &alice_a_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        process_and_merge_commit(group, provider, resync_commit.clone());
+    }
+    assert_eq!(
+        alice_a_main.own_leaf_index(),
+        alice_b_main.own_leaf_index(),
+        "both Alice clients must share the higher-level leaf"
+    );
+
+    // alice_a builds a VC commit on the shared emulation epoch but does not
+    // merge it, so it is still her pending commit when the delivery service
+    // fans the copy back to her.
+    let bundle = alice_a_main
+        .commit_builder()
+        .vc_emulation(
+            alice_a_provider.crypto(),
+            alice_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("alice_a bind commit to emulation epoch")
+        .load_psks(alice_a_provider.storage())
+        .expect("alice_a load psks")
+        .build(
+            alice_a_provider.rand(),
+            alice_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("alice_a build vc commit")
+        .stage_commit(&alice_a_provider)
+        .expect("alice_a stage vc commit");
+    let commit = bundle.into_commit();
+
+    // alice_a processes her own commit echoed back. It is framed like a
+    // sibling's VC commit, but it matches her pending commit and must surface
+    // as `OwnPendingCommit` without consuming an operation-secret generation.
+    let processed = alice_a_main
+        .process_message(
+            &alice_a_provider,
+            commit.clone().into_protocol_message().unwrap(),
+        )
+        .expect("alice_a processes her own fanned-back vc commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge her own vc commit");
+
+    // The sibling and bob apply the same commit through the ordinary staging
+    // path.
+    let processed = alice_b_main
+        .process_message(
+            &alice_b_provider,
+            commit.clone().into_protocol_message().unwrap(),
+        )
+        .expect("alice_b processes sibling vc commit");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        other => panic!("expected staged commit, got {other:?}"),
+    };
+    alice_b_main
+        .merge_staged_commit(&alice_b_provider, staged)
+        .expect("alice_b merge sibling vc commit");
+    process_and_merge_commit(&mut bob_main, &bob_provider, commit);
+
+    let authenticator = alice_a_main.epoch_authenticator();
+    assert_eq!(
+        alice_b_main.epoch_authenticator(),
+        authenticator,
+        "sibling must converge with the committer"
+    );
+    assert_eq!(
+        bob_main.epoch_authenticator(),
+        authenticator,
+        "bob must converge with the committer"
+    );
+
+    // A second VC commit on the same emulation epoch, this time from alice_b,
+    // proves the operation secret tree stayed healthy after the echo.
+    let second_commit =
+        send_vc_commit_with_epoch(&mut alice_b_main, &alice_b_provider, &vc_signer, epoch_id);
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, second_commit.clone());
+    process_and_merge_commit(&mut bob_main, &bob_provider, second_commit);
+
+    let authenticator = alice_b_main.epoch_authenticator();
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        authenticator,
+        "committer's sibling must converge after the second commit"
+    );
+    assert_eq!(
+        bob_main.epoch_authenticator(),
+        authenticator,
+        "bob must converge after the second commit"
+    );
+}
+
+/// Set up two sibling emulator clients sharing one emulation group and epoch.
+/// `alice_a` founds the emulation group, `alice_b` joins it via Welcome, and
+/// both register the same emulation epoch, so both hold its
+/// `EmulationEpochState` and `OperationSecretTree`. Returns the shared epoch id.
+fn setup_sibling_emulation_epoch<P: OpenMlsProvider>(
+    emulator_ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_a_provider: &P,
+    alice_b_provider: &P,
+) -> EpochId {
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(emulator_ciphersuite, alice_a_provider, b"AliceEmulatorA");
+    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        alice_b_provider,
+        b"AliceEmulatorB",
+        emulator_ciphersuite.signature_algorithm(),
+    );
+    let emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            emulator_ciphersuite,
+            alice_b_provider,
+            &emulator_b_signer,
+            emulator_b_credential,
+        )
+        .expect("emulator_b KP build")
+        .key_package()
+        .to_owned();
+    let (_e_commit, e_welcome, _e_gi) = emulator_a
+        .add_members(alice_a_provider, &emulator_a_signer, &[emulator_b_kp])
+        .expect("emulator_a add alice_b");
+    emulator_a
+        .merge_pending_commit(alice_a_provider)
+        .expect("emulator_a merge add");
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        alice_b_provider,
+        &vc_join_config(),
+        e_welcome.into_welcome().expect("emulator welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(alice_b_provider))
+    .expect("alice_b join emulator group");
+
+    let epoch_id = emulator_a
+        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .expect("alice_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .expect("alice_b register vc epoch");
+    assert_eq!(
+        epoch_id, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
+    epoch_id
+}
+
+/// Export a `VerifiableGroupInfo` for `group`, signed by `signer`, optionally
+/// carrying the ratchet tree in the GroupInfo extension.
+fn export_verifiable_group_info<P: OpenMlsProvider>(
+    group: &MlsGroup,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    with_ratchet_tree: bool,
+) -> openmls::messages::group_info::VerifiableGroupInfo {
+    use openmls::prelude::MlsMessageIn;
+    use tls_codec::Deserialize as _;
+
+    let group_info_msg = group
+        .export_group_info(provider.crypto(), signer, with_ratchet_tree)
+        .expect("export group info");
+    let serialized = group_info_msg
+        .tls_serialize_detached()
+        .expect("serialize group info");
+    MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+        .expect("deserialize group info message")
+        .into_verifiable_group_info()
+        .expect("into verifiable group info")
+}
+
+/// Create a higher-level group on the shared virtual-client leaf as the
+/// creator, deriving the leaf and epoch-0 secret from `epoch_id`.
+fn create_vc_group<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    credential: openmls::credentials::CredentialWithKey,
+    epoch_id: EpochId,
+) -> MlsGroup {
+    MlsGroup::builder()
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .with_capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .vc_emulation(epoch_id)
+        .build(provider, signer, credential)
+        .expect("create vc group")
+}
+
+/// A virtual client creates a higher-level group and a sibling emulator client
+/// reconstructs the epoch-0 state from the GroupInfo (ratchet tree carried in
+/// the GroupInfo extension). Both land on the shared leaf with identical epoch
+/// secrets, and the reconstructed sibling is a working member: it adds an
+/// ordinary member and exchanges an application message with it.
+#[openmls_test]
+fn vc_sibling_joins_group_created_by_virtual_client() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    // alice_a creates the group as the virtual client.
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+        epoch_id.clone(),
+    );
+
+    // alice_b reconstructs epoch-0 from the fanned-out GroupInfo.
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    let mut alice_b_main = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id.clone(),
+    )
+    .expect("alice_b reconstructs the created group");
+
+    // Both siblings hold identical epoch-0 state on the shared leaf.
+    assert_eq!(alice_a_main.epoch(), alice_b_main.epoch());
+    assert_eq!(
+        alice_b_main.own_leaf_index(),
+        alice_a_main.own_leaf_index(),
+        "the sibling must land on the shared VC leaf"
+    );
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator(),
+        "reconstruction must reproduce the creator's epoch secrets"
+    );
+    assert_eq!(
+        alice_a_main.export_ratchet_tree(),
+        alice_b_main.export_ratchet_tree(),
+    );
+
+    // The reconstructed sibling is a working member: it adds Bob and exchanges
+    // an application message with him.
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_commit, welcome, _gi) = alice_b_main
+        .add_members(&alice_b_provider, &vc_signer, &[bob_kp])
+        .expect("alice_b adds bob");
+    alice_b_main
+        .merge_pending_commit(&alice_b_provider)
+        .expect("alice_b merge add");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_b_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob joins the created group");
+
+    let processed = send_and_process_app_message(
+        &mut alice_b_main,
+        &alice_b_provider,
+        &vc_signer,
+        &mut bob_main,
+        &bob_provider,
+        b"hello from the virtual client",
+    );
+    let ProcessedMessageContent::ApplicationMessage(message) = processed.into_content() else {
+        panic!("expected application message");
+    };
+    assert_eq!(message.into_bytes(), b"hello from the virtual client");
+}
+
+/// The ratchet tree may travel separately from the GroupInfo. A sibling
+/// reconstructs the created group when the GroupInfo carries no ratchet tree
+/// extension and the tree is supplied through the `ratchet_tree` argument.
+#[openmls_test]
+fn vc_group_creation_join_with_separate_ratchet_tree() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+
+    // GroupInfo without the ratchet tree extension; tree passed separately.
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, false);
+    let ratchet_tree = alice_a_main.export_ratchet_tree().into();
+    let alice_b_main = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        Some(ratchet_tree),
+        epoch_id,
+    )
+    .expect("alice_b reconstructs with a separately supplied ratchet tree");
+
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator(),
+    );
+}
+
+/// A client that does not share the emulation epoch cannot reconstruct the
+/// created group: it holds no `EmulationEpochState` for the referenced epoch.
+#[openmls_test]
+fn vc_group_creation_join_fails_without_emulation_state() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let outsider_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+
+    let err = MlsGroup::vc_join_at_creation(
+        &outsider_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("a non-sibling cannot reconstruct the created group");
+    assert!(matches!(
+        err,
+        VcGroupCreationJoinError::VirtualClientsError(_)
+    ));
+}
+
+/// The join is rejected when the supplied emulation epoch differs from the one
+/// the creator leaf references.
+#[openmls_test]
+fn vc_group_creation_join_fails_on_epoch_id_mismatch() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let other_a_provider = Provider::default();
+    let other_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    // A distinct, valid emulation epoch from an unrelated emulator group.
+    let other_epoch_id =
+        setup_sibling_emulation_epoch(ciphersuite, &other_a_provider, &other_b_provider);
+    assert_ne!(epoch_id, other_epoch_id);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id,
+    );
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        other_epoch_id,
+    )
+    .expect_err("mismatched emulation epoch must be rejected");
+    assert!(matches!(err, VcGroupCreationJoinError::EpochIdMismatch));
+}
+
+/// The join is rejected when the creator leaf is not `key_package`-sourced. A
+/// virtual client's self-commit rekeys its leaf to a `commit` source, so the
+/// resulting single-leaf group is no longer a group-creation leaf.
+#[openmls_test]
+fn vc_group_creation_join_fails_on_non_key_package_creator_leaf() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let mut alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+
+    // Self-commit as a virtual client: the creator leaf becomes commit-sourced
+    // while the tree stays a single leaf.
+    alice_a_main
+        .commit_builder()
+        .force_self_update(true)
+        .vc_emulation(
+            alice_a_provider.crypto(),
+            alice_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation commit builder")
+        .load_psks(alice_a_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_a_provider.rand(),
+            alice_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build commit")
+        .stage_commit(&alice_a_provider)
+        .expect("stage commit");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("merge self-commit");
+
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("a commit-sourced creator leaf must be rejected");
+    assert!(matches!(
+        err,
+        VcGroupCreationJoinError::CreatorLeafNotKeyPackageSourced
+    ));
+}
+
+/// The join is rejected when the ratchet tree holds more than the creator's
+/// leaf.
+#[openmls_test]
+fn vc_group_creation_join_fails_on_multi_leaf_tree() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let mut alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+
+    // Add an ordinary member so the tree no longer consists of the sole leaf.
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice_a adds bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add");
+
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("a multi-leaf tree must be rejected");
+    assert!(matches!(err, VcGroupCreationJoinError::NotASingleLeafTree));
+}
+
+/// The join is rejected when the creator leaf carries no virtual-clients
+/// derivation info. An ordinary (non-VC) group founder produces such a leaf:
+/// it is `key_package`-sourced but has no derivation-info entry.
+#[openmls_test]
+fn vc_group_creation_join_fails_on_missing_derivation_info() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (founder_credential, founder_signer) = new_credential(
+        &alice_a_provider,
+        b"Founder",
+        ciphersuite.signature_algorithm(),
+    );
+    let alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &founder_signer,
+        founder_credential,
+    );
+
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &founder_signer, true);
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("a creator leaf without derivation info must be rejected");
+    assert!(matches!(
+        err,
+        VcGroupCreationJoinError::MissingDerivationInfo
+    ));
+}
+
+/// The single group-creation generation is consumed exactly once. A first join
+/// succeeds and persists the advanced operation tree; a second join on the same
+/// material fails because that generation is now consumed.
+#[openmls_test]
+fn vc_group_creation_double_join_consumes_generation() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+
+    let first_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        first_group_info,
+        None,
+        epoch_id.clone(),
+    )
+    .expect("first reconstruction succeeds");
+
+    // The generation is now consumed in alice_b's persisted operation tree, so a
+    // second reconstruction on the same material fails.
+    let second_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        second_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("second reconstruction must fail on the consumed generation");
+    assert!(matches!(
+        err,
+        VcGroupCreationJoinError::VirtualClientsError(_)
+    ));
+}
+
+/// `propose_unconfirmed` surfaces the handshake confirmation data end to end.
+/// On a group that is not bound to an emulation epoch, the `generation_id` is
+/// `None`. Confirming the proposal deletes its retained handshake secret, so
+/// its own echo then surfaces as `OwnPrivateMessage`, while an unconfirmed
+/// control proposal still decrypts back to a `ProposalMessage`.
+#[openmls_test::openmls_test]
+fn propose_unconfirmed_confirm_flow() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signer) = new_credential(
+        alice_provider,
+        b"Charlie",
+        ciphersuite.signature_algorithm(),
+    );
+    let (dave_credential, dave_signer) =
+        new_credential(alice_provider, b"Dave", ciphersuite.signature_algorithm());
+
+    // Pure-ciphertext framing so proposals are sent as PrivateMessage.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_signer,
+        &group_config,
+        alice_credential,
+    )
+    .expect("alice create group");
+
+    let bob_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_commit, _welcome, _gi) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("alice add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("alice merge add");
+
+    let charlie_key_package = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            alice_provider,
+            &charlie_signer,
+            charlie_credential,
+        )
+        .expect("charlie KP build")
+        .key_package()
+        .to_owned();
+    let dave_key_package = KeyPackage::builder()
+        .build(ciphersuite, alice_provider, &dave_signer, dave_credential)
+        .expect("dave KP build")
+        .key_package()
+        .to_owned();
+
+    let epoch = alice_group.epoch();
+
+    // The confirmation is present for a ciphertext-framed proposal. The group
+    // is not bound to an emulation epoch, so there is no generation id.
+    let (proposal_a, _ref_a, confirmation_a) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::Add(charlie_key_package),
+            ProposalOrRefType::Reference,
+        )
+        .expect("propose_unconfirmed add charlie");
+    let confirmation_a = confirmation_a.expect("ciphertext-framed proposal carries confirmation");
+    assert_eq!(confirmation_a.epoch, epoch);
+    assert!(confirmation_a.generation_id.is_none());
+
+    // Confirming deletes the retained handshake secret, so proposal A's own
+    // echo surfaces OwnPrivateMessage.
+    alice_group
+        .confirm_handshake_message(
+            alice_provider.storage(),
+            confirmation_a.epoch,
+            confirmation_a.generation,
+        )
+        .expect("confirm proposal A");
+    let processed = alice_group
+        .process_message(alice_provider, proposal_a.into_protocol_message().unwrap())
+        .expect("process proposal A echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
+
+    // A control proposal that is not confirmed retains its secret, so its echo
+    // decrypts back to a ProposalMessage.
+    let (proposal_b, _ref_b, _confirmation_b) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::Add(dave_key_package),
+            ProposalOrRefType::Reference,
+        )
+        .expect("propose_unconfirmed add dave");
+    let processed = alice_group
+        .process_message(alice_provider, proposal_b.into_protocol_message().unwrap())
+        .expect("process proposal B echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+}
+
+/// Flagship end-to-end test for private virtual-client handshake framing.
+/// Two sibling emulators (alice_a, alice_b) share a virtual-client leaf
+/// alongside a regular member (bob), with handshake messages framed as
+/// PrivateMessage. Exercises the own-commit echo, sibling decryption, a
+/// private proposal, and the ack-without-echo confirm flow.
+#[openmls_test::openmls_test]
+fn vc_private_commit_end_to_end() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signer) = new_credential(
+        &alice_a_provider,
+        b"Charlie",
+        ciphersuite.signature_algorithm(),
+    );
+
+    // Mixed-ciphertext framing: handshake messages go out as PrivateMessage,
+    // but the group still accepts the sibling-resync external commit, which is
+    // always a PublicMessage.
+    let mut alice_a_main = new_vc_main_group_with_policy(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+        MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+    );
+
+    // Add bob as a regular member.
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_commit, welcome, _gi) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice add bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice merge add");
+
+    let bob_join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &bob_join_config,
+        welcome.into_welcome().expect("welcome present"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join");
+
+    // alice_b joins as a sibling emulator and resyncs into the group.
+    let main_join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let (sib, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        main_join_config,
+    );
+    let SiblingEmulators {
+        mut alice_b_main,
+        epoch_id,
+        ..
+    } = sib;
+
+    // alice_a and bob process the resync external commit (PublicMessage). This
+    // is what binds alice_a_main to the emulation epoch.
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, resync_commit.clone());
+    process_and_merge_commit(&mut bob_main, &bob_provider, resync_commit);
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator()
+    );
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        bob_main.epoch_authenticator()
+    );
+
+    // alice_a builds a VC commit framed as PrivateMessage.
+    let mut bundle = alice_a_main
+        .commit_builder()
+        .vc_emulation(
+            alice_a_provider.crypto(),
+            alice_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation")
+        .load_psks(alice_a_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_a_provider.rand(),
+            alice_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build commit")
+        .stage_commit(&alice_a_provider)
+        .expect("stage commit");
+    let confirmation = bundle
+        .take_confirmation()
+        .expect("private VC commit carries confirmation");
+    assert!(
+        confirmation.generation_id.is_some(),
+        "a VC-bound private commit carries a generation id"
+    );
+    let vc_commit = bundle.into_commit();
+
+    // Before merging, alice_a processes her own private commit echo. The
+    // retained own handshake secret decrypts it, and the own-pending-commit
+    // check runs before any VC material is loaded, so it surfaces as
+    // OwnPendingCommit.
+    let processed = alice_a_main
+        .process_message(
+            &alice_a_provider,
+            vc_commit.clone().into_protocol_message().unwrap(),
+        )
+        .expect("alice_a processes her own private VC commit echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge VC commit");
+
+    // alice_b decrypts via the shared handshake ratchet and stages via the VC
+    // path; bob decrypts via the regular HPKE path.
+    process_and_merge_commit(&mut alice_b_main, &alice_b_provider, vc_commit.clone());
+    process_and_merge_commit(&mut bob_main, &bob_provider, vc_commit);
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator()
+    );
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        bob_main.epoch_authenticator()
+    );
+
+    // alice_a sends a private proposal; alice_b recovers the sibling emulator
+    // leaf index and sees a ProposalMessage.
+    let charlie_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(
+            ciphersuite,
+            &alice_a_provider,
+            &charlie_signer,
+            charlie_credential,
+        )
+        .expect("charlie KP build")
+        .key_package()
+        .to_owned();
+    let (proposal_msg, _pref, proposal_confirmation) = alice_a_main
+        .propose_unconfirmed(
+            &alice_a_provider,
+            &vc_signer,
+            Propose::Add(charlie_kp),
+            ProposalOrRefType::Reference,
+        )
+        .expect("alice_a proposes add charlie");
+    assert!(proposal_confirmation
+        .expect("private proposal carries confirmation")
+        .generation_id
+        .is_some());
+    let processed_proposal = alice_b_main
+        .process_message(
+            &alice_b_provider,
+            proposal_msg.into_protocol_message().unwrap(),
+        )
+        .expect("alice_b processes alice_a's private proposal");
+    assert!(processed_proposal.emulator_sender_leaf_index().is_some());
+    assert!(matches!(
+        processed_proposal.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+    // Drop the pending proposal so the next commit is a clean self-update.
+    alice_a_main
+        .clear_pending_proposals(alice_a_provider.storage())
+        .expect("clear pending proposal");
+
+    // Ack-without-echo: alice_a builds a second private VC commit, merges it
+    // directly, and confirms it using the pre-merge epoch, which is now a past
+    // epoch. This exercises the epoch-scoped confirm.
+    let second_bundle = alice_a_main
+        .commit_builder()
+        .vc_emulation(
+            alice_a_provider.crypto(),
+            alice_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation")
+        .load_psks(alice_a_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_a_provider.rand(),
+            alice_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build second commit")
+        .stage_commit(&alice_a_provider)
+        .expect("stage second commit");
+    let second_confirmation = second_bundle
+        .confirmation()
+        .expect("private VC commit carries confirmation")
+        .clone();
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("merge second VC commit");
+    alice_a_main
+        .confirm_handshake_message(
+            alice_a_provider.storage(),
+            second_confirmation.epoch,
+            second_confirmation.generation,
+        )
+        .expect("confirm second VC commit");
+}
+
+/// Two consecutive private handshake sends on a VC-bound group produce
+/// generation ids that are both present and distinct.
+#[openmls_test::openmls_test]
+fn handshake_generation_ids_are_distinct() {
+    let provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signer) =
+        new_credential(provider, b"Charlie", ciphersuite.signature_algorithm());
+    let (dave_credential, dave_signer) =
+        new_credential(provider, b"Dave", ciphersuite.signature_algorithm());
+
+    // Ciphertext framing so the proposals are PrivateMessages that carry a
+    // generation id.
+    let mut alice_group = new_vc_main_group_with_policy(
+        ciphersuite,
+        provider,
+        &alice_signer,
+        alice_credential,
+        MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+    );
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, provider, b"AliceEmulator");
+
+    // Bind alice_group's current epoch to the emulation epoch via a VC commit.
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        provider,
+        &alice_signer,
+    );
+
+    let charlie_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, provider, &charlie_signer, charlie_credential)
+        .expect("charlie KP build")
+        .key_package()
+        .to_owned();
+    let dave_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, provider, &dave_signer, dave_credential)
+        .expect("dave KP build")
+        .key_package()
+        .to_owned();
+
+    let (_msg_a, _ref_a, confirmation_a) = alice_group
+        .propose_unconfirmed(
+            provider,
+            &alice_signer,
+            Propose::Add(charlie_kp),
+            ProposalOrRefType::Reference,
+        )
+        .expect("first private proposal");
+    let (_msg_b, _ref_b, confirmation_b) = alice_group
+        .propose_unconfirmed(
+            provider,
+            &alice_signer,
+            Propose::Add(dave_kp),
+            ProposalOrRefType::Reference,
+        )
+        .expect("second private proposal");
+
+    let generation_id_a = confirmation_a
+        .expect("bound group proposal carries confirmation")
+        .generation_id
+        .expect("bound group proposal carries a generation id");
+    let generation_id_b = confirmation_b
+        .expect("bound group proposal carries confirmation")
+        .generation_id
+        .expect("bound group proposal carries a generation id");
+    assert_ne!(
+        generation_id_a, generation_id_b,
+        "consecutive private handshake sends must yield distinct generation ids"
+    );
+}
+
+/// `propose_unconfirmed` with `Propose::GroupContextExtensions` under ciphertext
+/// framing surfaces the confirmation data, the proposal processes at a
+/// receiver, and confirming the retained handshake secret succeeds.
+#[openmls_test::openmls_test]
+fn propose_unconfirmed_group_context_extensions_flow() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (mut alice_group, alice_signer, mut bob_group, _bob_signer) =
+        setup_alice_bob_group_with_policy(
+            ciphersuite,
+            alice_provider,
+            bob_provider,
+            PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        );
+
+    let epoch = alice_group.epoch();
+    let (proposal, _pref, confirmation) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::GroupContextExtensions(Extensions::empty()),
+            ProposalOrRefType::Reference,
+        )
+        .expect("propose_unconfirmed group context extensions");
+    let confirmation = confirmation.expect("ciphertext-framed GCE proposal carries confirmation");
+    assert_eq!(confirmation.epoch, epoch);
+    assert!(confirmation.generation_id.is_none());
+
+    let processed = bob_group
+        .process_message(bob_provider, proposal.into_protocol_message().unwrap())
+        .expect("bob processes the GCE proposal");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+
+    alice_group
+        .confirm_handshake_message(
+            alice_provider.storage(),
+            confirmation.epoch,
+            confirmation.generation,
+        )
+        .expect("confirm GCE proposal");
+}
+
+/// `propose_self_update_with_new_signer_unconfirmed` surfaces the confirmation
+/// data and the proposal processes at a receiver.
+#[openmls_test::openmls_test]
+fn propose_self_update_with_new_signer_unconfirmed_flow() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (mut alice_group, alice_signer, mut bob_group, _bob_signer) =
+        setup_alice_bob_group_with_policy(
+            ciphersuite,
+            alice_provider,
+            bob_provider,
+            PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        );
+
+    let epoch = alice_group.epoch();
+    let (new_credential, new_signer_kp) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let new_signer = NewSignerBundle {
+        signer: &new_signer_kp,
+        credential_with_key: new_credential,
+    };
+
+    let (proposal, _pref, confirmation) = alice_group
+        .propose_self_update_with_new_signer_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            new_signer,
+            LeafNodeParameters::builder().build(),
+        )
+        .expect("propose_self_update_with_new_signer_unconfirmed");
+    let confirmation =
+        confirmation.expect("ciphertext-framed update proposal carries confirmation");
+    assert_eq!(confirmation.epoch, epoch);
+
+    let processed = bob_group
+        .process_message(bob_provider, proposal.into_protocol_message().unwrap())
+        .expect("bob processes the update proposal");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+
+    alice_group
+        .confirm_handshake_message(
+            alice_provider.storage(),
+            confirmation.epoch,
+            confirmation.generation,
+        )
+        .expect("confirm update proposal");
+}

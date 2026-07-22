@@ -88,7 +88,9 @@ fn public_group() {
     match processed_message.into_content() {
         ProcessedMessageContent::ApplicationMessage(_)
         | ProcessedMessageContent::ProposalMessage(_)
-        | ProcessedMessageContent::ExternalJoinProposalMessage(_) => {
+        | ProcessedMessageContent::ExternalJoinProposalMessage(_)
+        | ProcessedMessageContent::OwnPendingCommit
+        | ProcessedMessageContent::OwnPrivateMessage => {
             panic!("Unexpected message type.")
         }
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
@@ -96,6 +98,10 @@ fn public_group() {
             public_group
                 .merge_commit(public_provider.storage(), *staged_commit)
                 .unwrap()
+        }
+        #[cfg(feature = "extensions-draft")]
+        ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+            panic!("Unexpected message type.")
         }
     };
 
@@ -203,7 +209,13 @@ fn public_group() {
     match ppm.into_content() {
         ProcessedMessageContent::ApplicationMessage(_)
         | ProcessedMessageContent::ExternalJoinProposalMessage(_)
-        | ProcessedMessageContent::StagedCommitMessage(_) => panic!("Unexpected message type."),
+        | ProcessedMessageContent::StagedCommitMessage(_)
+        | ProcessedMessageContent::OwnPendingCommit
+        | ProcessedMessageContent::OwnPrivateMessage => panic!("Unexpected message type."),
+        #[cfg(feature = "extensions-draft")]
+        ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+            panic!("Unexpected message type.")
+        }
         ProcessedMessageContent::ProposalMessage(p) => {
             match p.proposal() {
                 Proposal::Remove(r) => assert_eq!(r.removed(), LeafNodeIndex::new(1)),
@@ -323,10 +335,16 @@ fn extract_staged_commit(ppm: ProcessedMessage) -> StagedCommit {
     match ppm.into_content() {
         ProcessedMessageContent::ApplicationMessage(_)
         | ProcessedMessageContent::ProposalMessage(_)
-        | ProcessedMessageContent::ExternalJoinProposalMessage(_) => {
+        | ProcessedMessageContent::ExternalJoinProposalMessage(_)
+        | ProcessedMessageContent::OwnPendingCommit
+        | ProcessedMessageContent::OwnPrivateMessage => {
             panic!("Unexpected message type.")
         }
         ProcessedMessageContent::StagedCommitMessage(staged_content) => *staged_content,
+        #[cfg(feature = "extensions-draft")]
+        ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+            panic!("Unexpected message type.")
+        }
     }
 }
 

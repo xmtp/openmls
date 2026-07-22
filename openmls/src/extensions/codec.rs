@@ -9,7 +9,7 @@ use crate::extensions::{
 };
 
 use super::{last_resort::LastResortExtension, metadata::Metadata};
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::extensions::AppDataDictionaryExtension;
 
 fn vlbytes_len_len(length: usize) -> usize {
@@ -40,7 +40,7 @@ impl Size for Extension {
             Extension::ExternalSenders(e) => e.tls_serialized_len(),
             Extension::LastResort(e) => e.tls_serialized_len(),
             Extension::ImmutableMetadata(e) => e.tls_serialized_len(),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Extension::AppDataDictionary(e) => e.tls_serialized_len(),
             Extension::Unknown(_, e) => e.0.len(),
         };
@@ -73,7 +73,7 @@ impl Serialize for Extension {
             Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalPub(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Extension::AppDataDictionary(e) => e.tls_serialize(&mut extension_data),
             Extension::LastResort(e) => e.tls_serialize(&mut extension_data),
             Extension::ImmutableMetadata(e) => e.tls_serialize(&mut extension_data),
@@ -123,7 +123,7 @@ impl Deserialize for Extension {
             ExtensionType::ExternalSenders => Extension::ExternalSenders(
                 ExternalSendersExtension::tls_deserialize(&mut extension_data)?,
             ),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => Extension::AppDataDictionary(
                 AppDataDictionaryExtension::tls_deserialize(&mut extension_data)?,
             ),

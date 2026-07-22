@@ -154,6 +154,11 @@ compile_error!("In order for OpenMLS to build for WebAssembly, JavaScript APIs m
 #[cfg(any(feature = "test-utils", test))]
 pub mod prelude_test;
 
+/// Component-specific helpers for application-level extensions built on top
+/// of the safe-export interface (e.g. the virtual-clients draft).
+#[cfg(feature = "extensions-draft")]
+pub mod components;
+
 #[cfg(any(feature = "test-utils", test))]
 #[macro_use]
 pub mod test_utils;
@@ -170,7 +175,7 @@ pub mod error;
 
 // Public
 pub mod ciphersuite;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub mod component;
 pub mod credentials;
 pub mod extensions;
@@ -180,6 +185,9 @@ pub mod group;
 pub mod key_packages;
 pub mod messages;
 pub mod schedule;
+#[cfg(feature = "targeted-messages-draft")]
+#[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
+pub mod targeted_messages;
 pub mod treesync;
 pub mod versions;
 
