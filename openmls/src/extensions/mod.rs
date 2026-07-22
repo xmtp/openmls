@@ -132,22 +132,22 @@ pub enum ExtensionType {
     LastResort,
 
     #[cfg(feature = "extensions-draft")]
-    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 9)]
     /// AppDataDictionary extension
     AppDataDictionary,
 
-    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
     /// A GREASE extension type for ensuring extensibility.
     Grease(u16),
 
-    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
     /// A currently unknown extension type.
     Unknown(u16),
 
     // Declared last so the `0-8-1-storage-format` positional index does not
     // shift the shared upstream variants; the persisted tag is set by
     // `storage_tag`, independent of declaration order.
-    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 9)]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     /// Immutable metadata extension for the GroupContext.
     /// This can only be set on creation of the group.
     ImmutableMetadata,
@@ -378,7 +378,7 @@ pub enum Extension {
     /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
 
-    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
     /// An [`AppDataDictionaryExtension`]
     #[cfg(feature = "extensions-draft")]
     AppDataDictionary(AppDataDictionaryExtension),
@@ -387,14 +387,14 @@ pub enum Extension {
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
 
-    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
 
     // Declared last so the `0-8-1-storage-format` positional index does not
     // shift the shared upstream variants; the persisted tag is set by
     // `storage_tag`, independent of declaration order.
-    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     /// An immutable [`Metadata`] extension
     ImmutableMetadata(Metadata),
 }
