@@ -15,8 +15,8 @@
         <link rel="icon" href="../favicon-de23e50b.svg">
         <link rel="shortcut icon" href="../favicon-8114d1fc.png">
         <link rel="stylesheet" href="../css/variables-8adf115d.css">
-        <link rel="stylesheet" href="../css/general-2459343d.css">
-        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/general-e96d0476.css">
+        <link rel="stylesheet" href="../css/chrome-d279d366.css">
         <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-dab74b33.js";
+            window.path_to_searchindex_js = "../searchindex-35124223.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b82fad9d.js"></script>
+        <script src="../toc-6ca32bdb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -226,12 +226,23 @@ pub enum SignatureScheme {
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">#[derive(Debug)]
-pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
+<pre><code class="language-rust no_run noplayground">    SigningError,
+    InvalidPublicKey,
+}
 
-/// KEM Types for HPKE
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[repr(u16)]
+impl std::fmt::Display for CryptoError {
+    fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter&lt;'_&gt;) -&gt; std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+impl std::error::Error for CryptoError {}
+
+// === HPKE === //
+
+/// Convenience tuple struct for an HPKE configuration.
+#[derive(Debug)]</code></pre>
+<pre><code class="language-rust no_run noplayground">#[repr(u16)]
 pub enum HpkeKemType {
     /// DH KEM on P256
     DhKemP256 = 0x0010,
@@ -240,40 +251,29 @@ pub enum HpkeKemType {
     DhKemP384 = 0x0011,
 
     /// DH KEM on P521
-    DhKemP521 = 0x0012,
-</code></pre>
-<pre><code class="language-rust no_run noplayground">    DhKem448 = 0x0021,
+    DhKemP521 = 0x0012,</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// DH KEM on x448
+    DhKem448 = 0x0021,
+
+    /// ML-KEM-768
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    MlKem768 = 0x0041,
+
+    /// ML-KEM-1024
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    MlKem1024 = 0x0042,
 
     /// XWing combiner for ML-KEM and X25519
-    XWingKemDraft6 = 0x004D,
-}
-
-/// KDF Types for HPKE
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[repr(u16)]
-pub enum HpkeKdfType {</code></pre>
-<pre><code class="language-rust no_run noplayground">    HkdfSha384 = 0x0002,
-
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]</code></pre>
+<p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
+<pre><code class="language-rust no_run noplayground">
     /// HKDF SHA 512
     HkdfSha512 = 0x0003,
-}
-
-/// AEAD Types for HPKE.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[repr(u16)]
+}</code></pre>
+<pre><code class="language-rust no_run noplayground">#[repr(u16)]
 pub enum HpkeAeadType {
     /// AES GCM 128
-    AesGcm128 = 0x0001,
-</code></pre>
-<p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">/// ```text
-/// struct {
-///     opaque kem_output&lt;V&gt;;
-///     opaque ciphertext&lt;V&gt;;</code></pre>
-<pre><code class="language-rust no_run noplayground">    Debug,
-    PartialEq,
-    Eq,
-    Clone,</code></pre>
+    AesGcm128 = 0x0001,</code></pre>
 
                     </main>
 
@@ -319,11 +319,11 @@ pub enum HpkeAeadType {
 
         <script src="../elasticlunr-ef4e11c1.min.js"></script>
         <script src="../mark-09e88c2c.min.js"></script>
-        <script src="../searcher-c2a407aa.js"></script>
+        <script src="../searcher-09f2665d.js"></script>
 
         <script src="../clipboard-1626706a.min.js"></script>
         <script src="../highlight-abc7f01d.js"></script>
-        <script src="../book-a0b12cfe.js"></script>
+        <script src="../book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
 

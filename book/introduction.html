@@ -15,8 +15,8 @@
         <link rel="icon" href="favicon-de23e50b.svg">
         <link rel="shortcut icon" href="favicon-8114d1fc.png">
         <link rel="stylesheet" href="css/variables-8adf115d.css">
-        <link rel="stylesheet" href="css/general-2459343d.css">
-        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
         <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-dab74b33.js";
+            window.path_to_searchindex_js = "searchindex-35124223.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-b82fad9d.js"></script>
+        <script src="toc-6ca32bdb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -182,7 +182,7 @@
 <a href="https://codecov.io/gh/openmls/openmls"><img src="https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov&amp;style=for-the-badge" alt="codecov"></a></p>
 <p><a href="https://docs.rs/crate/openmls/latest"><img src="https://img.shields.io/badge/docs-release-blue.svg?style=for-the-badge" alt="Docs"></a>
 <a href="https://book.openmls.tech"><img src="https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge" alt="Book"></a>
-<img src="https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&amp;logo=rust" alt="Rust Version"></p>
+<label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="https://img.shields.io/badge/rustc-1.91+-blue.svg?style=for-the-badge&amp;logo=rust" alt="Rust Version"><span class="img-wrapper"><img src="https://img.shields.io/badge/rustc-1.91+-blue.svg?style=for-the-badge&amp;logo=rust" alt="Rust Version"></span></label></p>
 <p><em>OpenMLS</em> is a Rust implementation of the Messaging Layer Security (MLS) protocol, as specified in <a href="https://datatracker.ietf.org/doc/html/rfc9420">RFC 9420</a>.
 OpenMLS provides a high-level API to create and manage MLS groups. It supports basic ciphersuites and an interchangeable cryptographic provider, key store, and random number generator.</p>
 <p>This book provides guidance on using OpenMLS and its <code>MlsGroup</code> API to perform basic group operations, illustrated with examples.</p>
@@ -197,19 +197,18 @@ OpenMLS provides a high-level API to create and manage MLS groups. It supports b
 <p>OpenMLS is built and tested on the Github CI for the following rust targets.</p>
 <ul>
 <li>x86_64-unknown-linux-gnu</li>
-<li>i686-unknown-linux-gnu</li>
 <li>x86_64-pc-windows-msvc</li>
-<li>i686-pc-windows-msvc</li>
-<li>x86_64-apple-darwin</li>
+<li>aarch64-apple-darwin</li>
+<li>aarch64-unknown-linux-gnu</li>
 </ul>
 <h3 id="unsupported-but-built-on-ci"><a class="header" href="#unsupported-but-built-on-ci">Unsupported, but built on CI</a></h3>
 <p>The Github CI also builds (but doesn’t test) the following rust targets.</p>
 <ul>
-<li>aarch64-apple-darwin</li>
-<li>aarch64-unknown-linux-gnu</li>
+<li>i686-unknown-linux-gnu</li>
+<li>i686-pc-windows-msvc</li>
+<li>x86_64-apple-darwin</li>
 <li>aarch64-linux-android</li>
 <li>aarch64-apple-ios</li>
-<li>aarch64-apple-ios-sim</li>
 <li>wasm32-unknown-unknown</li>
 <li>armv7-linux-androideabi</li>
 <li>x86_64-linux-android</li>
@@ -225,7 +224,7 @@ details.</p>
 <h2 id="features"><a class="header" href="#features">Features</a></h2>
 <p>OpenMLS provides the following features</p>
 <ul>
-<li><strong>extensions-draft-08</strong>: enable features defined in <a href="https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html">MLS extensions draft-08</a></li>
+<li><strong>extensions-draft</strong>: enable features defined in <a href="https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html">MLS extensions draft</a></li>
 <li><strong>fork-resolution</strong>: helper functionality for <a href="https://book.openmls.tech/user_manual/fork-resolution.html">resolving forks</a>.</li>
 <li><strong>js</strong>: enable compilation to wasm</li>
 </ul>
@@ -244,7 +243,7 @@ details.</p>
 <h2 id="working-on-openmls"><a class="header" href="#working-on-openmls">Working on OpenMLS</a></h2>
 <p>For more details when working on OpenMLS itself please see the <a href="https://github.com/openmls/openmls/blob/main/Developer.md">Developer.md</a>.</p>
 <h2 id="maintenance--support"><a class="header" href="#maintenance--support">Maintenance &amp; Support</a></h2>
-<p>OpenMLS is maintained and developed by <a href="https://phnx.im">Phoenix R&amp;D</a> and <a href="https://cryspen.com">Cryspen</a>.</p>
+<p>OpenMLS is maintained and developed by <a href="https://phnx.im">Phoenix R&amp;D</a> and <a href="https://celabs.eu">CE Labs</a>.</p>
 <h2 id="acknowledgements"><a class="header" href="#acknowledgements">Acknowledgements</a></h2>
 <p><a href="https://zulip.com/">Zulip</a> graciously provides the OpenMLS community with a “Zulip Cloud Standard” tier <a href="https://openmls.zulipchat.com">Zulip instance</a>.</p>
 
@@ -286,11 +285,11 @@ details.</p>
 
         <script src="elasticlunr-ef4e11c1.min.js"></script>
         <script src="mark-09e88c2c.min.js"></script>
-        <script src="searcher-c2a407aa.js"></script>
+        <script src="searcher-09f2665d.js"></script>
 
         <script src="clipboard-1626706a.min.js"></script>
         <script src="highlight-abc7f01d.js"></script>
-        <script src="book-a0b12cfe.js"></script>
+        <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
 

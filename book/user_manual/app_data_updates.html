@@ -15,8 +15,8 @@
         <link rel="icon" href="../favicon-de23e50b.svg">
         <link rel="shortcut icon" href="../favicon-8114d1fc.png">
         <link rel="stylesheet" href="../css/variables-8adf115d.css">
-        <link rel="stylesheet" href="../css/general-2459343d.css">
-        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/general-e96d0476.css">
+        <link rel="stylesheet" href="../css/chrome-d279d366.css">
         <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-dab74b33.js";
+            window.path_to_searchindex_js = "../searchindex-35124223.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b82fad9d.js"></script>
+        <script src="../toc-6ca32bdb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -177,7 +177,7 @@
                         <h1 id="working-with-appdata"><a class="header" href="#working-with-appdata">Working with AppData</a></h1>
 <blockquote class="blockquote-tag blockquote-tag-important">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
-<p>Currently this functionality is behind the <code>extensions-draft-08</code> feature.</p>
+<p>Currently this functionality is behind the <code>extensions-draft</code> feature.</p>
 </blockquote>
 <p>So far, applications could store group state that all members should agree on in custom
 extensions.
@@ -356,7 +356,17 @@ fn setup_group_with_app_data_support&lt;'a, Provider: OpenMlsProvider&gt;(
 <h2 id="sending-and-receiving-proposals"><a class="header" href="#sending-and-receiving-proposals">Sending and receiving proposals</a></h2>
 <p>This part doesn’t really change.</p>
 <p>Alice sends a proposal to increment the counter:</p>
-<pre><code class="language-rust no_run noplayground">./tests/book_code_app_data.rs:send_proposal}}</code></pre>
+<pre><code class="language-rust no_run noplayground">    // Alice sends a standalone proposal to increment the counter.
+    // This proposal will be included in a later commit by reference.
+    let (proposal_message, _proposal_ref) = alice
+        .group
+        .propose_app_data_update(
+            &amp;alice_party.provider,
+            &amp;alice.party.signer,
+            COUNTER_COMPONENT_ID,
+            AppDataUpdateOperation::Update(CounterOperation::Increment.to_bytes().into()),
+        )
+        .expect("failed to create proposal");</code></pre>
 <p>Bob receives and stores the proposal:</p>
 <pre><code class="language-rust no_run noplayground">    // Bob receives and stores the proposal
     let processed_proposal = bob
@@ -426,85 +436,54 @@ fn setup_group_with_app_data_support&lt;'a, Provider: OpenMlsProvider&gt;(
 
     let (commit_message, _welcome, _group_info) = commit_bundle.into_contents();</code></pre>
 <h2 id="receiving-commits"><a class="header" href="#receiving-commits">Receiving Commits</a></h2>
-<p>Bob receives the commit and must independently compute the same new state. He iterates over the proposals in the commit, resolving references from his proposal store:</p>
+<p>Bob receives the commit and must independently compute the same new state.
+When a commit covers <code>AppDataUpdate</code> proposals, <code>process_message</code> returns it as
+<code>ProcessedMessageContent::UnresolvedAppDataCommit</code> instead of a staged commit:
+the message signature has already been verified, but staging is paused until
+the application has interpreted the proposals. Bob iterates over the covered
+proposals (references are already resolved from his proposal store), computes
+the new state and resumes staging with <code>stage_app_data_commit</code>:</p>
 <pre><code class="language-rust no_run noplayground">    // Bob receives the commit and must independently compute the same new state.
 
-    // First, unprotect (decrypt) the message
+    // Process the message. Since the commit covers AppDataUpdate proposals,
+    // it comes back as an UnresolvedAppDataCommit: the signature has been
+    // verified, but staging is paused until Bob supplies the computed updates.
     let commit_in: MlsMessageIn = commit_message.into();
-    let unverified_message = bob
+    let processed_message = bob
         .group
-        .unprotect_message(
+        .process_message(
             &amp;bob_party.provider,
             commit_in
                 .into_protocol_message()
                 .expect("not a protocol message"),
         )
-        .expect("failed to unprotect message");
+        .expect("failed to process message");
 
-    // Create an updater for Bob
-    let mut bob_updater = bob.group.app_data_dictionary_updater();
-
-    // Get the proposals from the commit
-    let committed_proposals = unverified_message
-        .committed_proposals()
-        .expect("not a commit");
-
-    // Process each proposal, resolving references from the proposal store
-    let mut app_data_updates: Vec&lt;AppDataUpdateProposal&gt; = Vec::new();
-
-    for proposal_or_ref in committed_proposals.iter() {
-        // Validate and potentially resolve the reference
-        let validated = proposal_or_ref
-            .clone()
-            .validate(
-                bob_party.provider.crypto(),
-                ciphersuite,
-                ProtocolVersion::Mls10,
-            )
-            .expect("invalid proposal");
-
-        // Resolve to the actual proposal
-        let proposal: Box&lt;Proposal&gt; = match validated {
-            ProposalOrRef::Proposal(proposal) =&gt; proposal,
-            ProposalOrRef::Reference(reference) =&gt; {
-                // Look up the proposal in the proposal store
-                bob.group
-                    .proposal_store()
-                    .proposals()
-                    .find(|p| p.proposal_reference_ref() == &amp;*reference)
-                    .map(|p| Box::new(p.proposal().clone()))
-                    .expect("proposal not found in store")
-            }
-        };
-
-        // Collect AppDataUpdate proposals for processing
-        if let Proposal::AppDataUpdate(app_data_proposal) = *proposal {
-            app_data_updates.push(*app_data_proposal);
-        }
-    }
-
-    // Process the collected proposals
-    process_app_data_proposals(&amp;mut bob_updater, app_data_updates.iter())
-        .expect("failed to process proposals");
-
-    // Now process the message with the computed updates
-    let processed_message = bob
-        .group
-        .process_unverified_message_with_app_data_updates(
-            &amp;bob_party.provider,
-            unverified_message,
-            bob_updater.changes(),
-        )
-        .expect("failed to process commit");
-
-    // Extract and merge the staged commit
-    let staged_commit = match processed_message.into_content() {
-        ProcessedMessageContent::StagedCommitMessage(commit) =&gt; commit,
-        _ =&gt; panic!("expected a staged commit"),
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) =&gt; unresolved_commit,
+        _ =&gt; panic!("expected an unresolved app data commit"),
     };
 
+    // Create an updater for Bob and compute the new state. The proposals are
+    // already verified, resolved from the proposal store and sorted by
+    // component ID.
+    let mut bob_updater = bob.group.app_data_dictionary_updater();
+
+    process_app_data_proposals(
+        &amp;mut bob_updater,
+        unresolved_commit.app_data_update_proposals(),
+    )
+    .expect("failed to process proposals");
+    let updates = bob_updater.changes();
+
+    // Resume staging with the computed updates
+    let staged_commit = bob
+        .group
+        .stage_app_data_commit(&amp;bob_party.provider, *unresolved_commit, updates)
+        .expect("failed to stage commit");
+
     bob.group
-        .merge_staged_commit(&amp;bob_party.provider, *staged_commit)
+        .merge_staged_commit(&amp;bob_party.provider, staged_commit)
         .expect("failed to merge commit");</code></pre>
 <p>After both parties merge, they should have identical state:</p>
 <pre><code class="language-rust no_run noplayground">    // Both parties should now have identical state
@@ -607,11 +586,11 @@ fn setup_group_with_app_data_support&lt;'a, Provider: OpenMlsProvider&gt;(
 
         <script src="../elasticlunr-ef4e11c1.min.js"></script>
         <script src="../mark-09e88c2c.min.js"></script>
-        <script src="../searcher-c2a407aa.js"></script>
+        <script src="../searcher-09f2665d.js"></script>
 
         <script src="../clipboard-1626706a.min.js"></script>
         <script src="../highlight-abc7f01d.js"></script>
-        <script src="../book-a0b12cfe.js"></script>
+        <script src="../book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
 
