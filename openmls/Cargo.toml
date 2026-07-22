@@ -170,6 +170,10 @@ wasm-bindgen = "0.2.100"
 wasm-bindgen-test = "0.3.50"
 clap = { version = "4", features = ["derive"] }
 base64 = "0.22.1"
+# Non-self-describing codec used to guard `PastEpochDeletionPolicy` against a
+# regression to `#[serde(untagged)]`, which fails under such formats (the shape
+# libxmtp persists with). Matches libxmtp's bincode 1.x.
+bincode = "1.3"
 flate2 = "1.0"
 indicatif = "0.18.3"
 

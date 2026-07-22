@@ -1,5 +1,10 @@
 //! These tests check storage tag stability for `serde` serializations of `Extension`,
 //!   `ExtensionType`, `Proposal`, `ProposalType`, and `CredentialType`.
+//!
+//! This file compares against published openmls crates; it is inert unless a
+//! `compat_*` feature is on (the `fork-baseline` feature exercises only
+//! `test_fork_storage_tags.rs`).
+#![cfg(any(feature = "compat_0_7_1", feature = "compat_0_8_1"))]
 #![allow(dead_code)]
 
 use openmls_compat_tests::storage_tag_check::*;
@@ -112,6 +117,14 @@ macro_rules! compat_tests {
         mod $mod_name {
             use super::*;
 
+            // The XMTP fork's `storage_tag` numbering for `ExtensionType` /
+            // `Extension` diverges from published openmls (`ImmutableMetadata`
+            // takes tag 6, shifting the rest up), so this comparison against a
+            // published crate only holds on the positional `compat_0_8_1*` runs
+            // (which build our `openmls` with `0-8-1-storage-format`). On the
+            // `storage_tag` path (`compat_0_7_1`) the fork's numbering is pinned
+            // positively by `test_fork_storage_tags.rs` instead.
+            #[cfg(feature = "compat_0_8_1")]
             generate_test_fn!(
                 test_extension_type,
                 $before::prelude::ExtensionType,
@@ -119,6 +132,7 @@ macro_rules! compat_tests {
                 TestData::load().extension_type,
                 $version
             );
+            #[cfg(feature = "compat_0_8_1")]
             generate_test_fn!(
                 test_extension,
                 $before::prelude::Extension,

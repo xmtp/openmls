@@ -17,11 +17,22 @@ pub(crate) struct MessageSecrets {
     confirmation_key: ConfirmationKey,
     serialized_context: Vec<u8>,
     secret_tree: SecretTree,
-    /// When the secrets were added to the store
-    /// `None` if no timestamp is available
+    /// When the secrets were added to the store.
+    ///
+    /// `None` if no timestamp is available — including when reading data that
+    /// predates this field.
+    ///
+    /// Skipped during serde and persisted out-of-band as a trailing, tolerantly
+    /// read field on the containing [`MessageSecretsStore`] (see its `Serialize`
+    /// / `Deserialize` impl). This keeps `MessageSecrets` byte-identical to the
+    /// openmls-0.7.x five-field shape under bincode, so `EpochTree` — where
+    /// `MessageSecrets` is *not* the last field — still round-trips. Serializing
+    /// it inline with `#[serde(default)]` does not work: bincode is positional
+    /// and ignores `default`, so 0.7.x data hits EOF on the missing field.
+    ///
     /// NOTE: SystemTime is not guaranteed to be monotonic.
-    #[serde(default)]
-    added_at: Option<SystemTime>,
+    #[serde(skip)]
+    pub(crate) added_at: Option<SystemTime>,
 }
 
 #[cfg(not(feature = "crypto-debug"))]

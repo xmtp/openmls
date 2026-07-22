@@ -1098,7 +1098,30 @@ impl StagedCommit {
 }
 
 /// This struct is used internally by [`StagedCommit`] to encapsulate all the modified group state.
-#[derive(Debug, Serialize, Deserialize)]
+//
+// IMPORTANT: this struct is reachable from the persisted on-disk format
+// (`MlsGroupState::PendingCommit(..)` -> `PendingCommitState::Member(..)` ->
+// `StagedCommit::state` -> `StagedCommitState::GroupMember(..)`). The first six
+// fields are the openmls-0.7.x shape and MUST NOT be reordered or have fields
+// inserted between them. The feature-gated `application_export_tree` and
+// `new_own_leaf_index` are trailing fields deserialized *tolerantly* (EOF ->
+// absent -> `None`) via the custom impl below, so data written by an older
+// openmls — before the field existed — still loads. `#[serde(default)]` does
+// not achieve this: bincode is positional and ignores it. They stay at the end
+// and are read in declaration order, so a tolerant misread cannot consume a
+// sibling's bytes.
+//
+// The tail layout under a positional codec is per feature combination: data
+// loads correctly only when the writer's enabled tail fields form a prefix, in
+// declaration order, of the reader's (e.g. no-features data read anywhere, or
+// `extensions-draft` data read by a build with both features). A non-prefix
+// combination would misalign the slots, but none is buildable:
+// `virtual-clients-draft` enables `extensions-draft` in Cargo.toml, so the
+// possible feature sets are exactly the prefixes of the declaration order.
+// This constraint is inherent to cfg-gated persisted fields (upstream's derive
+// has it too); when adding a tail field behind a new feature, declare it last
+// and give the feature the same Cargo dependency on its predecessors.
+#[derive(Debug)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
@@ -1107,18 +1130,172 @@ pub(crate) struct MemberStagedCommitState {
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
-    #[cfg(feature = "extensions-draft")]
-    #[serde(default)]
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
+    #[cfg(feature = "extensions-draft")]
     application_export_tree: Option<ApplicationExportTree>,
     // The new leaf index to install on the receiving group at merge time
     // when this staged commit is a sibling-resync external commit (a VC
     // external commit from a sibling emulator that inline-removes the
     // receiver's existing leaf). `None` for all other commit kinds.
     #[cfg(feature = "virtual-clients-draft")]
-    #[serde(default)]
     new_own_leaf_index: Option<LeafNodeIndex>,
+}
+
+const MEMBER_STAGED_COMMIT_STATE_FIELDS: &[&str] = &[
+    "group_epoch_secrets",
+    "message_secrets",
+    "staged_diff",
+    "new_keypairs",
+    "new_leaf_keypair_option",
+    "update_path_leaf_node",
+    #[cfg(feature = "extensions-draft")]
+    "application_export_tree",
+    #[cfg(feature = "virtual-clients-draft")]
+    "new_own_leaf_index",
+];
+
+impl Serialize for MemberStagedCommitState {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = serializer.serialize_struct(
+            "MemberStagedCommitState",
+            MEMBER_STAGED_COMMIT_STATE_FIELDS.len(),
+        )?;
+        s.serialize_field("group_epoch_secrets", &self.group_epoch_secrets)?;
+        s.serialize_field("message_secrets", &self.message_secrets)?;
+        s.serialize_field("staged_diff", &self.staged_diff)?;
+        s.serialize_field("new_keypairs", &self.new_keypairs)?;
+        s.serialize_field("new_leaf_keypair_option", &self.new_leaf_keypair_option)?;
+        s.serialize_field("update_path_leaf_node", &self.update_path_leaf_node)?;
+        #[cfg(feature = "extensions-draft")]
+        s.serialize_field("application_export_tree", &self.application_export_tree)?;
+        #[cfg(feature = "virtual-clients-draft")]
+        s.serialize_field("new_own_leaf_index", &self.new_own_leaf_index)?;
+        s.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for MemberStagedCommitState {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_struct(
+            "MemberStagedCommitState",
+            MEMBER_STAGED_COMMIT_STATE_FIELDS,
+            MemberStagedCommitStateVisitor,
+        )
+    }
+}
+
+struct MemberStagedCommitStateVisitor;
+
+impl<'de> serde::de::Visitor<'de> for MemberStagedCommitStateVisitor {
+    type Value = MemberStagedCommitState;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("struct MemberStagedCommitState")
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(
+        self,
+        mut seq: A,
+    ) -> Result<MemberStagedCommitState, A::Error> {
+        use serde::de::Error;
+        let group_epoch_secrets = seq
+            .next_element::<GroupEpochSecrets>()?
+            .ok_or_else(|| Error::missing_field("group_epoch_secrets"))?;
+        let message_secrets = seq
+            .next_element::<MessageSecrets>()?
+            .ok_or_else(|| Error::missing_field("message_secrets"))?;
+        let staged_diff = seq
+            .next_element::<StagedPublicGroupDiff>()?
+            .ok_or_else(|| Error::missing_field("staged_diff"))?;
+        let new_keypairs = seq
+            .next_element::<Vec<EncryptionKeyPair>>()?
+            .ok_or_else(|| Error::missing_field("new_keypairs"))?;
+        let new_leaf_keypair_option = seq
+            .next_element::<Option<EncryptionKeyPair>>()?
+            .ok_or_else(|| Error::missing_field("new_leaf_keypair_option"))?;
+        let update_path_leaf_node = seq
+            .next_element::<Option<LeafNode>>()?
+            .ok_or_else(|| Error::missing_field("update_path_leaf_node"))?;
+        // Tolerant tail reads, in declaration order. Each may be absent in data
+        // written by an older openmls or a build without the feature; any error
+        // (e.g. bincode EOF) is treated as "field absent -> None".
+        #[cfg(feature = "extensions-draft")]
+        let application_export_tree = seq
+            .next_element::<Option<ApplicationExportTree>>()
+            .unwrap_or(None)
+            .flatten();
+        #[cfg(feature = "virtual-clients-draft")]
+        let new_own_leaf_index = seq
+            .next_element::<Option<LeafNodeIndex>>()
+            .unwrap_or(None)
+            .flatten();
+        Ok(MemberStagedCommitState {
+            group_epoch_secrets,
+            message_secrets,
+            staged_diff,
+            new_keypairs,
+            new_leaf_keypair_option,
+            update_path_leaf_node,
+            #[cfg(feature = "extensions-draft")]
+            application_export_tree,
+            #[cfg(feature = "virtual-clients-draft")]
+            new_own_leaf_index,
+        })
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(
+        self,
+        mut map: A,
+    ) -> Result<MemberStagedCommitState, A::Error> {
+        use serde::de::Error;
+        let mut group_epoch_secrets: Option<GroupEpochSecrets> = None;
+        let mut message_secrets: Option<MessageSecrets> = None;
+        let mut staged_diff: Option<StagedPublicGroupDiff> = None;
+        let mut new_keypairs: Option<Vec<EncryptionKeyPair>> = None;
+        let mut new_leaf_keypair_option: Option<Option<EncryptionKeyPair>> = None;
+        let mut update_path_leaf_node: Option<Option<LeafNode>> = None;
+        #[cfg(feature = "extensions-draft")]
+        let mut application_export_tree: Option<Option<ApplicationExportTree>> = None;
+        #[cfg(feature = "virtual-clients-draft")]
+        let mut new_own_leaf_index: Option<Option<LeafNodeIndex>> = None;
+
+        while let Some(key) = map.next_key::<String>()? {
+            match key.as_str() {
+                "group_epoch_secrets" => group_epoch_secrets = Some(map.next_value()?),
+                "message_secrets" => message_secrets = Some(map.next_value()?),
+                "staged_diff" => staged_diff = Some(map.next_value()?),
+                "new_keypairs" => new_keypairs = Some(map.next_value()?),
+                "new_leaf_keypair_option" => new_leaf_keypair_option = Some(map.next_value()?),
+                "update_path_leaf_node" => update_path_leaf_node = Some(map.next_value()?),
+                #[cfg(feature = "extensions-draft")]
+                "application_export_tree" => application_export_tree = Some(map.next_value()?),
+                #[cfg(feature = "virtual-clients-draft")]
+                "new_own_leaf_index" => new_own_leaf_index = Some(map.next_value()?),
+                _ => {
+                    let _: serde::de::IgnoredAny = map.next_value()?;
+                }
+            }
+        }
+
+        Ok(MemberStagedCommitState {
+            group_epoch_secrets: group_epoch_secrets
+                .ok_or_else(|| Error::missing_field("group_epoch_secrets"))?,
+            message_secrets: message_secrets
+                .ok_or_else(|| Error::missing_field("message_secrets"))?,
+            staged_diff: staged_diff.ok_or_else(|| Error::missing_field("staged_diff"))?,
+            new_keypairs: new_keypairs.ok_or_else(|| Error::missing_field("new_keypairs"))?,
+            new_leaf_keypair_option: new_leaf_keypair_option
+                .ok_or_else(|| Error::missing_field("new_leaf_keypair_option"))?,
+            update_path_leaf_node: update_path_leaf_node
+                .ok_or_else(|| Error::missing_field("update_path_leaf_node"))?,
+            #[cfg(feature = "extensions-draft")]
+            application_export_tree: application_export_tree.unwrap_or(None),
+            #[cfg(feature = "virtual-clients-draft")]
+            new_own_leaf_index: new_own_leaf_index.unwrap_or(None),
+        })
+    }
 }
 
 impl MemberStagedCommitState {
