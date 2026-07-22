@@ -76,38 +76,36 @@ impl Serialize for PastEpochDeletionPolicy {
     where
         S: serde::Serializer,
     {
-        let usize = match self {
-            Self::MaxEpochs(epochs) => *epochs,
-            Self::KeepAll => usize::MAX,
+        // Wire encoding is always `u64` (never platform-dependent `usize`) so
+        // bytes written on a 64-bit host stay readable on `wasm32` and vice
+        // versa. `KeepAll` is encoded as `u64::MAX` rather than `usize::MAX as
+        // u64`, because `usize::MAX` differs between platforms (`u32::MAX` on
+        // `wasm32`, `u64::MAX` on 64-bit).
+        let value: u64 = match self {
+            Self::MaxEpochs(epochs) => *epochs as u64,
+            Self::KeepAll => u64::MAX,
         };
-        serializer.serialize_u64(usize as u64)
+        serializer.serialize_u64(value)
     }
 }
 
 impl<'de> Deserialize<'de> for PastEpochDeletionPolicy {
+    // Intentionally a plain `u64`, not upstream's `#[serde(untagged)]`
+    // `Int | Tagged` form. `untagged` buffers into a self-describing value and
+    // so requires `Deserializer::deserialize_any`; libxmtp persists this via
+    // bincode, which is non-self-describing and errors on `deserialize_any`, so
+    // the untagged form fails at runtime for every group. The fork only ever
+    // wrote the plain-integer form, so the pre-8bdba6f tagged variant is moot.
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        // Previously supported format (changed to plain integer in 8bdba6f)
-        #[derive(Deserialize)]
-        enum Tagged {
-            MaxEpochs(usize),
-            KeepAll,
+        // Check the `KeepAll` sentinel before narrowing, so a `KeepAll` written
+        // on a 64-bit host (`u64::MAX`) still loads on `wasm32`.
+        let value = u64::deserialize(deserializer)?;
+        if value == u64::MAX {
+            Ok(Self::KeepAll)
+        } else {
+            let epochs = usize::try_from(value).map_err(serde::de::Error::custom)?;
+            Ok(Self::MaxEpochs(epochs))
         }
-
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum Format {
-            Int(u64),
-            Tagged(Tagged),
-        }
-
-        Ok(match Format::deserialize(deserializer)? {
-            Format::Int(u64::MAX) => Self::KeepAll,
-            Format::Int(n) => {
-                Self::MaxEpochs(usize::try_from(n).map_err(serde::de::Error::custom)?)
-            }
-            Format::Tagged(Tagged::MaxEpochs(n)) => Self::MaxEpochs(n),
-            Format::Tagged(Tagged::KeepAll) => Self::KeepAll,
-        })
     }
 }
 
@@ -724,14 +722,23 @@ mod tests {
         assert_eq!(deserialized, PastEpochDeletionPolicy::KeepAll);
     }
 
-    #[test]
-    fn past_epoch_deletion_policy_deserializes_legacy_tagged_format() {
-        // Externally tagged enum format used before 8bdba6f.
-        let deserialized: PastEpochDeletionPolicy =
-            serde_json::from_str(r#"{"MaxEpochs":42}"#).unwrap();
-        assert_eq!(deserialized, PastEpochDeletionPolicy::MaxEpochs(42));
+    // The pre-8bdba6f externally-tagged format is intentionally unsupported: it
+    // is unrepresentable under the non-self-describing codec libxmtp persists
+    // with (see the `Deserialize` impl), and the fork never wrote it.
 
-        let deserialized: PastEpochDeletionPolicy = serde_json::from_str(r#""KeepAll""#).unwrap();
-        assert_eq!(deserialized, PastEpochDeletionPolicy::KeepAll);
+    #[test]
+    fn past_epoch_deletion_policy_roundtrips_through_bincode() {
+        // bincode is non-self-describing (like libxmtp's store) and errors on
+        // `deserialize_any`, so an `#[serde(untagged)]` deserializer would fail
+        // here. This is the regression guard for the #2051 trap.
+        for policy in [
+            PastEpochDeletionPolicy::MaxEpochs(0),
+            PastEpochDeletionPolicy::MaxEpochs(42),
+            PastEpochDeletionPolicy::KeepAll,
+        ] {
+            let bytes = bincode::serialize(&policy).unwrap();
+            let deserialized: PastEpochDeletionPolicy = bincode::deserialize(&bytes).unwrap();
+            assert_eq!(deserialized, policy);
+        }
     }
 }
