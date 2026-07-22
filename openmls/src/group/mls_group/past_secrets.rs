@@ -28,7 +28,25 @@ pub(crate) struct EpochTree {
 
 /// Can store message secrets for up to `max_epochs`. The trees are added with [`self::add()`] and can be queried
 /// with [`Self::get_epoch()`].
-#[derive(Serialize, Deserialize)]
+///
+/// Persisted on-disk format. The bincode/postcard positional wire layout is:
+///
+/// ```text
+///   max_epochs:          usize
+///   past_epoch_trees:    VecDeque<EpochTree>
+///   message_secrets:     MessageSecrets            (five upstream-0.7.x fields)
+///   added_at:            Option<SystemTime>        <- fork-only trailing field
+///   past_epoch_added_at: Vec<Option<SystemTime>>   <- fork-only trailing field
+/// ```
+///
+/// The two fork-only fields are hand-serialized here rather than as an inline
+/// `MessageSecrets.added_at`, because `MessageSecrets` is not the last field of
+/// `EpochTree`, so an inline trailing field would corrupt the byte stream. They
+/// are read *tolerantly*: EOF (or any deserialize error) past the upstream shape
+/// is treated as "absent -> `None`", so data written by openmls-0.7.x — which
+/// lacks them — still loads. On deserialize the timestamps are re-hydrated onto
+/// the corresponding `MessageSecrets.added_at` fields. Both are at the end of
+/// the struct, so a tolerant misread cannot consume a sibling's bytes.
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct MessageSecretsStore {
@@ -39,6 +57,123 @@ pub(crate) struct MessageSecretsStore {
     past_epoch_trees: VecDeque<EpochTree>,
     // The message secrets of the current epoch.
     message_secrets: MessageSecrets,
+}
+
+impl Serialize for MessageSecretsStore {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = serializer.serialize_struct("MessageSecretsStore", 5)?;
+        s.serialize_field("max_epochs", &self.max_epochs)?;
+        s.serialize_field("past_epoch_trees", &self.past_epoch_trees)?;
+        s.serialize_field("message_secrets", &self.message_secrets)?;
+        s.serialize_field("added_at", &self.message_secrets.added_at)?;
+        let past_added_at: Vec<Option<SystemTime>> = self
+            .past_epoch_trees
+            .iter()
+            .map(|t| t.message_secrets.added_at)
+            .collect();
+        s.serialize_field("past_epoch_added_at", &past_added_at)?;
+        s.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for MessageSecretsStore {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        const FIELDS: &[&str] = &[
+            "max_epochs",
+            "past_epoch_trees",
+            "message_secrets",
+            "added_at",
+            "past_epoch_added_at",
+        ];
+        deserializer.deserialize_struct("MessageSecretsStore", FIELDS, MessageSecretsStoreVisitor)
+    }
+}
+
+struct MessageSecretsStoreVisitor;
+
+impl<'de> serde::de::Visitor<'de> for MessageSecretsStoreVisitor {
+    type Value = MessageSecretsStore;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("struct MessageSecretsStore")
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(
+        self,
+        mut seq: A,
+    ) -> Result<MessageSecretsStore, A::Error> {
+        use serde::de::Error;
+        let max_epochs = seq
+            .next_element::<usize>()?
+            .ok_or_else(|| Error::missing_field("max_epochs"))?;
+        let mut past_epoch_trees = seq
+            .next_element::<VecDeque<EpochTree>>()?
+            .ok_or_else(|| Error::missing_field("past_epoch_trees"))?;
+        let mut message_secrets = seq
+            .next_element::<MessageSecrets>()?
+            .ok_or_else(|| Error::missing_field("message_secrets"))?;
+        // Tolerant tail #1: `added_at` for the current `message_secrets`.
+        let added_at = seq
+            .next_element::<Option<SystemTime>>()
+            .unwrap_or(None)
+            .flatten();
+        message_secrets.added_at = added_at;
+        // Tolerant tail #2: per-past-epoch timestamps, re-hydrated by index.
+        let past_added_at: Vec<Option<SystemTime>> = seq
+            .next_element::<Vec<Option<SystemTime>>>()
+            .unwrap_or(None)
+            .unwrap_or_default();
+        for (i, tree) in past_epoch_trees.iter_mut().enumerate() {
+            tree.message_secrets.added_at = past_added_at.get(i).copied().unwrap_or(None);
+        }
+        Ok(MessageSecretsStore {
+            max_epochs,
+            past_epoch_trees,
+            message_secrets,
+        })
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(
+        self,
+        mut map: A,
+    ) -> Result<MessageSecretsStore, A::Error> {
+        use serde::de::Error;
+        let mut max_epochs: Option<usize> = None;
+        let mut past_epoch_trees: Option<VecDeque<EpochTree>> = None;
+        let mut message_secrets: Option<MessageSecrets> = None;
+        let mut added_at: Option<Option<SystemTime>> = None;
+        let mut past_epoch_added_at: Option<Vec<Option<SystemTime>>> = None;
+
+        while let Some(key) = map.next_key::<String>()? {
+            match key.as_str() {
+                "max_epochs" => max_epochs = Some(map.next_value()?),
+                "past_epoch_trees" => past_epoch_trees = Some(map.next_value()?),
+                "message_secrets" => message_secrets = Some(map.next_value()?),
+                "added_at" => added_at = Some(map.next_value()?),
+                "past_epoch_added_at" => past_epoch_added_at = Some(map.next_value()?),
+                _ => {
+                    let _: serde::de::IgnoredAny = map.next_value()?;
+                }
+            }
+        }
+
+        let mut message_secrets =
+            message_secrets.ok_or_else(|| Error::missing_field("message_secrets"))?;
+        message_secrets.added_at = added_at.unwrap_or(None);
+        let mut past_epoch_trees =
+            past_epoch_trees.ok_or_else(|| Error::missing_field("past_epoch_trees"))?;
+        if let Some(past_added_at) = past_epoch_added_at {
+            for (i, tree) in past_epoch_trees.iter_mut().enumerate() {
+                tree.message_secrets.added_at = past_added_at.get(i).copied().unwrap_or(None);
+            }
+        }
+        Ok(MessageSecretsStore {
+            max_epochs: max_epochs.ok_or_else(|| Error::missing_field("max_epochs"))?,
+            past_epoch_trees,
+            message_secrets,
+        })
+    }
 }
 
 #[cfg(not(feature = "crypto-debug"))]
@@ -338,5 +473,95 @@ impl MessageSecretsStore {
     /// Helper function for testing, to get the number of past epoch trees
     pub(crate) fn num_past_epoch_trees(&self) -> usize {
         self.past_epoch_trees.len()
+    }
+}
+
+// Storage-compatibility tests for the fork-only `added_at` tail, exercised
+// through *bincode* — the non-self-describing codec libxmtp actually persists
+// with. The existing `past_secrets_storage_compatibility` KAT uses `serde_json`
+// (self-describing), so it only covers the `visit_map` path; these cover the
+// `visit_seq` / EOF-tolerant path that motivates the hand-written impl.
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod bincode_storage_compat_tests {
+    use super::{EpochTree, MessageSecretsStore};
+    use crate::binary_tree::array_representation::LeafNodeIndex;
+    use crate::group::mls_group::config::PastEpochDeletionPolicy;
+    use crate::schedule::message_secrets::MessageSecrets;
+    use openmls_rust_crypto::RustCrypto;
+    use openmls_traits::types::Ciphersuite;
+    use serde::Serialize;
+    use std::collections::VecDeque;
+    use std::time::SystemTime;
+
+    const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+    fn secrets(rng: &RustCrypto, added_at: Option<SystemTime>) -> MessageSecrets {
+        MessageSecrets::random(CIPHERSUITE, rng, LeafNodeIndex::new(0)).with_timestamp(added_at)
+    }
+
+    /// A new-format `MessageSecretsStore` round-trips through bincode, preserving
+    /// the fork-only `added_at` timestamps carried on the trailing tail fields —
+    /// both the current secrets and each past epoch.
+    #[test]
+    fn bincode_roundtrip_preserves_added_at() {
+        let rng = RustCrypto::default();
+        let mut store = MessageSecretsStore::new_with_secret(
+            &PastEpochDeletionPolicy::KeepAll,
+            secrets(&rng, None),
+        );
+        store.add_past_epoch_tree(0u64, secrets(&rng, None), Vec::new());
+        store.add_past_epoch_tree(1u64, secrets(&rng, None), Vec::new());
+
+        // Set known timestamps directly, bypassing the `SystemTime::now()` the
+        // constructors stamp. Mix in a `None` so the parallel
+        // `past_epoch_added_at` array is exercised on both a present and an
+        // absent entry.
+        let current = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_000);
+        let past0 = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(2_000);
+        store.message_secrets.added_at = Some(current);
+        store.past_epoch_trees[0].message_secrets.added_at = Some(past0);
+        store.past_epoch_trees[1].message_secrets.added_at = None;
+
+        let bytes = bincode::serialize(&store).expect("serialize");
+        let back: MessageSecretsStore = bincode::deserialize(&bytes).expect("deserialize");
+
+        assert_eq!(back.message_secrets.added_at, Some(current));
+        assert_eq!(
+            back.past_epoch_trees[0].message_secrets.added_at,
+            Some(past0)
+        );
+        assert_eq!(back.past_epoch_trees[1].message_secrets.added_at, None);
+    }
+
+    /// Data written before `added_at` existed (openmls-0.7.x, as shipped in
+    /// libxmtp 1.9/1.10) has only the three base fields under bincode. The
+    /// trailing tail fields must read tolerantly — EOF -> `None`, not an error.
+    #[test]
+    fn bincode_tolerates_pre_added_at_layout() {
+        let rng = RustCrypto::default();
+        let store = MessageSecretsStore::new_with_secret(
+            &PastEpochDeletionPolicy::KeepAll,
+            secrets(&rng, Some(SystemTime::now())),
+        );
+
+        // The openmls-0.7.x on-disk shape: the three base fields only, no
+        // trailing `added_at` / `past_epoch_added_at`. bincode is positional, so
+        // this is byte-identical to what an older openmls wrote.
+        #[derive(Serialize)]
+        struct PreAddedAtLayout<'a> {
+            max_epochs: usize,
+            past_epoch_trees: &'a VecDeque<EpochTree>,
+            message_secrets: &'a MessageSecrets,
+        }
+        let old_bytes = bincode::serialize(&PreAddedAtLayout {
+            max_epochs: store.max_epochs,
+            past_epoch_trees: &store.past_epoch_trees,
+            message_secrets: &store.message_secrets,
+        })
+        .expect("serialize old layout");
+
+        let back: MessageSecretsStore =
+            bincode::deserialize(&old_bytes).expect("deserialize old layout");
+        assert!(back.message_secrets.added_at.is_none());
     }
 }
