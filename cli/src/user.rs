@@ -470,6 +470,18 @@ impl User {
                 }
                 None
             }
+            ProcessedMessageContent::OwnPendingCommit => {
+                if let Err(e) = mls_group.merge_pending_commit(&self.provider) {
+                    return Err(e.to_string());
+                }
+                None
+            }
+            // Own PrivateMessages echoed by the DS cannot be decrypted; skip them.
+            ProcessedMessageContent::OwnPrivateMessage => None,
+            #[cfg(feature = "extensions-draft")]
+            ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+                unimplemented!("the cli does not support AppDataUpdate proposals")
+            }
         };
         Ok((PostUpdateActions::None, None, message_out))
     }

@@ -28,7 +28,7 @@ use crate::{
     treesync::{errors::LeafNodeValidationError, LeafNode},
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     group::errors::AppDataUpdateValidationError, messages::proposals::AppDataUpdateOperationType,
 };
@@ -531,6 +531,7 @@ impl PublicGroup {
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+    ///  - When the `extensions-draft` feature is enabled, AppDataUpdate proposal is allowed additionally.
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
@@ -551,13 +552,15 @@ impl PublicGroup {
         // [valn0404](https://validation.openmls.tech/#valn0404)
         let contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
-            let is_allowed_type = matches!(
-                p.proposal(),
+            let is_allowed_type = match p.proposal() {
                 Proposal::ExternalInit(_)
-                    | Proposal::Remove(_)
-                    | Proposal::PreSharedKey(_)
-                    | Proposal::Custom(_)
-            );
+                | Proposal::Remove(_)
+                | Proposal::PreSharedKey(_)
+                | Proposal::Custom(_) => true,
+                #[cfg(feature = "extensions-draft")]
+                Proposal::AppDataUpdate(_) => true,
+                _ => false,
+            };
             is_inline && !is_allowed_type
         });
         if contains_denied_proposal {
@@ -646,7 +649,7 @@ impl PublicGroup {
     ///     and Removes
     ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
     ///     Remove
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn validate_app_data_update_proposals_and_group_context(
         &self,
         proposal_queue: &ProposalQueue,

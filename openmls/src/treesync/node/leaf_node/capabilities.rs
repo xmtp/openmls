@@ -1,4 +1,7 @@
-use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{Ciphersuite, VerifiableCiphersuite},
+};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
@@ -98,6 +101,24 @@ impl Capabilities {
     /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`]
     pub fn builder() -> CapabilitiesBuilder {
         CapabilitiesBuilder(Self::default())
+    }
+
+    /// Creates [`Capabilities`] advertising exactly the ciphersuites supported
+    /// by the given crypto provider, with defaults for all other fields.
+    ///
+    /// In contrast to [`Capabilities::default()`], which advertises a
+    /// hardcoded ciphersuite list independently of what the crypto provider
+    /// can actually perform, this constructor derives the advertised list from
+    /// [`OpenMlsCrypto::supported_ciphersuites()`].
+    pub fn for_provider(crypto: &impl OpenMlsCrypto) -> Self {
+        Capabilities {
+            ciphersuites: crypto
+                .supported_ciphersuites()
+                .into_iter()
+                .map(VerifiableCiphersuite::from)
+                .collect(),
+            ..Default::default()
+        }
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -388,7 +409,26 @@ pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
         Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519,
     ]
 }
 
@@ -399,7 +439,10 @@ pub(super) fn default_credentials() -> Vec<CredentialType> {
 
 #[cfg(test)]
 mod tests {
-    use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
+    use openmls_traits::{
+        crypto::OpenMlsCrypto,
+        types::{Ciphersuite, VerifiableCiphersuite},
+    };
     use tls_codec::{Deserialize, Serialize};
 
     use super::Capabilities;
@@ -457,5 +500,18 @@ mod tests {
         let got = Capabilities::tls_deserialize_exact(test_serialized).unwrap();
 
         assert_eq!(expected, got);
+    }
+
+    #[test]
+    fn for_provider_advertises_exactly_the_supported_ciphersuites() {
+        let crypto = openmls_rust_crypto::RustCrypto::default();
+        let capabilities = Capabilities::for_provider(&crypto);
+
+        let expected: Vec<VerifiableCiphersuite> = crypto
+            .supported_ciphersuites()
+            .into_iter()
+            .map(VerifiableCiphersuite::from)
+            .collect();
+        assert_eq!(capabilities.ciphersuites(), expected.as_slice());
     }
 }

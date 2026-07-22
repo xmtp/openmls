@@ -40,9 +40,11 @@ use self::{
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
-use crate::binary_tree::array_representation::ParentNodeIndex;
 #[cfg(any(feature = "test-utils", test))]
 use crate::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
+use crate::{
+    binary_tree::array_representation::ParentNodeIndex, treesync::node::leaf_node::LeafNodeIn,
+};
 use crate::{
     binary_tree::{
         array_representation::{is_node_in_tree, LeafNodeIndex, TreeSize},
@@ -208,6 +210,27 @@ impl RatchetTree {
             }
         }
     }
+
+    /// Returns an iterator over all nodes in the ratchet tree.
+    pub fn nodes(&self) -> impl Iterator<Item = &Node> {
+        self.0.iter().flatten()
+    }
+
+    /// Returns an iterator over all leaf nodes in the ratchet tree.
+    pub fn leaves(&self) -> impl Iterator<Item = &LeafNode> {
+        self.nodes().filter_map(|node| match node {
+            Node::LeafNode(leaf_node) => Some(&**leaf_node),
+            Node::ParentNode(_parent_node) => None,
+        })
+    }
+
+    /// Returns an iterator over all parent nodes in the ratchet tree.
+    pub fn parents(&self) -> impl Iterator<Item = &ParentNode> {
+        self.nodes().filter_map(|node| match node {
+            Node::ParentNode(parent_node) => Some(&**parent_node),
+            Node::LeafNode(_leaf_node) => None,
+        })
+    }
 }
 
 /// A ratchet tree made of unverified nodes. This is used for deserialization
@@ -236,6 +259,27 @@ impl RatchetTreeIn {
         group_id: &GroupId,
     ) -> Result<RatchetTree, RatchetTreeError> {
         RatchetTree::try_from_nodes(ciphersuite, crypto, self.0, group_id)
+    }
+
+    /// Returns an iterator over all nodes in the ratchet tree.
+    pub fn nodes(&self) -> impl Iterator<Item = &NodeIn> {
+        self.0.iter().flatten()
+    }
+
+    /// Returns an iterator over all leaf nodes in the ratchet tree.
+    pub fn leaves(&self) -> impl Iterator<Item = &LeafNodeIn> {
+        self.nodes().filter_map(|node| match node {
+            NodeIn::LeafNode(leaf_node) => Some(&**leaf_node),
+            NodeIn::ParentNode(_parent_node) => None,
+        })
+    }
+
+    /// Returns an iterator over all parent nodes in the ratchet tree.
+    pub fn parents(&self) -> impl Iterator<Item = &ParentNode> {
+        self.nodes().filter_map(|node| match node {
+            NodeIn::ParentNode(parent_node) => Some(&**parent_node),
+            NodeIn::LeafNode(_leaf_node) => None,
+        })
     }
 
     fn from_ratchet_tree(ratchet_tree: RatchetTree) -> Self {
@@ -421,6 +465,57 @@ impl TreeSync {
         Ok((tree_sync, commit_secret, encryption_key_pair))
     }
 
+    /// Create a new single-leaf tree for a virtual-client-created group.
+    ///
+    /// The creator's leaf uses the caller-supplied `encryption_key_pair`
+    /// (derived from a `key_package` operation secret) and carries a
+    /// `key_package` `leaf_node_source` with `life_time`, matching the
+    /// `DerivationInfoTBE` selector a sibling uses to reconstruct the leaf. As
+    /// the sole leaf is also the root, it has an empty parent hash.
+    /// `leaf_extensions` already carries the VC derivation info. No commit
+    /// secret is returned: epoch-0 secrets come from the `epoch_secret` derived
+    /// from the KeyPackage seed, not the joiner key schedule.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn new_vc(
+        provider: &impl OpenMlsProvider,
+        signer: &impl Signer,
+        ciphersuite: Ciphersuite,
+        credential_with_key: CredentialWithKey,
+        life_time: Lifetime,
+        capabilities: Capabilities,
+        leaf_extensions: Extensions<LeafNode>,
+        encryption_key_pair: EncryptionKeyPair,
+    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        let new_leaf_node_params = NewLeafNodeParams {
+            ciphersuite,
+            credential_with_key,
+            // A virtual-client-created group's creator leaf is key_package-sourced,
+            // matching the non-VC creator path.
+            leaf_node_source: LeafNodeSource::KeyPackage(life_time),
+            capabilities,
+            extensions: leaf_extensions,
+            tree_info_tbs: TreeInfoTbs::KeyPackage,
+        };
+        let (leaf, encryption_key_pair) = LeafNode::new_with_encryption_key_pair(
+            signer,
+            new_leaf_node_params,
+            encryption_key_pair,
+        )?;
+
+        let node = Node::leaf_node(leaf);
+        let nodes = vec![TreeSyncNode::from(node).into()];
+        let tree = MlsBinaryTree::new(nodes)
+            .map_err(|_| LibraryError::custom("Unexpected error creating the binary tree."))?;
+        let mut tree_sync = Self {
+            tree,
+            tree_hash: vec![],
+        };
+        tree_sync.populate_parent_hashes(provider.crypto(), ciphersuite)?;
+
+        Ok((tree_sync, encryption_key_pair))
+    }
+
     /// Return the full tree
     pub(crate) fn tree(&self) -> &MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode> {
         &self.tree
@@ -565,6 +660,14 @@ impl TreeSync {
     /// Returns the tree size
     pub(crate) fn tree_size(&self) -> TreeSize {
         self.tree.tree_size()
+    }
+
+    /// Returns a vec of all leaf slots, including blanks.
+    pub fn leaves(&self) -> Vec<Option<&LeafNode>> {
+        self.tree
+            .leaves()
+            .map(|(_, tsn)| tsn.node().as_ref())
+            .collect()
     }
 
     /// Returns an iterator over the (non-blank) [`LeafNode`]s in the tree.
