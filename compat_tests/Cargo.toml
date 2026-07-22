@@ -12,6 +12,10 @@ compat_0_8_1_extensions = [
     "openmls_0_8_1/extensions-draft-08",
     "openmls/extensions-draft",
 ]
+# Exercises the fork storage-tag baseline (`test_fork_storage_tags.rs`) on the
+# `storage_tag` path with `extensions-draft` on, so `AppDataDictionary`'s tag is
+# covered without pulling in `0-8-1-storage-format`.
+fork-baseline = ["openmls/extensions-draft"]
 
 [dependencies]
 serde = { version = "^1.0" }
