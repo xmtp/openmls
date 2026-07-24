@@ -1,10 +1,5 @@
-use openmls_traits::storage::{CURRENT_VERSION, Entity};
-use sqlx::{
-    Database, Decode, Encode, Sqlite, encode::IsNull, error::BoxDynError, sqlite::SqliteTypeInfo,
-};
-
 #[derive(Debug, Clone, Copy)]
-pub(super) enum GroupDataType {
+pub(crate) enum GroupDataType {
     JoinGroupConfig,
     Tree,
     InterimTranscriptHash,
@@ -59,39 +54,50 @@ impl GroupDataType {
     }
 }
 
-impl sqlx::Type<Sqlite> for GroupDataType {
-    fn type_info() -> SqliteTypeInfo {
-        <String as sqlx::Type<Sqlite>>::type_info()
-    }
-}
-
-impl<'q> Encode<'q, Sqlite> for GroupDataType {
-    fn encode_by_ref(
-        &self,
-        buf: &mut <Sqlite as Database>::ArgumentBuffer<'q>,
-    ) -> Result<IsNull, BoxDynError> {
-        Encode::<Sqlite>::encode(self.to_str(), buf)
-    }
-}
-
 #[derive(Debug, thiserror::Error)]
 #[error("invalid group data type: {value}")]
 struct InvalidGroupDataTypeError {
     value: String,
 }
 
-impl<'r> Decode<'r, Sqlite> for GroupDataType {
-    fn decode(value: <Sqlite as Database>::ValueRef<'r>) -> Result<Self, BoxDynError> {
-        let value: &str = Decode::<Sqlite>::decode(value)?;
-        Self::from_str(value).ok_or_else(|| {
-            InvalidGroupDataTypeError {
-                value: value.to_string(),
+/// Binds [`GroupDataType`] to the `TEXT` column it is stored in. The
+/// implementations are identical across dialects, but the traits are
+/// parameterised by the database, so one set is needed per backend.
+macro_rules! impl_group_data_type_codec {
+    ($db:ty) => {
+        impl sqlx::Type<$db> for GroupDataType {
+            fn type_info() -> <$db as sqlx::Database>::TypeInfo {
+                <String as sqlx::Type<$db>>::type_info()
             }
-            .into()
-        })
-    }
+        }
+
+        impl<'q> sqlx::Encode<'q, $db> for GroupDataType {
+            fn encode_by_ref(
+                &self,
+                buf: &mut <$db as sqlx::Database>::ArgumentBuffer<'q>,
+            ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+                sqlx::Encode::<$db>::encode(self.to_str(), buf)
+            }
+        }
+
+        impl<'r> sqlx::Decode<'r, $db> for GroupDataType {
+            fn decode(
+                value: <$db as sqlx::Database>::ValueRef<'r>,
+            ) -> Result<Self, sqlx::error::BoxDynError> {
+                let value: &str = sqlx::Decode::<$db>::decode(value)?;
+                Self::from_str(value).ok_or_else(|| {
+                    InvalidGroupDataTypeError {
+                        value: value.to_string(),
+                    }
+                    .into()
+                })
+            }
+        }
+    };
 }
 
-pub(crate) struct StorableGroupData<GroupData: Entity<CURRENT_VERSION>>(pub GroupData);
+#[cfg(feature = "sqlite")]
+impl_group_data_type_codec!(sqlx::Sqlite);
 
-pub(super) struct StorableGroupDataRef<'a, GroupData: Entity<CURRENT_VERSION>>(pub &'a GroupData);
+#[cfg(feature = "postgres")]
+impl_group_data_type_codec!(sqlx::Postgres);

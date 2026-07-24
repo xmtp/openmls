@@ -42,3 +42,12 @@ jobs:
       - name: Test openmls_sqlx_storage with `extensions-draft-08` feature
         run: |
           cargo test -F extensions-draft-08 --manifest-path sqlx_storage/Cargo.toml
+      # The PostgreSQL round-trip tests need a live server and skip without
+      # `OPENMLS_SQLX_POSTGRES_URL`, so CI only checks that the backend builds,
+      # both on its own and alongside the SQLite one.
+      - name: Build openmls_sqlx_storage with only the `postgres` backend
+        run: |
+          cargo build --no-default-features -F postgres --manifest-path sqlx_storage/Cargo.toml
+      - name: Build openmls_sqlx_storage with all features
+        run: |
+          cargo build --all-features --manifest-path sqlx_storage/Cargo.toml

@@ -1,9 +1,9 @@
 //! This module defines the [`MessageSecrets`] struct that can be used for message decryption & verification
 
-#[cfg(target_arch = "wasm32")]
-use web_time::SystemTime;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::SystemTime;
+#[cfg(target_arch = "wasm32")]
+use web_time::SystemTime;
 
 use super::*;
 
@@ -117,10 +117,7 @@ impl MessageSecrets {
         self.added_at
     }
 
-    pub(crate) fn with_timestamp(
-        self,
-        timestamp: impl Into<Option<SystemTime>>,
-    ) -> Self {
+    pub(crate) fn with_timestamp(self, timestamp: impl Into<Option<SystemTime>>) -> Self {
         Self {
             added_at: timestamp.into(),
             ..self

@@ -30,10 +30,10 @@ use crate::{
 };
 use std::time::Duration;
 
-#[cfg(target_arch = "wasm32")]
-use web_time::{Instant, SystemTime};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Instant, SystemTime};
+#[cfg(target_arch = "wasm32")]
+use web_time::{Instant, SystemTime};
 
 const INTERVAL: Duration = Duration::from_millis(100);
 
@@ -280,8 +280,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     alice_group
         .delete_past_epoch_secrets(
             &alice_provider,
-            PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH)
-                .max_past_epochs(5),
+            PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH).max_past_epochs(5),
         )
         .expect("error deleting past epoch secrets");
     // assert no past secrets deleted
@@ -294,8 +293,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     alice_group
         .delete_past_epoch_secrets(
             &alice_provider,
-            PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH)
-                .max_past_epochs(3),
+            PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH).max_past_epochs(3),
         )
         .expect("error deleting past epoch secrets");
     // assert no past secrets deleted
@@ -308,8 +306,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     alice_group
         .delete_past_epoch_secrets(
             &alice_provider,
-            PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH)
-                .max_past_epochs(1),
+            PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH).max_past_epochs(1),
         )
         .expect("error deleting past epoch secrets");
     // assert one past secret was kept
@@ -590,15 +587,13 @@ fn test_secret_tree_store_migration_next_epoch_timestamp() {
     );
 
     // test deletion of all message secrets before the timestamp
-    message_secrets_store.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(
-        SystemTime::UNIX_EPOCH,
-    ));
+    message_secrets_store
+        .delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH));
     assert_eq!(message_secrets_store.num_past_epoch_trees(), 2);
 
     // test deletion of all message secrets before the timestamp
-    message_secrets_store.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(
-        SystemTime::now(),
-    ));
+    message_secrets_store
+        .delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(SystemTime::now()));
     assert_eq!(message_secrets_store.num_past_epoch_trees(), 0);
 }
 
@@ -648,13 +643,13 @@ fn test_secret_tree_store_mixed_delete_by_timestamp() {
         ciphersuite,
         provider,
         &[
-            None,                                    //0
+            None,                         //0
             Some(SystemTime::UNIX_EPOCH), //1
-            None,                                    //2
+            None,                         //2
             Some(SystemTime::UNIX_EPOCH), //3
-            None,                                    //4
+            None,                         //4
             Some(SystemTime::now()),      //5
-            None,                                    //6
+            None,                         //6
         ],
     );
 
@@ -684,13 +679,13 @@ fn test_secret_tree_store_mixed_delete_by_duration() {
         ciphersuite,
         provider,
         &[
-            None,                                    //0
+            None,                         //0
             Some(SystemTime::UNIX_EPOCH), //1
-            None,                                    //2
+            None,                         //2
             Some(SystemTime::UNIX_EPOCH), //3
-            None,                                    //4
+            None,                         //4
             Some(SystemTime::now()),      //5
-            None,                                    //6
+            None,                         //6
         ],
     );
 

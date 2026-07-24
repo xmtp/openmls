@@ -34,4 +34,6 @@ thiserror = "2.0"
 serde = { version = "^1.0", features = ["derive"] }
 
 [features]
+sync = ["openmls_traits/sync", "openmls_memory_storage/sync"]
+async = ["openmls_traits/async", "openmls_memory_storage/async"]
 test-utils = ["openmls_memory_storage/test-utils"]
