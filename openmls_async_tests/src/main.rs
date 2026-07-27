@@ -4,7 +4,7 @@ use openmls::{
     prelude::*,
 };
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::RustCrypto;
+use openmls_rust_crypto::{OpenMlsRustCrypto, RustCrypto};
 use openmls_sqlx_storage::{Codec, SqliteStorageProvider};
 use serde::Serialize;
 use sqlx::{Connection, SqliteConnection};
@@ -24,18 +24,23 @@ impl Codec for JsonCodec {
     }
 }
 
-struct SqlxTestProvider<'a> {
+struct SqlxTestProvider {
     crypto: RustCrypto,
-    storage: SqliteStorageProvider<'a, JsonCodec>,
+    storage: SqliteStorageProvider<'static, JsonCodec>,
 }
 
-impl<'a> OpenMlsProvider for SqlxTestProvider<'a> {
+impl OpenMlsProvider for SqlxTestProvider {
     type CryptoProvider = RustCrypto;
     type RandProvider = RustCrypto;
-    type StorageProvider = SqliteStorageProvider<'a, JsonCodec>;
+    type StorageError = sqlx::Error;
+    // The connection-backed provider is exclusive: the handle is `&mut`.
+    type StorageProvider<'b>
+        = &'b mut SqliteStorageProvider<'static, JsonCodec>
+    where
+        Self: 'b;
 
-    fn storage(&self) -> &Self::StorageProvider {
-        &self.storage
+    fn storage(&mut self) -> Self::StorageProvider<'_> {
+        &mut self.storage
     }
 
     fn crypto(&self) -> &Self::CryptoProvider {
@@ -48,7 +53,7 @@ impl<'a> OpenMlsProvider for SqlxTestProvider<'a> {
 }
 
 async fn new_credential<P: OpenMlsProvider>(
-    provider: &P,
+    provider: &mut P,
     identity: &[u8],
     signature_scheme: SignatureScheme,
 ) -> (CredentialWithKey, SignatureKeyPair) {
@@ -69,8 +74,8 @@ async fn new_credential<P: OpenMlsProvider>(
 }
 
 async fn async_group_flow_works(
-    alice_provider: &SqlxTestProvider<'_>,
-    bob_provider: &SqlxTestProvider<'_>,
+    alice_provider: &mut SqlxTestProvider,
+    bob_provider: &mut SqlxTestProvider,
 ) {
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let group_id = GroupId::from_slice(b"async-group");
@@ -169,42 +174,67 @@ async fn async_group_flow_works(
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
-    let mut alice_connection = SqliteConnection::connect("sqlite::memory:")
-        .await
-        .expect("connect alice storage");
-    let mut alice_storage = SqliteStorageProvider::<JsonCodec>::new(&mut alice_connection);
+    let alice_connection: &'static mut SqliteConnection = Box::leak(Box::new(
+        SqliteConnection::connect("sqlite::memory:")
+            .await
+            .expect("connect alice storage"),
+    ));
+    let mut alice_storage = SqliteStorageProvider::<JsonCodec>::new(alice_connection);
     alice_storage
         .run_migrations()
         .await
         .expect("migrate alice storage");
 
-    let mut bob_connection = SqliteConnection::connect("sqlite::memory:")
-        .await
-        .expect("connect bob storage");
-    let mut bob_storage = SqliteStorageProvider::<JsonCodec>::new(&mut bob_connection);
+    let bob_connection: &'static mut SqliteConnection = Box::leak(Box::new(
+        SqliteConnection::connect("sqlite::memory:")
+            .await
+            .expect("connect bob storage"),
+    ));
+    let mut bob_storage = SqliteStorageProvider::<JsonCodec>::new(bob_connection);
     bob_storage
         .run_migrations()
         .await
         .expect("migrate bob storage");
 
-    let alice_provider = SqlxTestProvider {
+    let mut alice_provider = SqlxTestProvider {
         crypto: RustCrypto::default(),
         storage: alice_storage,
     };
-    let bob_provider = SqlxTestProvider {
+    let mut bob_provider = SqlxTestProvider {
         crypto: RustCrypto::default(),
         storage: bob_storage,
     };
 
-    async_group_flow_works(&alice_provider, &bob_provider).await;
+    async_group_flow_works(&mut alice_provider, &mut bob_provider).await;
+}
+
+/// A single storage call off the `&mut`-backed sqlx provider must produce a
+/// `Send` future -- there is no cell anywhere in the provider now.
+#[allow(dead_code)]
+fn assert_storage_call_future_is_send(p: &mut SqlxTestProvider, id: &GroupId) {
+    fn assert_send<T: Send>(_: &T) {}
+    let fut = MlsGroup::load(p, id);
+    assert_send(&fut);
 }
 
 // Herald spawns one task per account stream, so a full storage-backed MLS flow
 // must produce a Send future. This is a compile-time guard against the
 // provider reintroducing a !Send cell around its connection.
 #[allow(dead_code)]
-fn assert_group_flow_future_is_send(a: &SqlxTestProvider<'_>, b: &SqlxTestProvider<'_>) {
+fn assert_group_flow_future_is_send(
+    a: &mut SqlxTestProvider,
+    b: &mut SqlxTestProvider,
+) {
     fn assert_send<T: Send>(_: &T) {}
     let fut = async_group_flow_works(a, b);
+    assert_send(&fut);
+}
+
+// Control: the same Send assertion against a provider that is *not* itself
+// lifetime-parametric.
+#[allow(dead_code)]
+fn assert_memory_storage_future_is_send(p: &mut OpenMlsRustCrypto, id: &GroupId) {
+    fn assert_send<T: Send>(_: &T) {}
+    let fut = MlsGroup::load(p, id);
     assert_send(&fut);
 }

@@ -478,13 +478,13 @@ pub mod test_utils {
     /// [`Credential`]: super::Credential
     #[maybe_async::maybe_async]
     pub async fn new_credential(
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         identity: &[u8],
         signature_scheme: SignatureScheme,
     ) -> (CredentialWithKey, SignatureKeyPair) {
         let credential = BasicCredential::new(identity.into());
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
-        signature_keys.store(provider.storage()).await.unwrap();
+        signature_keys.store(provider).await.unwrap();
 
         (
             CredentialWithKey {

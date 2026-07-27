@@ -29,10 +29,25 @@ pub mod prelude {
 pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
-    type StorageProvider: storage::StorageProvider<{ storage::CURRENT_VERSION }>;
+
+    /// The error type produced by this provider's storage. Hoisted out of the
+    /// storage GAT so callers can name it without picking a lifetime.
+    type StorageError: core::fmt::Debug + std::error::Error;
+
+    /// The storage handle handed out by [`Self::storage`].
+    ///
+    /// Expected to be a reference type -- `&P` for providers that only need
+    /// shared access, `&mut P` for providers that own an exclusive resource
+    /// such as a bare database connection.
+    type StorageProvider<'a>: storage::StorageProvider<
+        { storage::CURRENT_VERSION },
+        Error = Self::StorageError,
+    >
+    where
+        Self: 'a;
 
     // Get the storage provider.
-    fn storage(&self) -> &Self::StorageProvider;
+    fn storage(&mut self) -> Self::StorageProvider<'_>;
 
     /// Get the crypto provider.
     fn crypto(&self) -> &Self::CryptoProvider;

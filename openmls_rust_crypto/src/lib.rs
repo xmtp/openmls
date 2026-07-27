@@ -21,9 +21,10 @@ pub struct OpenMlsRustCrypto {
 impl OpenMlsProvider for OpenMlsRustCrypto {
     type CryptoProvider = RustCrypto;
     type RandProvider = RustCrypto;
-    type StorageProvider = MemoryStorage;
+    type StorageError = openmls_memory_storage::MemoryStorageError;
+    type StorageProvider<'a> = &'a MemoryStorage;
 
-    fn storage(&self) -> &Self::StorageProvider {
+    fn storage(&mut self) -> Self::StorageProvider<'_> {
         &self.key_store
     }
 

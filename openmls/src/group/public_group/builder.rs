@@ -57,7 +57,7 @@ impl TempBuilderPG1 {
 
     pub(crate) fn get_secrets(
         self,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError> {
         // If there are no capabilities, we want to provide a default version

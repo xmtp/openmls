@@ -1,3 +1,4 @@
+use openmls_traits::storage::StorageProvider as _;
 use super::{super::errors::*, diff::apply_proposals::ApplyProposalsValues, *};
 use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
@@ -429,11 +430,11 @@ impl PublicGroup {
 
     /// Merges a [StagedCommit] into the public group state.
     #[maybe_async::maybe_async]
-    pub async fn merge_commit<Storage: PublicStorageProvider>(
+    pub async fn merge_commit<Provider: crate::storage::OpenMlsProvider>(
         &mut self,
-        storage: &Storage,
+        provider: &mut Provider,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<Storage::Error>> {
+    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         match staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) => {
                 self.merge_diff(staged_state.staged_diff);
@@ -442,11 +443,11 @@ impl PublicGroup {
         }
 
         self.proposal_store.empty();
-        storage
+        provider.storage()
             .clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())
             .await
             .map_err(MergeCommitError::StorageError)?;
-        self.store(storage)
+        self.store(provider)
             .await
             .map_err(MergeCommitError::StorageError)
     }

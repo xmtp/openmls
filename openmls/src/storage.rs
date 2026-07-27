@@ -61,24 +61,12 @@ impl<P: openmls_traits::public_storage::PublicStorageProvider<CURRENT_VERSION>>
 /// A convenience trait for the OpenMLS provider that defines the storage provider
 /// for the current version of storage.
 /// Throughout the code, this one should be used instead of `openmls_traits::OpenMlsProvider`.
-pub trait OpenMlsProvider:
-    openmls_traits::OpenMlsProvider<StorageProvider = Self::Storage>
-{
-    /// The storage to use
-    type Storage: StorageProvider<Error = Self::StorageError>;
-    /// The storage error type
-    type StorageError: std::error::Error;
-}
+/// The storage error type is now carried directly by
+/// `openmls_traits::OpenMlsProvider::StorageError`, because the storage handle
+/// itself is a GAT and cannot be named without a lifetime.
+pub trait OpenMlsProvider: openmls_traits::OpenMlsProvider {}
 
-impl<
-        Error: std::error::Error,
-        SP: StorageProvider<Error = Error>,
-        OP: openmls_traits::OpenMlsProvider<StorageProvider = SP>,
-    > OpenMlsProvider for OP
-{
-    type Storage = SP;
-    type StorageError = Error;
-}
+impl<OP: openmls_traits::OpenMlsProvider> OpenMlsProvider for OP {}
 
 // Implementations for the Entity and Key traits
 
@@ -221,7 +209,7 @@ mod test {
         // first, read the old data
         let read_key_package_bundle: crate::prelude::KeyPackageBundle =
             <MemoryStorage as StorageProvider<CURRENT_VERSION>>::key_package(
-                provider.storage(),
+                provider,
                 &key_package_ref,
             )
             .unwrap()

@@ -21,7 +21,7 @@ use crate::{
 
 type UpdateResult<Provider> = Result<
     (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-    UpdateGroupMembershipError<<Provider as OpenMlsProvider>::StorageError>,
+    UpdateGroupMembershipError<<Provider as openmls_traits::OpenMlsProvider>::StorageError>,
 >;
 
 impl MlsGroup {
@@ -30,7 +30,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn update_group_membership<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         key_packages_to_add: &[KeyPackage],
         leaf_nodes_to_remove: &[LeafNodeIndex],
@@ -43,7 +43,7 @@ impl MlsGroup {
             .propose_adds(key_packages_to_add.iter().cloned())
             .propose_removals(leaf_nodes_to_remove.iter().cloned())
             .propose_group_context_extensions(new_extensions)?
-            .load_psks(provider.storage())
+            .load_psks(provider)
             .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
@@ -83,7 +83,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn add_members<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
     ) -> Result<
@@ -107,7 +107,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn swap_members<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         members: &[LeafNodeIndex],
         key_packages: &[KeyPackage],
@@ -130,7 +130,7 @@ impl MlsGroup {
             .commit_builder()
             .propose_removals(members.iter().cloned())
             .propose_adds(key_packages.iter().cloned())
-            .load_psks(provider.storage())
+            .load_psks(provider)
             .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
@@ -165,7 +165,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn add_members_without_update<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
     ) -> Result<
@@ -180,7 +180,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     async fn add_members_internal<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         key_packages: &[KeyPackage],
         force_self_update: bool,
@@ -198,7 +198,7 @@ impl MlsGroup {
             .commit_builder()
             .propose_adds(key_packages.iter().cloned())
             .force_self_update(force_self_update)
-            .load_psks(provider.storage())
+            .load_psks(provider)
             .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
@@ -238,7 +238,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn remove_members<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         members: &[LeafNodeIndex],
     ) -> Result<
@@ -256,7 +256,7 @@ impl MlsGroup {
         let bundle = self
             .commit_builder()
             .propose_removals(members.iter().cloned())
-            .load_psks(provider.storage())
+            .load_psks(provider)
             .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
@@ -284,7 +284,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn leave_group<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
     ) -> Result<MlsMessageOut, LeaveGroupError<Provider::StorageError>> {
         self.is_operational()?;
@@ -333,7 +333,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn leave_group_via_self_remove<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
     ) -> Result<MlsMessageOut, LeaveGroupError<Provider::StorageError>> {
         self.is_operational()?;

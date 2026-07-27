@@ -79,7 +79,7 @@ impl<'a> RebootBuilder<'a> {
         extensions: Extensions<GroupContext>,
         new_members: Vec<KeyPackage>,
         refine_commit_builder: impl FnMut(CommitBuilder<Initial>) -> CommitBuilder<Initial>,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<(MlsGroup, CommitMessageBundle), RebootError<Provider::StorageError>> {
@@ -93,7 +93,7 @@ impl<'a> RebootBuilder<'a> {
             .commit_builder()
             .propose_adds(new_members)
             .pipe_through(refine_commit_builder)
-            .load_psks(provider.storage())
+            .load_psks(provider)
             .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)

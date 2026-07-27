@@ -31,7 +31,7 @@ use crate::{
         psk::{load_psks, PskSecret},
         EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId,
     },
-    storage::{OpenMlsProvider, StorageProvider},
+    storage::OpenMlsProvider,
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
@@ -143,7 +143,7 @@ pub struct Complete {
 ///   .commit_builder()
 ///   .consume_proposal_store(false)
 ///   .add_proposal(key_package_to_add)
-///   .load_psks(provider.storage())?
+///   .load_psks(provider)?
 ///   .build(provider.rand(), provider.crypto(), signer, app_policy_proposals)?
 ///   .stage_commit(provider)?;
 ///
@@ -312,9 +312,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
     #[maybe_async::maybe_async]
-    pub async fn load_psks<Storage: StorageProvider>(
+    pub async fn load_psks<Provider: crate::storage::OpenMlsProvider>(
         self,
-        storage: &'a Storage,
+        provider: &mut Provider,
     ) -> Result<CommitBuilder<'a, LoadedPsks, G>, CreateCommitError> {
         let psk_ids: Vec<_> = self
             .stage
@@ -334,7 +334,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .collect();
 
         // Load the PSKs and make the PskIds owned.
-        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)
+        let psks = load_psks(provider, &self.group.borrow().resumption_psk_store, &psk_ids)
             .await?
             .into_iter()
             .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
@@ -943,7 +943,7 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     #[maybe_async::maybe_async]
     pub async fn stage_commit<Provider: OpenMlsProvider>(
         self,
-        provider: &Provider,
+        provider: &mut Provider,
     ) -> Result<CommitMessageBundle, CommitBuilderStageError<Provider::StorageError>> {
         let Self {
             group,

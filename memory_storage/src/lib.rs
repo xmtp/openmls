@@ -92,7 +92,7 @@ impl MemoryStorage {
         label: &[u8],
         key: &[u8],
         value: Vec<u8>,
-    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
+    ) -> Result<(), MemoryStorageError> {
         let mut values = self.values.write().unwrap();
         let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
 
@@ -109,7 +109,7 @@ impl MemoryStorage {
         label: &[u8],
         key: &[u8],
         value: Vec<u8>,
-    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
+    ) -> Result<(), MemoryStorageError> {
         let mut values = self.values.write().unwrap();
         let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
 
@@ -136,7 +136,7 @@ impl MemoryStorage {
         label: &[u8],
         key: &[u8],
         value: Vec<u8>,
-    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
+    ) -> Result<(), MemoryStorageError> {
         let mut values = self.values.write().unwrap();
         let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
 
@@ -166,7 +166,7 @@ impl MemoryStorage {
         &self,
         label: &[u8],
         key: &[u8],
-    ) -> Result<Option<V>, <Self as StorageProvider<CURRENT_VERSION>>::Error> {
+    ) -> Result<Option<V>, MemoryStorageError> {
         let values = self.values.read().unwrap();
         let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
 
@@ -191,7 +191,7 @@ impl MemoryStorage {
         &self,
         label: &[u8],
         key: &[u8],
-    ) -> Result<Vec<V>, <Self as StorageProvider<CURRENT_VERSION>>::Error> {
+    ) -> Result<Vec<V>, MemoryStorageError> {
         let values = self.values.read().unwrap();
 
         let mut storage_key = label.to_vec();
@@ -220,7 +220,7 @@ impl MemoryStorage {
         &self,
         label: &[u8],
         key: &[u8],
-    ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
+    ) -> Result<(), MemoryStorageError> {
         let mut values = self.values.write().unwrap();
 
         let mut storage_key = label.to_vec();
@@ -274,7 +274,7 @@ const RESUMPTION_PSK_STORE_LABEL: &[u8] = b"ResumptionPsk";
 const MESSAGE_SECRETS_LABEL: &[u8] = b"MessageSecrets";
 
 #[maybe_async::maybe_async(AFIT)]
-impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
+impl StorageProvider<CURRENT_VERSION> for &MemoryStorage {
     type Error = MemoryStorageError;
 
     async fn queue_proposal<
@@ -282,7 +282,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
         QueuedProposal: traits::QueuedProposal<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
         proposal: &QueuedProposal,
@@ -304,7 +304,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         TreeSync: traits::TreeSync<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         tree: &TreeSync,
     ) -> Result<(), Self::Error> {
@@ -319,7 +319,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
@@ -335,7 +335,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         GroupContext: traits::GroupContext<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
@@ -351,7 +351,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ConfirmationTag: traits::ConfirmationTag<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
@@ -367,7 +367,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         public_key: &SignaturePublicKey,
         signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::Error> {
@@ -384,7 +384,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
         self.read_list(PROPOSAL_QUEUE_REFS_LABEL, &serde_json::to_vec(group_id)?)
@@ -395,7 +395,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
         QueuedProposal: traits::QueuedProposal<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         let refs: Vec<ProposalRef> =
@@ -416,7 +416,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         TreeSync: traits::TreeSync<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
         let values = self.values.read().unwrap();
@@ -434,7 +434,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         GroupContext: traits::GroupContext<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::Error> {
         let values = self.values.read().unwrap();
@@ -452,7 +452,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         let values = self.values.read().unwrap();
@@ -470,7 +470,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ConfirmationTag: traits::ConfirmationTag<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
         let values = self.values.read().unwrap();
@@ -488,7 +488,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         public_key: &SignaturePublicKey,
     ) -> Result<Option<SignatureKeyPair>, Self::Error> {
         let values = self.values.read().unwrap();
@@ -508,7 +508,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         HashReference: traits::HashReference<CURRENT_VERSION>,
         KeyPackage: traits::KeyPackage<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         hash_ref: &HashReference,
         key_package: &KeyPackage,
     ) -> Result<(), Self::Error> {
@@ -525,7 +525,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         PskId: traits::PskId<CURRENT_VERSION>,
         PskBundle: traits::PskBundle<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         psk_id: &PskId,
         psk: &PskBundle,
     ) -> Result<(), Self::Error> {
@@ -540,7 +540,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         public_key: &EncryptionKey,
         key_pair: &HpkeKeyPair,
     ) -> Result<(), Self::Error> {
@@ -555,7 +555,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
         KeyPackage: traits::KeyPackage<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         hash_ref: &KeyPackageRef,
     ) -> Result<Option<KeyPackage>, Self::Error> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
@@ -563,7 +563,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn psk<PskBundle: traits::PskBundle<CURRENT_VERSION>, PskId: traits::PskId<CURRENT_VERSION>>(
-        &self,
+        self,
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error> {
         self.read(PSK_LABEL, &serde_json::to_vec(&psk_id).unwrap())
@@ -573,7 +573,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
         EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         public_key: &EncryptionKey,
     ) -> Result<Option<HpkeKeyPair>, Self::Error> {
         self.read(
@@ -585,7 +585,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     async fn delete_signature_key_pair<
         SignaturePublicKeuy: traits::SignaturePublicKey<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         public_key: &SignaturePublicKeuy,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
@@ -595,7 +595,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>>(
-        &self,
+        self,
         public_key: &EncryptionKey,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
@@ -605,14 +605,14 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_key_package<KeyPackageRef: traits::HashReference<CURRENT_VERSION>>(
-        &self,
+        self,
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref)?)
     }
 
     async fn delete_psk<PskKey: traits::PskId<CURRENT_VERSION>>(
-        &self,
+        self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(PSK_LABEL, &serde_json::to_vec(&psk_id)?)
@@ -622,7 +622,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupState: traits::GroupState<CURRENT_VERSION>,
         GroupId: traits::GroupId<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error> {
         self.read(GROUP_STATE_LABEL, &serde_json::to_vec(&group_id)?)
@@ -632,7 +632,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupState: traits::GroupState<CURRENT_VERSION>,
         GroupId: traits::GroupId<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         group_state: &GroupState,
     ) -> Result<(), Self::Error> {
@@ -644,7 +644,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_group_state<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(GROUP_STATE_LABEL, &serde_json::to_vec(group_id)?)
@@ -654,7 +654,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<MessageSecrets>, Self::Error> {
         self.read(MESSAGE_SECRETS_LABEL, &serde_json::to_vec(group_id)?)
@@ -664,7 +664,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         message_secrets: &MessageSecrets,
     ) -> Result<(), Self::Error> {
@@ -676,7 +676,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_message_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(MESSAGE_SECRETS_LABEL, &serde_json::to_vec(group_id)?)
@@ -686,7 +686,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<ResumptionPskStore>, Self::Error> {
         self.read(RESUMPTION_PSK_STORE_LABEL, &serde_json::to_vec(group_id)?)
@@ -696,7 +696,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::Error> {
@@ -708,7 +708,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(RESUMPTION_PSK_STORE_LABEL, &serde_json::to_vec(group_id)?)
@@ -718,7 +718,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error> {
         self.read(OWN_LEAF_NODE_INDEX_LABEL, &serde_json::to_vec(group_id)?)
@@ -728,7 +728,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error> {
@@ -740,7 +740,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_own_leaf_index<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(OWN_LEAF_NODE_INDEX_LABEL, &serde_json::to_vec(group_id)?)
@@ -750,7 +750,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
         self.read(EPOCH_SECRETS_LABEL, &serde_json::to_vec(group_id)?)
@@ -760,7 +760,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::Error> {
@@ -772,7 +772,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_group_epoch_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(EPOCH_SECRETS_LABEL, &serde_json::to_vec(group_id)?)
@@ -783,7 +783,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         EpochKey: traits::EpochKey<CURRENT_VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
@@ -806,7 +806,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         EpochKey: traits::EpochKey<CURRENT_VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
@@ -834,7 +834,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         EpochKey: traits::EpochKey<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
@@ -847,7 +847,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         // Get all proposal refs for this group.
@@ -871,7 +871,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
         self.read(JOIN_CONFIG_LABEL, &serde_json::to_vec(group_id).unwrap())
@@ -881,7 +881,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error> {
@@ -895,7 +895,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         LeafNode: traits::LeafNode<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error> {
         self.read_list(OWN_LEAF_NODES_LABEL, &serde_json::to_vec(group_id).unwrap())
@@ -905,7 +905,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         LeafNode: traits::LeafNode<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         leaf_node: &LeafNode,
     ) -> Result<(), Self::Error> {
@@ -915,28 +915,28 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_own_leaf_nodes<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &serde_json::to_vec(group_id).unwrap())
     }
 
     async fn delete_group_config<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(JOIN_CONFIG_LABEL, &serde_json::to_vec(group_id).unwrap())
     }
 
     async fn delete_tree<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(TREE_LABEL, &serde_json::to_vec(group_id).unwrap())
     }
 
     async fn delete_confirmation_tag<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
@@ -946,14 +946,14 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_context<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(GROUP_CONTEXT_LABEL, &serde_json::to_vec(group_id).unwrap())
     }
 
     async fn delete_interim_transcript_hash<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
@@ -966,7 +966,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
@@ -984,7 +984,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
         application_export_tree: &ApplicationExportTree,
     ) -> Result<(), Self::Error> {
@@ -1000,7 +1000,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error> {
         let values = self.values.read().unwrap();
@@ -1019,7 +1019,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
     >(
-        &self,
+        self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
@@ -1046,7 +1046,7 @@ fn epoch_key_pairs_id(
     group_id: &impl traits::GroupId<CURRENT_VERSION>,
     epoch: &impl traits::EpochKey<CURRENT_VERSION>,
     leaf_index: u32,
-) -> Result<Vec<u8>, <MemoryStorage as StorageProvider<CURRENT_VERSION>>::Error> {
+) -> Result<Vec<u8>, MemoryStorageError> {
     let mut key = serde_json::to_vec(group_id)?;
     key.extend_from_slice(&serde_json::to_vec(epoch)?);
     key.extend_from_slice(&serde_json::to_vec(&leaf_index)?);

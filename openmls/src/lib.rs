@@ -21,7 +21,7 @@
 //!     identity: Vec<u8>,
 //!     credential_type: CredentialType,
 //!     signature_algorithm: SignatureScheme,
-//!     provider: &impl OpenMlsProvider,
+//!     provider: &mut impl OpenMlsProvider,
 //! ) -> (CredentialWithKey, SignatureKeyPair) {
 //!     let credential = BasicCredential::new(identity);
 //!     let signature_keys =
@@ -31,7 +31,7 @@
 //!     // Store the signature key into the key store so OpenMLS has access
 //!     // to it.
 //!     signature_keys
-//!         .store(provider.storage())
+//!         .store(provider)
 //!         .expect("Error storing signature keys in key store.");
 //!
 //!     (
@@ -46,7 +46,7 @@
 //! // A helper to create key package bundles.
 //! fn generate_key_package(
 //!     ciphersuite: Ciphersuite,
-//!     provider: &impl OpenMlsProvider,
+//!     provider: &mut impl OpenMlsProvider,
 //!     signer: &SignatureKeyPair,
 //!     credential_with_key: CredentialWithKey,
 //! ) -> KeyPackageBundle {

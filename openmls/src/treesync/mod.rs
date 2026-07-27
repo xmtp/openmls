@@ -382,7 +382,7 @@ impl TreeSync {
     /// Returns the resulting [`TreeSync`] instance, as well as the
     /// corresponding [`CommitSecret`].
     pub(crate) fn new(
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,

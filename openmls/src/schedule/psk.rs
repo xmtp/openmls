@@ -10,7 +10,7 @@ use super::*;
 use crate::{
     group::{GroupEpoch, GroupId},
     schedule::psk::store::ResumptionPskStore,
-    storage::{OpenMlsProvider, StorageProvider},
+    storage::OpenMlsProvider,
 };
 
 /// Resumption PSK usage.
@@ -285,7 +285,7 @@ impl PreSharedKeyId {
     #[maybe_async::maybe_async]
     pub async fn store<Provider: OpenMlsProvider>(
         &self,
-        provider: &Provider,
+        provider: &mut Provider,
         psk: &[u8],
     ) -> Result<(), PskError> {
         let psk_bundle = {
@@ -520,8 +520,8 @@ impl From<Secret> for PskSecret {
 }
 
 #[maybe_async::maybe_async]
-pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
-    storage: &Storage,
+pub(crate) async fn load_psks<'p, Provider: crate::storage::OpenMlsProvider>(
+    provider: &mut Provider,
     resumption_psk_store: &ResumptionPskStore,
     psk_ids: &'p [PreSharedKeyId],
 ) -> Result<Vec<(&'p PreSharedKeyId, Secret)>, PskError> {
@@ -539,7 +539,8 @@ pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
                 }
             }
             Psk::External(_) => {
-                let psk_bundle: Option<PskBundle> = storage
+                let psk_bundle: Option<PskBundle> = provider
+                    .storage()
                     .psk(psk_id.psk())
                     .await
                     .map_err(|_| PskError::KeyNotFound)?;

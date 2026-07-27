@@ -133,13 +133,13 @@ impl ExternalCommitBuilder {
     ///
     /// Returns a [`CommitBuilder`] that can be used to further configure the
     /// external commit.
-    pub fn build_group<Provider: OpenMlsProvider>(
+    pub fn build_group<'g, Provider: OpenMlsProvider>(
         self,
-        provider: &Provider,
+        provider: &mut Provider,
         verifiable_group_info: VerifiableGroupInfo,
         credential_with_key: CredentialWithKey,
     ) -> Result<
-        CommitBuilder<'_, Initial, MlsGroup>,
+        CommitBuilder<'g, Initial, MlsGroup>,
         ExternalCommitBuilderError<Provider::StorageError>,
     > {
         let ExternalCommitBuilder {
@@ -350,7 +350,7 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
     #[maybe_async::maybe_async]
     pub async fn finalize<Provider: OpenMlsProvider>(
         self,
-        provider: &Provider,
+        provider: &mut Provider,
     ) -> Result<
         (MlsGroup, super::CommitMessageBundle),
         ExternalCommitBuilderFinalizeError<Provider::StorageError>,
@@ -379,7 +379,7 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
 
         // Store the group in storage.
         group
-            .store(provider.storage())
+            .store(provider)
             .await
             .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
 

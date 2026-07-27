@@ -54,7 +54,7 @@ impl MlsGroup {
     pub async fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         &mut self,
         crypto: &Crypto,
-        storage: &Storage,
+        storage: Storage,
         component_id: ComponentId,
     ) -> Result<Vec<u8>, SafeExportSecretError<Storage::Error>> {
         if !self.is_active() {
@@ -84,7 +84,7 @@ impl MlsGroup {
     pub async fn safe_export_secret_from_pending<Provider: StorageProvider>(
         &mut self,
         crypto: &impl OpenMlsCrypto,
-        storage: &Provider,
+        storage: &mut Provider,
         component_id: ComponentId,
     ) -> Result<Vec<u8>, PendingSafeExportSecretError<Provider::Error>> {
         let group_id = self.group_id().clone();

@@ -48,13 +48,27 @@ impl_storage_provider! {
     provider_doc: "A storage provider backed by a borrowed `sqlx::SqliteConnection`.",
     db: sqlx::Sqlite,
     connection: sqlx::SqliteConnection,
+    recv: (mut),
+    deref: (&mut *),
     sql: sqlite,
-    migrator: SqliteMigratorWrapper,
-    migrations: "./migrations",
 }
 
 #[cfg(feature = "sqlite")]
 pub use crate::sqlite::SqliteStorageProvider;
+
+#[cfg(feature = "sqlite")]
+impl<C: Codec> SqliteStorageProvider<'_, C> {
+    /// Run the migrations for the storage provider using sqlx's built-in
+    /// migration support.
+    pub async fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
+        sqlx::migrate!("./migrations")
+            .run_direct(&mut crate::migrator::SqliteMigratorWrapper(
+                &mut *self.connection,
+            ))
+            .await?;
+        Ok(())
+    }
+}
 
 #[cfg(feature = "postgres")]
 impl_storage_provider! {
@@ -63,13 +77,46 @@ impl_storage_provider! {
     provider_doc: "A storage provider backed by a borrowed `sqlx::PgConnection`.",
     db: sqlx::Postgres,
     connection: sqlx::PgConnection,
+    recv: (mut),
+    deref: (&mut *),
     sql: postgres,
-    migrator: PostgresMigratorWrapper,
-    migrations: "./migrations_pg",
 }
 
 #[cfg(feature = "postgres")]
 pub use crate::postgres::PostgresStorageProvider;
+
+#[cfg(feature = "postgres")]
+impl<C: Codec> PostgresStorageProvider<'_, C> {
+    /// Run the migrations for the storage provider using sqlx's built-in
+    /// migration support.
+    pub async fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
+        sqlx::migrate!("./migrations_pg")
+            .run_direct(&mut crate::migrator::PostgresMigratorWrapper(
+                &mut *self.connection,
+            ))
+            .await?;
+        Ok(())
+    }
+}
+
+// The same macro body, stamped out over a borrowed *pool* instead of a borrowed
+// connection. The trait is implemented for `&PostgresPoolProvider`, so the
+// handle is `Copy` and concurrent callers can share it -- with no interior
+// mutability anywhere in the provider.
+#[cfg(feature = "postgres")]
+impl_storage_provider! {
+    module: postgres_pool,
+    provider: PostgresPoolProvider,
+    provider_doc: "A storage provider backed by a borrowed `sqlx::PgPool`.",
+    db: sqlx::Postgres,
+    connection: sqlx::PgPool,
+    recv: (),
+    deref: (),
+    sql: postgres,
+}
+
+#[cfg(feature = "postgres")]
+pub use crate::postgres_pool::PostgresPoolProvider;
 
 /// Awaits a query future built while the connection lock is still held,
 /// keeping the guard and the await in the same statement.

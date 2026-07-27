@@ -106,7 +106,7 @@ impl PublicMessageIn {
     #[cfg(test)]
     pub(crate) fn set_membership_tag(
         &mut self,
-        provider: &impl openmls_traits::OpenMlsProvider,
+        provider: &mut impl openmls_traits::OpenMlsProvider,
         ciphersuite: Ciphersuite,
         membership_key: &MembershipKey,
         serialized_context: &[u8],

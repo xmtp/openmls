@@ -37,9 +37,10 @@ impl Default for Provider {
 impl OpenMlsProvider for Provider {
     type CryptoProvider = CryptoProvider;
     type RandProvider = CryptoProvider;
-    type StorageProvider = openmls_memory_storage::MemoryStorage;
+    type StorageError = openmls_memory_storage::MemoryStorageError;
+    type StorageProvider<'a> = &'a openmls_memory_storage::MemoryStorage;
 
-    fn storage(&self) -> &Self::StorageProvider {
+    fn storage(&mut self) -> Self::StorageProvider<'_> {
         &self.storage
     }
 

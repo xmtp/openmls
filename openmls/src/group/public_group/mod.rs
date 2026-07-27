@@ -26,6 +26,7 @@ use super::{
 };
 #[cfg(test)]
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
+use openmls_traits::storage::StorageProvider as _;
 use crate::{
     binary_tree::{
         array_representation::{direct_path, TreeSize},
@@ -43,6 +44,7 @@ use crate::{
     },
     schedule::CommitSecret,
     storage::PublicStorageProvider,
+
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
         node::{
@@ -115,18 +117,14 @@ impl PublicGroup {
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
     #[maybe_async::maybe_async]
-    pub async fn from_external<StorageProvider, StorageError>(
-        crypto: &impl OpenMlsCrypto,
-        storage: &StorageProvider,
+    pub async fn from_external<Provider: crate::storage::OpenMlsProvider>(
+        provider: &mut Provider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>>
-    where
-        StorageProvider: PublicStorageProvider<Error = StorageError>,
-    {
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<Provider::StorageError>> {
         let (public_group, group_info) = PublicGroup::from_ratchet_tree(
-            crypto,
+            provider.crypto(),
             ratchet_tree,
             verifiable_group_info,
             proposal_store,
@@ -134,7 +132,7 @@ impl PublicGroup {
         )?;
 
         public_group
-            .store(storage)
+            .store(provider)
             .await
             .map_err(CreationFromExternalError::WriteToStorageError)?;
 
@@ -394,7 +392,7 @@ impl PublicGroup {
     #[maybe_async::maybe_async]
     pub async fn add_proposal<Storage: PublicStorageProvider>(
         &mut self,
-        storage: &Storage,
+        storage: Storage,
         proposal: QueuedProposal,
     ) -> Result<(), Storage::Error> {
         storage
@@ -408,7 +406,7 @@ impl PublicGroup {
     #[maybe_async::maybe_async]
     pub async fn remove_proposal<Storage: PublicStorageProvider>(
         &mut self,
-        storage: &Storage,
+        storage: Storage,
         proposal_ref: &ProposalRef,
     ) -> Result<(), Storage::Error> {
         storage
@@ -422,7 +420,7 @@ impl PublicGroup {
     #[maybe_async::maybe_async]
     pub async fn queued_proposals<Storage: PublicStorageProvider>(
         &self,
-        storage: &Storage,
+        storage: Storage,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Storage::Error> {
         storage.queued_proposals(self.group_id()).await
     }
@@ -491,19 +489,19 @@ impl PublicGroup {
     ///
     /// [`MlsGroup`]: crate::group::MlsGroup
     #[maybe_async::maybe_async]
-    pub(crate) async fn store<Storage: PublicStorageProvider>(
+    pub(crate) async fn store<Provider: crate::storage::OpenMlsProvider>(
         &self,
-        storage: &Storage,
-    ) -> Result<(), Storage::Error> {
+        provider: &mut Provider,
+    ) -> Result<(), Provider::StorageError> {
         let group_id = self.group_context.group_id();
-        storage.write_tree(group_id, self.treesync()).await?;
-        storage
+        provider.storage().write_tree(group_id, self.treesync()).await?;
+        provider.storage()
             .write_confirmation_tag(group_id, self.confirmation_tag())
             .await?;
-        storage
+        provider.storage()
             .write_context(group_id, self.group_context())
             .await?;
-        storage
+        provider.storage()
             .write_interim_transcript_hash(
                 group_id,
                 &InterimTranscriptHash(self.interim_transcript_hash.clone()),
@@ -514,31 +512,31 @@ impl PublicGroup {
 
     /// Deletes the [`PublicGroup`] from storage.
     #[maybe_async::maybe_async]
-    pub async fn delete<Storage: PublicStorageProvider>(
-        storage: &Storage,
+    pub async fn delete<Provider: crate::storage::OpenMlsProvider>(
+        provider: &mut Provider,
         group_id: &GroupId,
-    ) -> Result<(), Storage::Error> {
-        storage.delete_tree(group_id).await?;
-        storage.delete_confirmation_tag(group_id).await?;
-        storage.delete_context(group_id).await?;
-        storage.delete_interim_transcript_hash(group_id).await?;
+    ) -> Result<(), Provider::StorageError> {
+        provider.storage().delete_tree(group_id).await?;
+        provider.storage().delete_confirmation_tag(group_id).await?;
+        provider.storage().delete_context(group_id).await?;
+        provider.storage().delete_interim_transcript_hash(group_id).await?;
 
         Ok(())
     }
 
     /// Loads the [`PublicGroup`] corresponding to a [`GroupId`] from storage.
     #[maybe_async::maybe_async]
-    pub async fn load<Storage: PublicStorageProvider>(
-        storage: &Storage,
+    pub async fn load<Provider: crate::storage::OpenMlsProvider>(
+        provider: &mut Provider,
         group_id: &GroupId,
-    ) -> Result<Option<Self>, Storage::Error> {
-        let treesync = storage.tree(group_id).await?;
+    ) -> Result<Option<Self>, Provider::StorageError> {
+        let treesync = provider.storage().tree(group_id).await?;
         let proposals: Vec<(ProposalRef, QueuedProposal)> =
-            storage.queued_proposals(group_id).await?;
-        let group_context = storage.group_context(group_id).await?;
+            provider.storage().queued_proposals(group_id).await?;
+        let group_context = provider.storage().group_context(group_id).await?;
         let interim_transcript_hash: Option<InterimTranscriptHash> =
-            storage.interim_transcript_hash(group_id).await?;
-        let confirmation_tag = storage.confirmation_tag(group_id).await?;
+            provider.storage().interim_transcript_hash(group_id).await?;
+        let confirmation_tag = provider.storage().confirmation_tag(group_id).await?;
         let mut proposal_store = ProposalStore::new();
 
         for (_ref, proposal) in proposals {
@@ -584,7 +582,7 @@ impl PublicGroup {
     #[cfg(test)]
     pub(crate) fn encrypt_path(
         &self,
-        provider: &impl crate::storage::OpenMlsProvider,
+        provider: &mut impl crate::storage::OpenMlsProvider,
         ciphersuite: Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],

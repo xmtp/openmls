@@ -45,7 +45,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     async fn derive_epoch_secrets(
         &self,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         apply_proposals_values: ApplyProposalsValues,
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
@@ -92,7 +92,7 @@ impl MlsGroup {
         // Fails if PSKs are missing ([valn1205](https://validation.openmls.tech/#valn1205))
         let psk_secret = {
             let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
-                provider.storage(),
+                provider,
                 &self.resumption_psk_store,
                 &apply_proposals_values.presharedkeys,
             )
@@ -161,7 +161,7 @@ impl MlsGroup {
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
         if let Sender::Member(member) = mls_content.sender() {
@@ -210,7 +210,7 @@ impl MlsGroup {
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         app_data_dict_updates: Option<AppDataUpdates>,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
         if let Sender::Member(member) = mls_content.sender() {
@@ -259,7 +259,7 @@ impl MlsGroup {
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         let ciphersuite = self.ciphersuite();
         // Determine if Commit has a path
@@ -442,7 +442,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub(crate) async fn merge_commit<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
@@ -455,7 +455,7 @@ impl MlsGroup {
             StagedCommitState::PublicState(staged_state) => {
                 self.public_group
                     .merge_diff(staged_state.into_staged_diff());
-                self.store(provider.storage())
+                self.store(provider)
                     .await
                     .map_err(MergeCommitError::StorageError)?;
                 Ok(())
@@ -532,41 +532,43 @@ impl MlsGroup {
                 }
 
                 // Store the updated group state
-                let storage = provider.storage();
-                let group_id = self.group_id();
+                let group_id = self.group_id().clone();
 
                 self.public_group
-                    .store(storage)
+                    .store(provider)
                     .await
                     .map_err(MergeCommitError::StorageError)?;
-                storage
-                    .write_group_epoch_secrets(group_id, &self.group_epoch_secrets)
+                provider
+                    .storage()
+                    .write_group_epoch_secrets(&group_id, &self.group_epoch_secrets)
                     .await
                     .map_err(MergeCommitError::StorageError)?;
-                storage
-                    .write_message_secrets(group_id, &self.message_secrets_store)
+                provider
+                    .storage()
+                    .write_message_secrets(&group_id, &self.message_secrets_store)
                     .await
                     .map_err(MergeCommitError::StorageError)?;
 
                 // Store the relevant keys under the new epoch
-                self.store_epoch_keypairs(storage, epoch_keypairs.as_slice())
+                self.store_epoch_keypairs(provider.storage(), epoch_keypairs.as_slice())
                     .await
                     .map_err(MergeCommitError::StorageError)?;
 
                 // Delete the old keys.
-                self.delete_previous_epoch_keypairs(storage)
+                self.delete_previous_epoch_keypairs(provider.storage())
                     .await
                     .map_err(MergeCommitError::StorageError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
                     keypair
-                        .delete(storage)
+                        .delete(provider.storage())
                         .await
                         .map_err(MergeCommitError::StorageError)?;
                 }
 
                 // Empty the proposal store
-                storage
-                    .clear_proposal_queue::<GroupId, ProposalRef>(group_id)
+                provider
+                    .storage()
+                    .clear_proposal_queue::<GroupId, ProposalRef>(&group_id)
                     .await
                     .map_err(MergeCommitError::StorageError)?;
                 self.proposal_store_mut().empty();

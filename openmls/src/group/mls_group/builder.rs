@@ -57,7 +57,7 @@ impl MlsGroupBuilder {
     #[maybe_async::maybe_async]
     pub async fn build<Provider: OpenMlsProvider>(
         self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
@@ -76,7 +76,7 @@ impl MlsGroupBuilder {
     #[maybe_async::maybe_async]
     pub(super) async fn build_internal<Provider: OpenMlsProvider>(
         self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         mls_group_create_config_option: Option<MlsGroupCreateConfig>,
@@ -89,7 +89,7 @@ impl MlsGroupBuilder {
         let ciphersuite = mls_group_create_config.ciphersuite;
 
         if !self.replace_old_group
-            && MlsGroup::load(provider.storage(), &group_id)
+            && MlsGroup::load(provider, &group_id)
                 .await
                 .map_err(NewGroupError::StorageError)?
                 .is_some()
@@ -133,7 +133,7 @@ impl MlsGroupBuilder {
         let mut resumption_psk_store = ResumptionPskStore::new(32);
 
         // Prepare the PskSecret
-        let psk_secret = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)
+        let psk_secret = load_psks(provider, &resumption_psk_store, &self.psk_ids)
             .await
             .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
             .map_err(|e| {
@@ -199,7 +199,7 @@ impl MlsGroupBuilder {
         };
 
         mls_group
-            .store(provider.storage())
+            .store(provider)
             .await
             .map_err(NewGroupError::StorageError)?;
         mls_group

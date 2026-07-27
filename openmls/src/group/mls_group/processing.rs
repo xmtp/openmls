@@ -119,7 +119,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn process_message<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let unverified_message = self.unprotect_message(provider, message).await?;
@@ -151,7 +151,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn unprotect_message<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<UnverifiedMessage, ProcessMessageError<Provider::StorageError>> {
         // Make sure we are still a member of the group
@@ -210,7 +210,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn store_pending_proposal<Storage: StorageProvider>(
         &mut self,
-        storage: &Storage,
+        storage: Storage,
         proposal: QueuedProposal,
     ) -> Result<(), Storage::Error> {
         storage
@@ -241,7 +241,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn commit_to_pending_proposals<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
@@ -255,7 +255,7 @@ impl MlsGroup {
             .commit_builder()
             // This forces committing to the proposals in the proposal store:
             .consume_proposal_store(true)
-            .load_psks(provider.storage())
+            .load_psks(provider)
             .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
@@ -275,7 +275,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn merge_staged_commit<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Check if we were removed from the group
@@ -322,7 +322,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn merge_pending_commit<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
     ) -> Result<(), MergePendingCommitError<Provider::StorageError>> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {
@@ -342,7 +342,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub(super) async fn read_decryption_keypairs(
         &self,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
@@ -374,7 +374,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn process_unverified_message_with_app_data_updates<Provider: OpenMlsProvider>(
         &self,
-        provider: &Provider,
+        provider: &mut Provider,
         unverified_message: UnverifiedMessage,
         app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
@@ -432,7 +432,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub(crate) async fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
-        provider: &Provider,
+        provider: &mut Provider,
         unverified_message: UnverifiedMessage,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Checks the following semantic validation:
@@ -483,7 +483,7 @@ impl MlsGroup {
         Provider: OpenMlsProvider,
     >(
         &self,
-        provider: &Provider,
+        provider: &mut Provider,
         content: AuthenticatedContent,
         credential: Credential,
         app_data_dict_updates: Option<AppDataUpdates>,
@@ -544,7 +544,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     async fn process_internal_authenticated_content<Provider: OpenMlsProvider>(
         &self,
-        provider: &Provider,
+        provider: &mut Provider,
         content: AuthenticatedContent,
         credential: Credential,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
@@ -602,7 +602,7 @@ impl MlsGroup {
     ///  - ValSem246 (as part of ValSem010)
     fn process_external_authenticated_content<Provider: OpenMlsProvider>(
         &self,
-        provider: &Provider,
+        provider: &mut Provider,
         content: AuthenticatedContent,
         credential: Credential,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
