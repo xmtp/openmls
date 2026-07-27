@@ -952,7 +952,7 @@ macro_rules! impl_storage_provider {
             }
 
             impl<GroupData: Entity<CURRENT_VERSION>> StorableGroupDataRef<'_, GroupData> {
-                async fn store<GroupId: Key<CURRENT_VERSION>, C: Codec>(
+                pub(crate) async fn store<GroupId: Key<CURRENT_VERSION>, C: Codec>(
                     &self,
                     executor: impl Executor<'_, Database = $db>,
                     group_id: &GroupId,
@@ -973,7 +973,7 @@ macro_rules! impl_storage_provider {
             impl<SignatureKeyPairs: Entity<CURRENT_VERSION>>
                 StorableSignatureKeyPairsRef<'_, SignatureKeyPairs>
             {
-                async fn store<SignaturePublicKey: Key<CURRENT_VERSION>, C: Codec>(
+                pub(crate) async fn store<SignaturePublicKey: Key<CURRENT_VERSION>, C: Codec>(
                     &self,
                     executor: impl Executor<'_, Database = $db>,
                     public_key: &SignaturePublicKey,
@@ -990,7 +990,7 @@ macro_rules! impl_storage_provider {
             }
 
             impl<LeafNode: Entity<CURRENT_VERSION>> StorableLeafNodeRef<'_, LeafNode> {
-                async fn store<GroupId: Key<CURRENT_VERSION>, C: Codec>(
+                pub(crate) async fn store<GroupId: Key<CURRENT_VERSION>, C: Codec>(
                     &self,
                     executor: impl Executor<'_, Database = $db>,
                     group_id: &GroupId,
@@ -1007,7 +1007,7 @@ macro_rules! impl_storage_provider {
             }
 
             impl<KeyPackage: Entity<CURRENT_VERSION>> StorableKeyPackageRef<'_, KeyPackage> {
-                async fn store<KeyPackageRef: Key<CURRENT_VERSION>, C: Codec>(
+                pub(crate) async fn store<KeyPackageRef: Key<CURRENT_VERSION>, C: Codec>(
                     &self,
                     executor: impl Executor<'_, Database = $db>,
                     key_package_ref: &KeyPackageRef,
@@ -1024,7 +1024,7 @@ macro_rules! impl_storage_provider {
             }
 
             impl<EpochKeyPairs: Entity<CURRENT_VERSION>> StorableEpochKeyPairsRef<'_, EpochKeyPairs> {
-                async fn store<
+                pub(crate) async fn store<
                     GroupId: Key<CURRENT_VERSION>,
                     EpochKey: Key<CURRENT_VERSION>,
                     C: Codec,
@@ -1050,7 +1050,7 @@ macro_rules! impl_storage_provider {
             }
 
             impl<PskBundle: Entity<CURRENT_VERSION>> StorablePskBundleRef<'_, PskBundle> {
-                async fn store<PskId: Key<CURRENT_VERSION>, C: Codec>(
+                pub(crate) async fn store<PskId: Key<CURRENT_VERSION>, C: Codec>(
                     &self,
                     executor: impl Executor<'_, Database = $db>,
                     psk_id: &PskId,
@@ -1087,7 +1087,7 @@ macro_rules! impl_storage_provider {
             impl<Proposal: Entity<CURRENT_VERSION>, ProposalRef: Entity<CURRENT_VERSION>>
                 StorableProposalRef<'_, Proposal, ProposalRef>
             {
-                async fn store<GroupId: Key<CURRENT_VERSION>, C: Codec>(
+                pub(crate) async fn store<GroupId: Key<CURRENT_VERSION>, C: Codec>(
                     &self,
                     executor: impl Executor<'_, Database = $db>,
                     group_id: &GroupId,
@@ -1200,7 +1200,7 @@ macro_rules! impl_storage_provider {
             impl<EncryptionKeyPair: Entity<CURRENT_VERSION>>
                 StorableEncryptionKeyPairRef<'_, EncryptionKeyPair>
             {
-                async fn store<EncryptionKey: Key<CURRENT_VERSION>, C: Codec>(
+                pub(crate) async fn store<EncryptionKey: Key<CURRENT_VERSION>, C: Codec>(
                     &self,
                     executor: impl Executor<'_, Database = $db>,
                     public_key: &EncryptionKey,

@@ -30,6 +30,7 @@ mod wrappers;
 mod provider;
 
 mod codec;
+mod pool_probe;
 mod group_data;
 mod migrator;
 mod sql;
