@@ -27,7 +27,7 @@ fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::random(provider.rand());
 
@@ -58,8 +58,8 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    alice_provider: &impl crate::storage::OpenMlsProvider,
-    bob_provider: &impl crate::storage::OpenMlsProvider,
+    alice_provider: &mut impl crate::storage::OpenMlsProvider,
+    bob_provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
     let (mut alice_group, alice_signer_with_keys) =
@@ -118,8 +118,8 @@ fn validation_test_setup(
 
 #[openmls_test]
 fn external_join_add_proposal_should_succeed() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
@@ -133,7 +133,7 @@ fn external_join_add_proposal_should_succeed() {
         assert_eq!(bob_group.members().count(), 2);
 
         // A new client, Charlie, will now ask joining with an external Add proposal
-        let charlie_provider = &Provider::default();
+        let mut charlie_provider = &Provider::default();
         let charlie_credential = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
@@ -242,10 +242,10 @@ fn external_join_add_proposal_should_succeed() {
 
 #[openmls_test]
 fn external_join_add_proposal_should_be_signed_by_key_package_it_references() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
-    let attacker_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
+    let mut attacker_provider = &Provider::default();
 
     let ProposalValidationTestSetup { alice_group, .. } = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -301,8 +301,8 @@ fn external_join_add_proposal_should_be_signed_by_key_package_it_references() {
 /// [valn1504](https://validation.openmls.tech/#valn1504)
 #[openmls_test]
 fn test_valn1504() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
@@ -316,7 +316,7 @@ fn test_valn1504() {
         assert_eq!(bob_group.members().count(), 2);
 
         // A new client, Charlie, will now ask joining with an external Add proposal
-        let charlie_provider = &Provider::default();
+        let mut charlie_provider = &Provider::default();
         let charlie_credential = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
@@ -368,9 +368,9 @@ fn test_valn1504() {
 // TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
 #[openmls_test]
 fn new_member_proposal_sender_should_be_reserved_for_join_proposals() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let any_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut any_provider = &Provider::default();
 
     let ProposalValidationTestSetup {
         alice_group,

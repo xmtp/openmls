@@ -11,9 +11,9 @@ const CUSTOM_EXTENSION_TYPE: ExtensionType = ExtensionType::Unknown(CUSTOM_EXTEN
 /// group.
 #[openmls_test]
 fn opaque_extension() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
     // ## First we need to set up the clients.
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) = generate_credential(
@@ -232,7 +232,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions<KeyPackage>,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
     // Create the key package
@@ -251,7 +251,7 @@ fn generate_key_package(
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();

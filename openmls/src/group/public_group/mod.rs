@@ -117,7 +117,7 @@ impl PublicGroup {
     #[maybe_async::maybe_async]
     pub async fn from_external<StorageProvider, StorageError>(
         crypto: &impl OpenMlsCrypto,
-        storage: &StorageProvider,
+        storage: &mut StorageProvider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
@@ -394,7 +394,7 @@ impl PublicGroup {
     #[maybe_async::maybe_async]
     pub async fn add_proposal<Storage: PublicStorageProvider>(
         &mut self,
-        storage: &Storage,
+        storage: &mut Storage,
         proposal: QueuedProposal,
     ) -> Result<(), Storage::Error> {
         storage
@@ -408,7 +408,7 @@ impl PublicGroup {
     #[maybe_async::maybe_async]
     pub async fn remove_proposal<Storage: PublicStorageProvider>(
         &mut self,
-        storage: &Storage,
+        storage: &mut Storage,
         proposal_ref: &ProposalRef,
     ) -> Result<(), Storage::Error> {
         storage
@@ -422,7 +422,7 @@ impl PublicGroup {
     #[maybe_async::maybe_async]
     pub async fn queued_proposals<Storage: PublicStorageProvider>(
         &self,
-        storage: &Storage,
+        storage: &mut Storage,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Storage::Error> {
         storage.queued_proposals(self.group_id()).await
     }
@@ -493,7 +493,7 @@ impl PublicGroup {
     #[maybe_async::maybe_async]
     pub(crate) async fn store<Storage: PublicStorageProvider>(
         &self,
-        storage: &Storage,
+        storage: &mut Storage,
     ) -> Result<(), Storage::Error> {
         let group_id = self.group_context.group_id();
         storage.write_tree(group_id, self.treesync()).await?;
@@ -515,7 +515,7 @@ impl PublicGroup {
     /// Deletes the [`PublicGroup`] from storage.
     #[maybe_async::maybe_async]
     pub async fn delete<Storage: PublicStorageProvider>(
-        storage: &Storage,
+        storage: &mut Storage,
         group_id: &GroupId,
     ) -> Result<(), Storage::Error> {
         storage.delete_tree(group_id).await?;
@@ -529,7 +529,7 @@ impl PublicGroup {
     /// Loads the [`PublicGroup`] corresponding to a [`GroupId`] from storage.
     #[maybe_async::maybe_async]
     pub async fn load<Storage: PublicStorageProvider>(
-        storage: &Storage,
+        storage: &mut Storage,
         group_id: &GroupId,
     ) -> Result<Option<Self>, Storage::Error> {
         let treesync = storage.tree(group_id).await?;
@@ -584,7 +584,7 @@ impl PublicGroup {
     #[cfg(test)]
     pub(crate) fn encrypt_path(
         &self,
-        provider: &impl crate::storage::OpenMlsProvider,
+        provider: &mut impl crate::storage::OpenMlsProvider,
         ciphersuite: Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],

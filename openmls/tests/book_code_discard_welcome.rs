@@ -10,7 +10,7 @@ use openmls_traits::{signatures::Signer, types::SignatureScheme};
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
     let credential = BasicCredential::new(identity);
@@ -34,7 +34,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions<KeyPackage>,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
     // ANCHOR: create_key_package
@@ -49,8 +49,8 @@ fn generate_key_package(
 #[openmls_test]
 fn not_join_group() {
     // Set up Alice group
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -75,7 +75,7 @@ fn not_join_group() {
     let (_commit, welcome, _group_info) = alice
         .group
         .add_members(
-            &alice_party.provider,
+            &mut alice_party.provider,
             &alice.party.signer,
             &[bob_key_package],
         )
@@ -83,7 +83,7 @@ fn not_join_group() {
 
     let welcome: MlsMessageIn = welcome.into();
 
-    let bob_provider = &bob_party.provider;
+    let mut bob_provider = &mut bob_party.provider;
 
     let group_context: Option<GroupContext> =
         bob_provider.storage().group_context(&group_id).unwrap();

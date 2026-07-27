@@ -14,8 +14,8 @@ fn test_secret_tree_persistence() {
 
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let alice_provider = &OpenMlsRustCrypto::default();
-    let bob_provider = &OpenMlsRustCrypto::default();
+    let mut alice_provider = &OpenMlsRustCrypto::default();
+    let mut bob_provider = &OpenMlsRustCrypto::default();
 
     // Generate credentials with keys
     let (alice_credential, alice_signer) =

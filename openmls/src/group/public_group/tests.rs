@@ -16,10 +16,10 @@ use super::{super::mls_group::StagedWelcome, PublicGroup};
 
 #[openmls_test::openmls_test]
 fn public_group() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
-    let public_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
+    let mut public_provider = &Provider::default();
 
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -332,12 +332,12 @@ fn extract_staged_commit(ppm: ProcessedMessage) -> StagedCommit {
 
 #[openmls_test::openmls_test]
 fn old_messages_with_blank_leaves() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-    let charlie_party = CorePartyState::<Provider>::new("charlie");
-    let david_party = CorePartyState::<Provider>::new("david");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
+    let mut charlie_party = CorePartyState::<Provider>::new("charlie");
+    let mut david_party = CorePartyState::<Provider>::new("david");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -388,7 +388,7 @@ fn old_messages_with_blank_leaves() {
 
     alice_group
         .group
-        .merge_pending_commit(&alice_group.party.core_state.provider)
+        .merge_pending_commit(&mut alice_group.party.core_state.provider)
         .unwrap();
 
     // Charlie sends an application message in the epoch that still contains the blank leaf.
@@ -414,7 +414,7 @@ fn old_messages_with_blank_leaves() {
 
     alice_group
         .group
-        .merge_pending_commit(&alice_group.party.core_state.provider)
+        .merge_pending_commit(&mut alice_group.party.core_state.provider)
         .unwrap();
 
     group_state

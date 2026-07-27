@@ -148,7 +148,7 @@ impl FrankenPublicMessage {
     ///    NB: Usually, confirmation tag verification should be turned back on after the call that
     ///    needs to be tricked!
     pub(crate) fn auth(
-        provider: &impl crate::storage::OpenMlsProvider,
+        provider: &mut impl crate::storage::OpenMlsProvider,
         ciphersuite: openmls_traits::types::Ciphersuite,
         signer: &impl Signer,
         content: FrankenFramedContent,

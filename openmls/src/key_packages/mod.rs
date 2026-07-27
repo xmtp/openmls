@@ -281,7 +281,7 @@ impl KeyPackage {
     /// Create a new key package for the given `ciphersuite` and `identity`.
     pub(crate) fn create(
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
@@ -333,7 +333,7 @@ impl KeyPackage {
     #[allow(clippy::too_many_arguments)]
     fn new_from_keys(
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
@@ -517,7 +517,7 @@ impl KeyPackageBuilder {
     pub(crate) fn build_without_storage(
         mut self,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError> {
@@ -539,7 +539,7 @@ impl KeyPackageBuilder {
     pub async fn build(
         mut self,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
@@ -567,9 +567,10 @@ impl KeyPackageBuilder {
             private_init_key: init_private_key,
             private_encryption_key: encryption_keypair.private_key().clone(),
         };
+        let kp_ref = full_kp.key_package.hash_ref(provider.crypto())?;
         provider
             .storage()
-            .write_key_package(&full_kp.key_package.hash_ref(provider.crypto())?, &full_kp)
+            .write_key_package(&kp_ref, &full_kp)
             .await
             .map_err(|_| KeyPackageNewError::StorageError)?;
 
@@ -634,7 +635,7 @@ impl KeyPackageBundle {
 #[cfg(test)]
 impl KeyPackageBundle {
     pub(crate) fn generate(
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,

@@ -16,9 +16,9 @@ fn test_add_member_with_aad() {
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
     ] {
-        let alice_provider = &Provider::default();
-        let bob_provider = &Provider::default();
-        let charlie_provider = &Provider::default();
+        let mut alice_provider = &Provider::default();
+        let mut bob_provider = &Provider::default();
+        let mut charlie_provider = &Provider::default();
         let group_id = GroupId::random(alice_provider.rand());
 
         // Generate credentials with keys

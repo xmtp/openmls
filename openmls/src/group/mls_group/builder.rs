@@ -57,7 +57,7 @@ impl MlsGroupBuilder {
     #[maybe_async::maybe_async]
     pub async fn build<Provider: OpenMlsProvider>(
         self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
@@ -76,7 +76,7 @@ impl MlsGroupBuilder {
     #[maybe_async::maybe_async]
     pub(super) async fn build_internal<Provider: OpenMlsProvider>(
         self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         mls_group_create_config_option: Option<MlsGroupCreateConfig>,

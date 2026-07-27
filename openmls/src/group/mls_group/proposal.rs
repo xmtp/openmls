@@ -87,7 +87,7 @@ macro_rules! impl_propose_fun {
         #[maybe_async::maybe_async]
         pub async fn $name<Provider: OpenMlsProvider>(
             &mut self,
-            provider: &Provider,
+            provider: &mut Provider,
             signer: &impl Signer,
             value: $value_ty,
         ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
@@ -166,7 +166,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn propose<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         propose: Propose,
         ref_or_value: ProposalOrRefType,
@@ -292,7 +292,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn propose_add_member<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         key_package: &KeyPackage,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError<Provider::StorageError>> {
@@ -333,7 +333,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn propose_remove_member<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         member: LeafNodeIndex,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError<Provider::StorageError>>
@@ -372,7 +372,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn propose_remove_member_by_credential<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError<Provider::StorageError>>
@@ -399,7 +399,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn propose_remove_member_by_credential_by_value<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
@@ -427,7 +427,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
@@ -470,7 +470,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<
@@ -501,7 +501,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn propose_app_data_update<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         component_id: ComponentId,
         operation: AppDataUpdateOperation,
@@ -541,7 +541,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn remove_pending_proposal<Storage: StorageProvider>(
         &mut self,
-        storage: &Storage,
+        storage: &mut Storage,
         proposal_ref: &ProposalRef,
     ) -> Result<(), RemoveProposalError<Storage::Error>> {
         storage

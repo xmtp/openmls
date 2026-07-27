@@ -32,7 +32,7 @@ pub trait OpenMlsProvider {
     type StorageProvider: storage::StorageProvider<{ storage::CURRENT_VERSION }>;
 
     // Get the storage provider.
-    fn storage(&self) -> &Self::StorageProvider;
+    fn storage(&mut self) -> &mut Self::StorageProvider;
 
     /// Get the crypto provider.
     fn crypto(&self) -> &Self::CryptoProvider;

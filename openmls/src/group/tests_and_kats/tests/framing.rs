@@ -21,7 +21,7 @@ use crate::{
 
 #[openmls_test::openmls_test]
 fn padding() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -48,7 +48,7 @@ fn padding() {
     };
 
     // Initialize the test setup according to config.
-    let test_setup = setup(test_setup_config, provider);
+    let mut test_setup = setup(test_setup_config, provider);
 
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -100,7 +100,7 @@ fn padding() {
 /// Check that PrivateMessageContent's padding field is verified to be all-zero.
 #[openmls_test::openmls_test]
 fn bad_padding() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     let tests = {
         // { 2^i } ∪ { 2^i +- 1 }
         let padding_sizes = [

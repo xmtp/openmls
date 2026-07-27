@@ -14,9 +14,9 @@ fn join_tree_with_outdated_leafnodes() {
         // failing tests.
         const VALIDITY: u64 = 2;
 
-        let alice_party = CorePartyState::<Provider>::new("alice");
-        let bob_party = CorePartyState::<Provider>::new("bob");
-        let charlie_party = CorePartyState::<Provider>::new("charlie");
+        let mut alice_party = CorePartyState::<Provider>::new("alice");
+        let mut bob_party = CorePartyState::<Provider>::new("bob");
+        let mut charlie_party = CorePartyState::<Provider>::new("charlie");
 
         // Create group
         let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
@@ -24,7 +24,7 @@ fn join_tree_with_outdated_leafnodes() {
         let mut group_state = {
             let group_id = GroupId::from_slice(b"Test Group");
 
-            let group_state = GroupState::new_from_party(
+            let mut group_state = GroupState::new_from_party(
                 group_id,
                 alice_party.generate_pre_group(ciphersuite),
                 create_config,
@@ -56,7 +56,7 @@ fn join_tree_with_outdated_leafnodes() {
         let (_mls_message_out, _welcome, _group_info) = alice
             .group
             .add_members(
-                &alice_party.provider,
+                &mut alice_party.provider,
                 &alice.party.signer,
                 &[bob_key_package],
             )
@@ -64,7 +64,7 @@ fn join_tree_with_outdated_leafnodes() {
 
         alice
             .group
-            .merge_pending_commit(&alice_party.provider)
+            .merge_pending_commit(&mut alice_party.provider)
             .unwrap();
 
         // We don't care about Bob actually processing the Welcome.
@@ -76,7 +76,7 @@ fn join_tree_with_outdated_leafnodes() {
         let (_mls_message_out, welcome, _group_info) = alice
             .group
             .add_members(
-                &alice_party.provider,
+                &mut alice_party.provider,
                 &alice.party.signer,
                 &[charlie_key_package],
             )
@@ -84,7 +84,7 @@ fn join_tree_with_outdated_leafnodes() {
 
         alice
             .group
-            .merge_pending_commit(&alice_party.provider)
+            .merge_pending_commit(&mut alice_party.provider)
             .unwrap();
 
         (welcome, charlie_party, join_config)
@@ -95,7 +95,7 @@ fn join_tree_with_outdated_leafnodes() {
     // Charlie tries to join the group
     // Here joining fails because the lifetimes are validated.
     let _error = StagedWelcome::build_from_welcome(
-        &charlie_party.provider,
+        &mut charlie_party.provider,
         &join_config,
         MlsMessageIn::from(welcome).into_welcome().unwrap(),
     )
@@ -106,7 +106,7 @@ fn join_tree_with_outdated_leafnodes() {
     let (welcome, charlie_party, join_config) = setup();
 
     let _error = StagedWelcome::new_from_welcome(
-        &charlie_party.provider,
+        &mut charlie_party.provider,
         &join_config,
         MlsMessageIn::from(welcome).into_welcome().unwrap(),
         None,
@@ -118,7 +118,7 @@ fn join_tree_with_outdated_leafnodes() {
     // Charlie tries to join the group
     // Here joining should succeed because lifetimes aren't validated.
     let _charlie_group = StagedWelcome::build_from_welcome(
-        &charlie_party.provider,
+        &mut charlie_party.provider,
         &join_config,
         MlsMessageIn::from(welcome).into_welcome().unwrap(),
     )
@@ -126,6 +126,6 @@ fn join_tree_with_outdated_leafnodes() {
     .skip_lifetime_validation()
     .build()
     .expect("Failed to create group due to an invalid lifetime in a leaf node in the tree.")
-    .into_group(&charlie_party.provider)
+    .into_group(&mut charlie_party.provider)
     .unwrap();
 }

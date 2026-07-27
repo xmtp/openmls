@@ -34,8 +34,8 @@ impl<'a> OpenMlsProvider for SqlxTestProvider<'a> {
     type RandProvider = RustCrypto;
     type StorageProvider = SqliteStorageProvider<'a, JsonCodec>;
 
-    fn storage(&self) -> &Self::StorageProvider {
-        &self.storage
+    fn storage(&mut self) -> &mut Self::StorageProvider {
+        &mut self.storage
     }
 
     fn crypto(&self) -> &Self::CryptoProvider {
@@ -48,7 +48,7 @@ impl<'a> OpenMlsProvider for SqlxTestProvider<'a> {
 }
 
 async fn new_credential<P: OpenMlsProvider>(
-    provider: &P,
+    provider: &mut P,
     identity: &[u8],
     signature_scheme: SignatureScheme,
 ) -> (CredentialWithKey, SignatureKeyPair) {
@@ -69,8 +69,8 @@ async fn new_credential<P: OpenMlsProvider>(
 }
 
 async fn async_group_flow_works(
-    alice_provider: &SqlxTestProvider<'_>,
-    bob_provider: &SqlxTestProvider<'_>,
+    alice_provider: &mut SqlxTestProvider<'_>,
+    bob_provider: &mut SqlxTestProvider<'_>,
 ) {
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let group_id = GroupId::from_slice(b"async-group");
@@ -187,23 +187,23 @@ async fn main() {
         .await
         .expect("migrate bob storage");
 
-    let alice_provider = SqlxTestProvider {
+    let mut alice_provider = SqlxTestProvider {
         crypto: RustCrypto::default(),
         storage: alice_storage,
     };
-    let bob_provider = SqlxTestProvider {
+    let mut bob_provider = SqlxTestProvider {
         crypto: RustCrypto::default(),
         storage: bob_storage,
     };
 
-    async_group_flow_works(&alice_provider, &bob_provider).await;
+    async_group_flow_works(&mut alice_provider, &mut bob_provider).await;
 }
 
 // Herald spawns one task per account stream, so a full storage-backed MLS flow
 // must produce a Send future. This is a compile-time guard against the
 // provider reintroducing a !Send cell around its connection.
 #[allow(dead_code)]
-fn assert_group_flow_future_is_send(a: &SqlxTestProvider<'_>, b: &SqlxTestProvider<'_>) {
+fn assert_group_flow_future_is_send(a: &mut SqlxTestProvider<'_>, b: &mut SqlxTestProvider<'_>) {
     fn assert_send<T: Send>(_: &T) {}
     let fut = async_group_flow_works(a, b);
     assert_send(&fut);

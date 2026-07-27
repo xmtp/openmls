@@ -9,7 +9,7 @@ use openmls_test::openmls_test;
 
 fn create_alice_group(
     ciphersuite: Ciphersuite,
-    provider: &impl openmls::storage::OpenMlsProvider,
+    provider: &mut impl openmls::storage::OpenMlsProvider,
     use_ratchet_tree_extension: bool,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let group_config = MlsGroupCreateConfig::builder()
@@ -33,8 +33,8 @@ fn create_alice_group(
 
 #[openmls_test]
 fn test_external_commit() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     // Alice creates a new group ...
     let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, alice_provider, false);
 
@@ -116,8 +116,8 @@ fn test_external_commit() {
 
 #[openmls_test]
 fn test_group_info() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, alice_provider, true);
 
@@ -215,7 +215,7 @@ fn test_group_info() {
 
 #[openmls_test]
 fn test_not_present_group_info() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 

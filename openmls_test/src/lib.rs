@@ -101,8 +101,8 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         type RandProvider = RustCrypto;
                         type StorageProvider = SqliteStorageProvider<JsonCodec, Connection>;
 
-                        fn storage(&self) -> &Self::StorageProvider {
-                            &self.storage
+                        fn storage(&mut self) -> &mut Self::StorageProvider {
+                            &mut self.storage
                         }
 
                         fn crypto(&self) -> &Self::CryptoProvider {

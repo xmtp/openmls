@@ -8,7 +8,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         EncryptionKey: traits::EncryptionKey<V_TEST>,
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
     >(
-        &self,
+        &mut self,
         public_key: &EncryptionKey,
         key_pair: &HpkeKeyPair,
     ) -> Result<(), Self::Error> {
@@ -24,7 +24,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         EpochKey: traits::EpochKey<V_TEST>,
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
@@ -44,7 +44,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         KeyPackageRef: traits::HashReference<V_TEST>,
         KeyPackage: traits::KeyPackage<V_TEST>,
     >(
-        &self,
+        &mut self,
         hash_ref: &KeyPackageRef,
     ) -> Result<Option<KeyPackage>, Self::Error> {
         let key = serde_json::to_vec(&hash_ref).unwrap();
@@ -61,7 +61,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         HashReference: traits::HashReference<V_TEST>,
         KeyPackage: traits::KeyPackage<V_TEST>,
     >(
-        &self,
+        &mut self,
         hash_ref: &HashReference,
         key_package: &KeyPackage,
     ) -> Result<(), Self::Error> {
@@ -83,7 +83,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         ProposalRef: traits::ProposalRef<V_TEST>,
         QueuedProposal: traits::QueuedProposal<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _proposal_ref: &ProposalRef,
         _proposal: &QueuedProposal,
@@ -92,7 +92,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn write_tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _tree: &TreeSync,
     ) -> Result<(), Self::Error> {
@@ -103,7 +103,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         InterimTranscriptHash: traits::InterimTranscriptHash<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
@@ -114,7 +114,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         GroupContext: traits::GroupContext<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
@@ -125,7 +125,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ConfirmationTag: traits::ConfirmationTag<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
@@ -136,7 +136,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         SignaturePublicKey: traits::SignaturePublicKey<V_TEST>,
         SignatureKeyPair: traits::SignatureKeyPair<V_TEST>,
     >(
-        &self,
+        &mut self,
         _public_key: &SignaturePublicKey,
         _signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::Error> {
@@ -148,7 +148,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         EpochKey: traits::EpochKey<V_TEST>,
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _epoch: &EpochKey,
         _leaf_index: u32,
@@ -158,7 +158,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn write_psk<PskId: traits::PskId<V_TEST>, PskBundle: traits::PskBundle<V_TEST>>(
-        &self,
+        &mut self,
         _psk_id: &PskId,
         _psk: &PskBundle,
     ) -> Result<(), Self::Error> {
@@ -169,14 +169,14 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
         todo!()
     }
 
     fn tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
         todo!()
@@ -186,7 +186,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         GroupContext: traits::GroupContext<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::Error> {
         todo!()
@@ -196,7 +196,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         InterimTranscriptHash: traits::InterimTranscriptHash<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         todo!()
@@ -206,7 +206,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ConfirmationTag: traits::ConfirmationTag<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
         todo!()
@@ -216,7 +216,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         SignaturePublicKey: traits::SignaturePublicKey<V_TEST>,
         SignatureKeyPair: traits::SignatureKeyPair<V_TEST>,
     >(
-        &self,
+        &mut self,
         _public_key: &SignaturePublicKey,
     ) -> Result<Option<SignatureKeyPair>, Self::Error> {
         todo!()
@@ -226,28 +226,28 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
         EncryptionKey: traits::EncryptionKey<V_TEST>,
     >(
-        &self,
+        &mut self,
         _public_key: &EncryptionKey,
     ) -> Result<Option<HpkeKeyPair>, Self::Error> {
         todo!()
     }
 
     fn psk<PskBundle: traits::PskBundle<V_TEST>, PskId: traits::PskId<V_TEST>>(
-        &self,
+        &mut self,
         _psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error> {
         todo!()
     }
 
     fn delete_signature_key_pair<SignaturePublicKeuy: traits::SignaturePublicKey<V_TEST>>(
-        &self,
+        &mut self,
         _public_key: &SignaturePublicKeuy,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<V_TEST>>(
-        &self,
+        &mut self,
         _public_key: &EncryptionKey,
     ) -> Result<(), Self::Error> {
         todo!()
@@ -257,7 +257,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         EpochKey: traits::EpochKey<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _epoch: &EpochKey,
         _leaf_index: u32,
@@ -266,21 +266,21 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn delete_key_package<KeyPackageRef: traits::HashReference<V_TEST>>(
-        &self,
+        &mut self,
         _hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_psk<PskKey: traits::PskId<V_TEST>>(
-        &self,
+        &mut self,
         _psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn group_state<GroupState: traits::GroupState<V_TEST>, GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error> {
         todo!()
@@ -290,7 +290,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupState: traits::GroupState<V_TEST>,
         GroupId: traits::GroupId<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _group_state: &GroupState,
     ) -> Result<(), Self::Error> {
@@ -298,7 +298,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn delete_group_state<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
@@ -308,7 +308,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         MessageSecrets: traits::MessageSecrets<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<MessageSecrets>, Self::Error> {
         todo!()
@@ -318,7 +318,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         MessageSecrets: traits::MessageSecrets<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _message_secrets: &MessageSecrets,
     ) -> Result<(), Self::Error> {
@@ -326,7 +326,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn delete_message_secrets<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
@@ -336,7 +336,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ResumptionPskStore: traits::ResumptionPskStore<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<ResumptionPskStore>, Self::Error> {
         todo!()
@@ -346,7 +346,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ResumptionPskStore: traits::ResumptionPskStore<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::Error> {
@@ -354,7 +354,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
@@ -364,7 +364,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         LeafNodeIndex: traits::LeafNodeIndex<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error> {
         todo!()
@@ -374,7 +374,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         LeafNodeIndex: traits::LeafNodeIndex<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error> {
@@ -382,7 +382,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn delete_own_leaf_index<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
@@ -392,7 +392,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
         todo!()
@@ -402,7 +402,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::Error> {
@@ -410,7 +410,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn delete_group_epoch_secrets<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
@@ -420,7 +420,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
@@ -430,7 +430,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
         todo!()
@@ -440,7 +440,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error> {
@@ -448,7 +448,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn own_leaf_nodes<GroupId: traits::GroupId<V_TEST>, LeafNode: traits::LeafNode<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error> {
         todo!()
@@ -458,7 +458,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         LeafNode: traits::LeafNode<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _leaf_node: &LeafNode,
     ) -> Result<(), Self::Error> {
@@ -470,7 +470,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         ProposalRef: traits::ProposalRef<V_TEST>,
         QueuedProposal: traits::QueuedProposal<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         todo!()
@@ -480,7 +480,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
@@ -488,42 +488,42 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn delete_own_leaf_nodes<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_group_config<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_tree<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_confirmation_tag<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_context<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn delete_interim_transcript_hash<GroupId: traits::GroupId<V_TEST>>(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
@@ -534,7 +534,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
         _application_export_tree: &ApplicationExportTree,
     ) -> Result<(), Self::Error> {
@@ -546,7 +546,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error> {
         todo!()
@@ -557,7 +557,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
-        &self,
+        &mut self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()

@@ -11,7 +11,7 @@ fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
     external_senders: ExternalSendersExtension,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
@@ -47,8 +47,8 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    alice_provider: &impl crate::storage::OpenMlsProvider,
-    bob_provider: &impl crate::storage::OpenMlsProvider,
+    alice_provider: &mut impl crate::storage::OpenMlsProvider,
+    bob_provider: &mut impl crate::storage::OpenMlsProvider,
     external_senders: ExternalSendersExtension,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     // === Alice creates a group ===
@@ -91,9 +91,9 @@ fn validation_test_setup(
 
 #[openmls_test]
 fn external_remove_proposal_should_remove_member() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let ds_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut ds_provider = &Provider::default();
 
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
@@ -213,9 +213,9 @@ fn external_remove_proposal_should_remove_member() {
 
 #[openmls_test]
 fn external_remove_proposal_should_fail_when_invalid_external_senders_index() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let ds_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut ds_provider = &Provider::default();
 
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
@@ -275,9 +275,9 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index() {
 
 #[openmls_test]
 fn external_remove_proposal_should_fail_when_invalid_signature() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let ds_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut ds_provider = &Provider::default();
 
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
@@ -340,9 +340,9 @@ fn external_remove_proposal_should_fail_when_invalid_signature() {
 
 #[openmls_test]
 fn external_remove_proposal_should_fail_when_no_external_senders() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let ds_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut ds_provider = &Provider::default();
 
     let (mut alice_group, _) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,

@@ -60,7 +60,7 @@ struct TestElement {
     psk_secret: Vec<u8>,
 }
 
-fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result<(), String> {
+fn run_test_vector(test: TestElement, provider: &mut impl OpenMlsProvider) -> Result<(), String> {
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
     // Skip unsupported ciphersuites.
     if !provider
@@ -104,7 +104,7 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
 
 #[openmls_test::openmls_test]
 fn read_test_vectors_ps() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");

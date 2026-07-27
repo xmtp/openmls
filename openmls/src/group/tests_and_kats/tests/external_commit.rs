@@ -13,9 +13,9 @@ use crate::{
 // External Commit in a group of 1 & 2 members and resync
 #[openmls_test::openmls_test]
 fn test_external_commit() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // Generate credentials with keys
     let alice_credential = generate_credential_with_key(

@@ -162,7 +162,7 @@ fn generate(
 pub fn generate_test_vector(
     n_epochs: u64,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
 ) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
 
@@ -252,16 +252,16 @@ pub fn generate_test_vector(
 fn write_test_vectors() {
     const NUM_EPOCHS: u64 = 2;
     let mut tests = Vec::new();
-    let provider = OpenMlsRustCrypto::default();
+    let mut provider = OpenMlsRustCrypto::default();
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
-        tests.push(generate_test_vector(NUM_EPOCHS, ciphersuite, &provider));
+        tests.push(generate_test_vector(NUM_EPOCHS, ciphersuite, &mut provider));
     }
     write("test_vectors/key-schedule-new.json", &tests);
 }
 
 #[openmls_test::openmls_test]
 fn read_test_vectors_key_schedule() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     let _ = pretty_env_logger::try_init();
 
@@ -279,7 +279,7 @@ fn read_test_vectors_key_schedule() {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(
     test_vector: KeyScheduleTestVector,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
 ) -> Result<(), KsTestVectorError> {
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::trace!("  {test_vector:?}");

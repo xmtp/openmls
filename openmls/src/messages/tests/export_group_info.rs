@@ -11,7 +11,7 @@ use crate::{
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
 #[openmls_test::openmls_test]
 fn export_group_info() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     // Alice creates a group
     let (alice_group, _, signer, pk) = setup_alice_group(ciphersuite, provider);
 
@@ -38,7 +38,7 @@ fn export_group_info() {
 
 #[openmls_test::openmls_test]
 fn external_pub_in_group_info() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     // Alice creates a group
     let (alice_group, _, signer, _) = setup_alice_group(ciphersuite, provider);
 
@@ -57,7 +57,7 @@ fn external_pub_in_group_info() {
 /// Tests that extension types are validated correctly when adding to the GroupInfo.
 #[openmls_test::openmls_test]
 fn export_group_info_with_additional_extensions() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     // Alice creates a group
     let (group_alice, _, signer, _pk) = setup_alice_group(ciphersuite, provider);
 

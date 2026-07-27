@@ -144,7 +144,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         let mut clients = HashMap::new();
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
-            let provider = Provider::default();
+            let mut provider = Provider::default();
             let mut credentials = HashMap::new();
             for ciphersuite in provider.crypto().supported_ciphersuites().iter() {
                 let credential = BasicCredential::new(identity.clone());
@@ -190,7 +190,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
     /// error if the client does not support the given ciphersuite.
     pub fn get_fresh_key_package(
         &self,
-        client: &Client<Provider>,
+        client: &mut Client<Provider>,
         ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, SetupError<Provider::StorageError>> {
         let key_package = client.get_fresh_key_package(ciphersuite)?;
@@ -269,10 +269,10 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
                 .expect("An unexpected error occurred.")
                 .remove(egs.new_member().as_slice())
                 .ok_or(SetupError::NoFreshKeyPackage)?;
-            let client = clients
+            let mut client = clients
                 .get(&client_id)
                 .expect("An unexpected error occurred.")
-                .read()
+                .write()
                 .expect("An unexpected error occurred.");
             client.join_group(
                 group.group_config.clone(),
@@ -323,10 +323,10 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
                 }
             })
             .map(|member_id| {
-                let member = clients
+                let mut member = clients
                     .get(member_id)
                     .expect("An unexpected error occurred.")
-                    .read()
+                    .write()
                     .expect("An unexpected error occurred.");
                 member.receive_messages_for_group(&message, sender_id, &authentication_service)
             })
@@ -376,18 +376,23 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
 
         let messages = group_members
             .filter_map(|(_, m_id)| {
-                let m = clients
+                let mut m = clients
                     .get(m_id)
                     .expect("An unexpected error occurred.")
-                    .read()
+                    .write()
                     .expect("An unexpected error occurred.");
+                // One deref of the lock guard up front: `groups` and `provider`
+                // are disjoint fields, but the borrow checker can only see that
+                // through a plain `&mut Client`, not through the guard.
+                let m = &mut *m;
                 let mut group_states = m.groups.write().expect("An unexpected error occurred.");
+                let m_provider = &mut m.provider;
                 // Some group members may not have received their welcome messages yet.
                 if let Some(group_state) = group_states.get_mut(&group.group_id) {
                     assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
                     assert_eq!(
                         group_state
-                            .export_secret(m.provider.crypto(), "test", &[], 32)
+                            .export_secret(m_provider.crypto(), "test", &[], 32)
                             .expect("An unexpected error occurred."),
                         group.exporter_secret
                     );
@@ -395,13 +400,13 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
                     // key store.
                     let signature_pk = group_state.own_leaf().unwrap().signature_key();
                     let signer = SignatureKeyPair::read(
-                        m.provider.storage(),
+                        m_provider.storage(),
                         signature_pk.as_slice(),
                         group_state.ciphersuite().signature_algorithm(),
                     )
                     .unwrap();
                     let message = group_state
-                        .create_message(&m.provider, &signer, "Hello World!".as_bytes())
+                        .create_message(&mut *m_provider, &signer, "Hello World!".as_bytes())
                         .expect("Error composing message while checking group states.");
                     Some((m_id.to_vec(), message))
                 } else {
@@ -468,10 +473,10 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         let group_creator_id = ((OsRng.unwrap_mut().next_u32() as usize) % clients.len())
             .to_be_bytes()
             .to_vec();
-        let group_creator = clients
+        let mut group_creator = clients
             .get(&group_creator_id)
             .expect("An unexpected error occurred.")
-            .read()
+            .write()
             .expect("An unexpected error occurred.");
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group_id = group_creator.create_group(self.default_mgp.clone(), ciphersuite)?;
@@ -547,10 +552,10 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         authentication_service: &AS,
     ) -> Result<(), SetupError<Provider::StorageError>> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        let client = clients
+        let mut client = clients
             .get(client_id)
             .ok_or(SetupError::UnknownClientId)?
-            .read()
+            .write()
             .expect("An unexpected error occurred.");
         let (messages, welcome_option, _) =
             client.self_update(action_type, &group.group_id, leaf_node_parameters)?;
@@ -581,10 +586,10 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         authentication_service: &AS,
     ) -> Result<(), SetupError<Provider::StorageError>> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        let adder = clients
+        let mut adder = clients
             .get(adder_id)
             .ok_or(SetupError::UnknownClientId)?
-            .read()
+            .write()
             .expect("An unexpected error occurred.");
         if group
             .members
@@ -595,12 +600,12 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         }
         let mut key_packages = Vec::new();
         for addee_id in &addees {
-            let addee = clients
+            let mut addee = clients
                 .get(addee_id)
                 .ok_or(SetupError::UnknownClientId)?
-                .read()
+                .write()
                 .expect("An unexpected error occurred.");
-            let key_package = self.get_fresh_key_package(&addee, group.ciphersuite)?;
+            let key_package = self.get_fresh_key_package(&mut addee, group.ciphersuite)?;
             key_packages.push(key_package);
         }
         let (messages, welcome_option, _) =
@@ -627,10 +632,10 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         authentication_service: AS,
     ) -> Result<(), SetupError<Provider::StorageError>> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        let remover = clients
+        let mut remover = clients
             .get(remover_id)
             .ok_or(SetupError::UnknownClientId)?
-            .read()
+            .write()
             .expect("An unexpected error occurred.");
         let (messages, welcome_option, _) =
             remover.remove_members(action_type, &group.group_id, target_members)?;

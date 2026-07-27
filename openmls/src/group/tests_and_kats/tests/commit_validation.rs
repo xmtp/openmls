@@ -36,9 +36,9 @@ struct CommitValidationTestSetup {
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    alice_provider: &impl crate::storage::OpenMlsProvider,
-    bob_provider: &impl crate::storage::OpenMlsProvider,
-    charlie_provider: &impl crate::storage::OpenMlsProvider,
+    alice_provider: &mut impl crate::storage::OpenMlsProvider,
+    bob_provider: &mut impl crate::storage::OpenMlsProvider,
+    charlie_provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> CommitValidationTestSetup {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -144,9 +144,9 @@ fn validation_test_setup(
 // ValSem200: Commit must not cover inline self Remove proposal
 #[openmls_test::openmls_test]
 fn test_valsem200() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // Test with PublicMessage
     let CommitValidationTestSetup {
@@ -280,9 +280,9 @@ fn test_valsem200() {
 // ValSem201: Path must be present, if at least one proposal requires a path
 #[openmls_test::openmls_test]
 fn test_valsem201() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     let wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
     // Test with PublicMessage
@@ -310,7 +310,7 @@ fn test_valsem201() {
         .unwrap()
     };
 
-    let dave_provider = &Provider::default();
+    let mut dave_provider = &Provider::default();
     let add_proposal = || {
         let dave_credential = generate_credential_with_key(
             "Dave".into(),
@@ -464,7 +464,7 @@ fn test_valsem201() {
 }
 
 fn erase_path(
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
     ciphersuite: Ciphersuite,
     mut plaintext: PublicMessage,
     alice_group: &MlsGroup,
@@ -497,9 +497,9 @@ fn erase_path(
 // ValSem202: Path must be the right length
 #[openmls_test::openmls_test]
 fn test_valsem202() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // Test with PublicMessage
     let CommitValidationTestSetup {
@@ -589,9 +589,9 @@ fn test_valsem202() {
 // ValSem203: Path secrets must decrypt correctly
 #[openmls_test::openmls_test]
 fn test_valsem203() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // Test with PublicMessage
     let CommitValidationTestSetup {
@@ -685,9 +685,9 @@ fn test_valsem203() {
 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
 #[openmls_test::openmls_test]
 fn test_valsem204() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // Test with PublicMessage
     let CommitValidationTestSetup {
@@ -824,9 +824,9 @@ fn test_valsem204() {
 // ValSem205: Confirmation tag must be successfully verified
 #[openmls_test::openmls_test]
 fn test_valsem205() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // Test with PublicMessage
     let CommitValidationTestSetup {
@@ -906,9 +906,9 @@ fn test_valsem205() {
 // this ensures that a member can process commits not containing all the stored proposals
 #[openmls_test::openmls_test]
 fn test_partial_proposal_commit() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // Test with PublicMessage
     let CommitValidationTestSetup {

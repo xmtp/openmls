@@ -7,9 +7,9 @@ use crate::{framing::*, group::*};
 fn remove_blank() {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // Generate credentials with keys
     let alice_credential_with_key_and_signer = generate_credential_with_key(
@@ -131,9 +131,9 @@ fn test_remove_operation_variants() {
     }
 
     for test_case in [TestCase::Remove, TestCase::Leave] {
-        let alice_provider = &Provider::default();
-        let bob_provider = &Provider::default();
-        let charlie_provider = &Provider::default();
+        let mut alice_provider = &Provider::default();
+        let mut bob_provider = &Provider::default();
+        let mut charlie_provider = &Provider::default();
         let group_id = GroupId::random(alice_provider.rand());
 
         // Generate credentials with keys

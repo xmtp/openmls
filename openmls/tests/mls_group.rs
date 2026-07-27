@@ -12,7 +12,7 @@ use openmls_traits::signatures::Signer;
 fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     extensions: Extensions<KeyPackage>,
-    provider: &Provider,
+    provider: &mut Provider,
     credential_with_key: CredentialWithKey,
     signer: &impl Signer,
 ) -> KeyPackage {
@@ -37,8 +37,8 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
-        let alice_provider = &Provider::default();
-        let bob_provider = &Provider::default();
+        let mut alice_provider = &Provider::default();
+        let mut bob_provider = &Provider::default();
 
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
@@ -209,8 +209,8 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
-        let alice_provider = &Provider::default();
-        let bob_provider = &Provider::default();
+        let mut alice_provider = &Provider::default();
+        let mut bob_provider = &Provider::default();
 
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
@@ -373,9 +373,9 @@ fn mls_group_operations() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
-        let alice_provider = &Provider::default();
-        let bob_provider = &Provider::default();
-        let charlie_provider = &Provider::default();
+        let mut alice_provider = &Provider::default();
+        let mut bob_provider = &Provider::default();
+        let mut charlie_provider = &Provider::default();
 
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
@@ -1327,9 +1327,9 @@ fn mls_group_operations() {
 
 #[openmls_test]
 fn addition_order() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::random(alice_provider.rand());
@@ -1442,7 +1442,7 @@ fn addition_order() {
 ///  - Alice adds K members.
 #[openmls_test]
 fn more_remove_than_add_proposals_in_commit() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     // choose group size, remove proposal count and add proposal count, s.t. M > K, and M and K each
     // pass a tree shrink/grow threshold, i.e., a power of 2.
@@ -1455,7 +1455,7 @@ fn more_remove_than_add_proposals_in_commit() {
         const REMOVE_PROPOSALS_COUNT: usize,
         const ADD_PROPOSALS_COUNT: usize,
     >(
-        provider: &Provider,
+        provider: &mut Provider,
         ciphersuite: Ciphersuite,
     ) {
         for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
@@ -1556,7 +1556,7 @@ fn more_remove_than_add_proposals_in_commit() {
 
 #[openmls_test]
 fn test_empty_input_errors() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -1598,8 +1598,8 @@ fn mls_group_ratchet_tree_extension() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         // === Positive case: using the ratchet tree extension ===
 
-        let alice_provider = &Provider::default();
-        let bob_provider = &Provider::default();
+        let mut alice_provider = &Provider::default();
+        let mut bob_provider = &Provider::default();
 
         // Generate credentials
         let (alice_credential, alice_signer) =
@@ -1712,7 +1712,7 @@ fn mls_group_ratchet_tree_extension() {
 /// Test that the a group context extensions proposal is correctly applied when valid, and rejected when not.
 #[openmls_test]
 fn group_context_extensions_proposal() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
 
     let (alice_credential_with_key, alice_signer) =
         new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());

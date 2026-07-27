@@ -285,7 +285,7 @@ impl PreSharedKeyId {
     #[maybe_async::maybe_async]
     pub async fn store<Provider: OpenMlsProvider>(
         &self,
-        provider: &Provider,
+        provider: &mut Provider,
         psk: &[u8],
     ) -> Result<(), PskError> {
         let psk_bundle = {
@@ -521,7 +521,7 @@ impl From<Secret> for PskSecret {
 
 #[maybe_async::maybe_async]
 pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
-    storage: &Storage,
+    storage: &mut Storage,
     resumption_psk_store: &ResumptionPskStore,
     psk_ids: &'p [PreSharedKeyId],
 ) -> Result<Vec<(&'p PreSharedKeyId, Secret)>, PskError> {

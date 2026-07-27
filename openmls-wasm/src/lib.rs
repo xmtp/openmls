@@ -66,7 +66,7 @@ pub struct Identity {
 #[wasm_bindgen]
 impl Identity {
     #[wasm_bindgen(constructor)]
-    pub fn new(provider: &Provider, name: &str) -> Result<Identity, JsError> {
+    pub fn new(provider: &mut Provider, name: &str) -> Result<Identity, JsError> {
         let signature_scheme = SignatureScheme::ED25519;
         let identity = name.bytes().collect();
         let credential = BasicCredential::new(identity);
@@ -85,7 +85,7 @@ impl Identity {
         })
     }
 
-    pub fn key_package(&self, provider: &Provider) -> KeyPackage {
+    pub fn key_package(&self, provider: &mut Provider) -> KeyPackage {
         KeyPackage(
             OpenMlsKeyPackage::builder()
                 .build(
@@ -139,7 +139,7 @@ impl AddMessages {
 
 #[wasm_bindgen]
 impl Group {
-    pub fn create_new(provider: &Provider, founder: &Identity, group_id: &str) -> Group {
+    pub fn create_new(provider: &mut Provider, founder: &Identity, group_id: &str) -> Group {
         let group_id_bytes = group_id.bytes().collect::<Vec<_>>();
 
         let mls_group = MlsGroup::builder()
@@ -155,7 +155,7 @@ impl Group {
         Group { mls_group }
     }
     pub fn join(
-        provider: &Provider,
+        provider: &mut Provider,
         mut welcome: &[u8],
         ratchet_tree: RatchetTree,
     ) -> Result<Group, JsError> {
@@ -179,7 +179,7 @@ impl Group {
 
     pub fn propose_and_commit_add(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         sender: &Identity,
         new_member: &KeyPackage,
     ) -> Result<AddMessages, JsError> {
@@ -212,7 +212,7 @@ impl Group {
 
     pub fn create_message(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         sender: &Identity,
         msg: &[u8],
     ) -> Result<Vec<u8>, JsError> {
@@ -264,7 +264,7 @@ impl Group {
 
     pub fn export_key(
         &self,
-        provider: &Provider,
+        provider: &mut Provider,
         label: &str,
         context: &[u8],
         key_length: usize,
@@ -282,7 +282,7 @@ impl Group {
 impl Group {
     fn native_propose_and_commit_add(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         sender: &Identity,
         new_member: &KeyPackage,
     ) -> Result<NativeAddMessages, JsError> {
@@ -307,7 +307,7 @@ impl Group {
         })
     }
 
-    fn native_join(provider: &Provider, mut welcome: &[u8], ratchet_tree: RatchetTree) -> Group {
+    fn native_join(provider: &mut Provider, mut welcome: &[u8], ratchet_tree: RatchetTree) -> Group {
         let welcome = MlsMessageIn::tls_deserialize(&mut welcome)
             .unwrap()
             .into_welcome()
@@ -417,21 +417,21 @@ mod tests {
 
     fn create_group_alice_and_bob() -> (Provider, Identity, Group, Provider, Identity, Group) {
         let mut alice_provider = Provider::new();
-        let bob_provider = Provider::new();
+        let mut bob_provider = Provider::new();
 
-        let alice = Identity::new(&alice_provider, "alice")
+        let alice = Identity::new(&mut alice_provider, "alice")
             .map_err(js_error_to_string)
             .unwrap();
-        let bob = Identity::new(&bob_provider, "bob")
+        let bob = Identity::new(&mut bob_provider, "bob")
             .map_err(js_error_to_string)
             .unwrap();
 
-        let mut chess_club_alice = Group::create_new(&alice_provider, &alice, "chess club");
+        let mut chess_club_alice = Group::create_new(&mut alice_provider, &alice, "chess club");
 
-        let bob_key_pkg = bob.key_package(&bob_provider);
+        let bob_key_pkg = bob.key_package(&mut bob_provider);
 
         let add_msgs = chess_club_alice
-            .native_propose_and_commit_add(&alice_provider, &alice, &bob_key_pkg)
+            .native_propose_and_commit_add(&mut alice_provider, &alice, &bob_key_pkg)
             .map_err(js_error_to_string)
             .unwrap();
 
@@ -442,7 +442,7 @@ mod tests {
 
         let ratchet_tree = chess_club_alice.export_ratchet_tree();
 
-        let chess_club_bob = Group::native_join(&bob_provider, &add_msgs.welcome, ratchet_tree);
+        let chess_club_bob = Group::native_join(&mut bob_provider, &add_msgs.welcome, ratchet_tree);
 
         (
             alice_provider,
@@ -460,11 +460,11 @@ mod tests {
             create_group_alice_and_bob();
 
         let bob_exported_key = chess_club_bob
-            .export_key(&bob_provider, "chess_key", &[0x30], 32)
+            .export_key(&mut bob_provider, "chess_key", &[0x30], 32)
             .map_err(js_error_to_string)
             .unwrap();
         let alice_exported_key = chess_club_alice
-            .export_key(&alice_provider, "chess_key", &[0x30], 32)
+            .export_key(&mut alice_provider, "chess_key", &[0x30], 32)
             .map_err(js_error_to_string)
             .unwrap();
 
@@ -478,7 +478,7 @@ mod tests {
 
         let alice_msg = "hello, bob!".as_bytes();
         let msg_out = chess_club_alice
-            .create_message(&alice_provider, &alice, alice_msg)
+            .create_message(&mut alice_provider, &alice, alice_msg)
             .map_err(js_error_to_string)
             .unwrap();
 

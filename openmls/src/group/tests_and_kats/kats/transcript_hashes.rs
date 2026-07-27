@@ -68,7 +68,7 @@ fn read_test_vectors_transcript() {
 }
 
 pub fn run_test_vector(test_vector: TranscriptTestVector) {
-    let provider = OpenMlsRustCrypto::default();
+    let mut provider = OpenMlsRustCrypto::default();
 
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).unwrap();
     if provider.crypto().supports(ciphersuite).is_err() {
@@ -158,7 +158,7 @@ fn write_test_vectors() {
 }
 
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
-    let provider = OpenMlsRustCrypto::default();
+    let mut provider = OpenMlsRustCrypto::default();
 
     let confirmation_key = ConfirmationKey::random(ciphersuite, provider.rand());
 
@@ -203,7 +203,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
             let credential_with_key_and_signer = generate_credential_with_key(
                 b"Alice".to_vec(),
                 ciphersuite.signature_algorithm(),
-                &provider,
+                &mut provider,
             );
 
             credential_with_key_and_signer.signer

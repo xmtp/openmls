@@ -4,8 +4,8 @@ use openmls_test::openmls_test;
 #[openmls_test]
 fn treesync_leaf_credentials() {
     // 1. Create parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -63,10 +63,10 @@ fn treesync_leaf_credentials() {
 #[openmls_test]
 fn treesync_blanks_after_remove() {
     // 1. Create parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-    let charlie_party = CorePartyState::<Provider>::new("charlie");
-    let dana_party = CorePartyState::<Provider>::new("dana");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
+    let mut charlie_party = CorePartyState::<Provider>::new("charlie");
+    let mut dana_party = CorePartyState::<Provider>::new("dana");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -101,14 +101,14 @@ fn treesync_blanks_after_remove() {
         let (commit, _, _) = alice
             .group
             .remove_members(
-                &alice.party.core_state.provider,
+                &mut alice.party.core_state.provider,
                 &alice.party.signer,
                 &[LeafNodeIndex::new(1)],
             )
             .unwrap();
         alice
             .group
-            .merge_pending_commit(&alice.party.core_state.provider)
+            .merge_pending_commit(&mut alice.party.core_state.provider)
             .unwrap();
         commit
     };

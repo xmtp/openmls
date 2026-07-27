@@ -32,6 +32,7 @@ mod provider;
 mod codec;
 mod group_data;
 mod migrator;
+mod source;
 mod sql;
 
 pub use crate::codec::Codec;
@@ -48,6 +49,9 @@ impl_storage_provider! {
     provider_doc: "A storage provider backed by a borrowed `sqlx::SqliteConnection`.",
     db: sqlx::Sqlite,
     connection: sqlx::SqliteConnection,
+    owner: &'a mut sqlx::SqliteConnection,
+    exec_fn: crate::source::sqlite_conn_exec,
+    migrate_fn: crate::source::sqlite_conn_migrate,
     sql: sqlite,
     migrator: SqliteMigratorWrapper,
     migrations: "./migrations",
@@ -56,6 +60,24 @@ impl_storage_provider! {
 #[cfg(feature = "sqlite")]
 pub use crate::sqlite::SqliteStorageProvider;
 
+#[cfg(feature = "sqlite")]
+impl_storage_provider! {
+    module: sqlite_pool,
+    provider: SqlitePoolStorageProvider,
+    provider_doc: "A storage provider backed by an owned `sqlx::SqlitePool`.",
+    db: sqlx::Sqlite,
+    connection: sqlx::SqliteConnection,
+    owner: sqlx::SqlitePool,
+    exec_fn: crate::source::sqlite_pool_exec,
+    migrate_fn: crate::source::sqlite_pool_migrate,
+    sql: sqlite,
+    migrator: SqliteMigratorWrapper,
+    migrations: "./migrations",
+}
+
+#[cfg(feature = "sqlite")]
+pub use crate::sqlite_pool::SqlitePoolStorageProvider;
+
 #[cfg(feature = "postgres")]
 impl_storage_provider! {
     module: postgres,
@@ -63,6 +85,9 @@ impl_storage_provider! {
     provider_doc: "A storage provider backed by a borrowed `sqlx::PgConnection`.",
     db: sqlx::Postgres,
     connection: sqlx::PgConnection,
+    owner: &'a mut sqlx::PgConnection,
+    exec_fn: crate::source::pg_conn_exec,
+    migrate_fn: crate::source::pg_conn_migrate,
     sql: postgres,
     migrator: PostgresMigratorWrapper,
     migrations: "./migrations_pg",
@@ -70,6 +95,24 @@ impl_storage_provider! {
 
 #[cfg(feature = "postgres")]
 pub use crate::postgres::PostgresStorageProvider;
+
+#[cfg(feature = "postgres")]
+impl_storage_provider! {
+    module: postgres_pool,
+    provider: PostgresPoolStorageProvider,
+    provider_doc: "A storage provider backed by an owned `sqlx::PgPool`.",
+    db: sqlx::Postgres,
+    connection: sqlx::PgConnection,
+    owner: sqlx::PgPool,
+    exec_fn: crate::source::pg_pool_exec,
+    migrate_fn: crate::source::pg_pool_migrate,
+    sql: postgres,
+    migrator: PostgresMigratorWrapper,
+    migrations: "./migrations_pg",
+}
+
+#[cfg(feature = "postgres")]
+pub use crate::postgres_pool::PostgresPoolStorageProvider;
 
 /// Awaits a query future built while the connection lock is still held,
 /// keeping the guard and the await in the same statement.

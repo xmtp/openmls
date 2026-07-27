@@ -25,7 +25,7 @@ pub struct NonProposalGroupStorageState {
 impl NonProposalGroupStorageState {
     #[maybe_async::maybe_async]
     pub async fn from_storage(
-        store: &impl StorageProvider<CURRENT_VERSION>,
+        store: &mut impl StorageProvider<CURRENT_VERSION>,
         group_id: &impl GroupId<CURRENT_VERSION>,
     ) -> NonProposalGroupStorageState {
         let own_leaf_nodes = store.own_leaf_nodes(group_id).await.unwrap();
@@ -81,7 +81,7 @@ impl GroupStorageState {
     }
     #[maybe_async::maybe_async]
     pub async fn from_storage(
-        store: &impl StorageProvider<CURRENT_VERSION>,
+        store: &mut impl StorageProvider<CURRENT_VERSION>,
         group_id: &impl GroupId<CURRENT_VERSION>,
     ) -> GroupStorageState {
         let queued_proposals = store.queued_proposals(group_id).await.unwrap();

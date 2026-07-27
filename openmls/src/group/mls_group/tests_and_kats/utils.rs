@@ -7,7 +7,7 @@ use crate::{credentials::*, group::*, key_packages::*, test_utils::*};
 
 pub(crate) fn setup_alice_group(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> (
     MlsGroup,
     CredentialWithKey,
@@ -53,8 +53,8 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
 
 pub(crate) fn setup_alice_bob(
     ciphersuite: Ciphersuite,
-    alice_provider: &impl crate::storage::OpenMlsProvider,
-    bob_provider: &impl crate::storage::OpenMlsProvider,
+    alice_provider: &mut impl crate::storage::OpenMlsProvider,
+    bob_provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> (
     CredentialWithKey,
     SignatureKeyPair,
@@ -86,7 +86,7 @@ pub(crate) fn setup_alice_bob(
 pub(crate) fn setup_client(
     id: &str,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> (
     CredentialWithKey,
     KeyPackageBundle,
@@ -113,8 +113,8 @@ pub(crate) fn setup_client(
 
 pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    alice_provider: &Provider,
-    bob_provider: &Provider,
+    alice_provider: &mut Provider,
+    bob_provider: &mut Provider,
 ) -> (
     MlsGroup,
     SignatureKeyPair,

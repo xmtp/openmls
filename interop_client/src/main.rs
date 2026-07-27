@@ -211,7 +211,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let provider = OpenMlsRustCrypto::default();
+        let mut provider = OpenMlsRustCrypto::default();
 
         let ciphersuite = Ciphersuite::try_from(request.cipher_suite as u16).unwrap();
         let credential = BasicCredential::new(request.identity.clone());
@@ -231,7 +231,7 @@ impl MlsClient for MlsClientImpl {
             .wire_format_policy(wire_format_policy)
             .build();
         let group = MlsGroup::new_with_group_id(
-            &provider,
+            &mut provider,
             &signature_keys,
             &mls_group_config,
             GroupId::from_slice(&request.group_id),
@@ -270,7 +270,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let crypto_provider = OpenMlsRustCrypto::default();
+        let mut crypto_provider = OpenMlsRustCrypto::default();
         let ciphersuite = *to_ciphersuite(request.cipher_suite)?;
         let identity = request.identity.clone();
 
@@ -296,7 +296,7 @@ impl MlsClient for MlsClientImpl {
             ))
             .build(
                 ciphersuite,
-                &crypto_provider,
+                &mut crypto_provider,
                 &signature_keys,
                 CredentialWithKey {
                     credential: credential.clone().into(),
@@ -397,13 +397,13 @@ impl MlsClient for MlsClientImpl {
         let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 
         let group = StagedWelcome::new_from_welcome(
-            &crypto_provider,
+            &mut crypto_provider,
             &mls_group_config,
             welcome,
             ratchet_tree,
         )
         .map_err(into_status)?
-        .into_group(&crypto_provider)
+        .into_group(&mut crypto_provider)
         .map_err(into_status)?;
 
         let interop_group = InteropGroup {
@@ -460,7 +460,7 @@ impl MlsClient for MlsClientImpl {
 
             let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 
-            let provider = OpenMlsRustCrypto::default();
+            let mut provider = OpenMlsRustCrypto::default();
             let ciphersuite = verifiable_group_info.ciphersuite();
 
             let (credential_with_key, signer) = {
@@ -499,7 +499,7 @@ impl MlsClient for MlsClientImpl {
                 builder
             }
             .build_group(
-                &provider,
+                &mut provider,
                 verifiable_group_info,
                 credential_with_key.clone(),
             )
@@ -508,7 +508,7 @@ impl MlsClient for MlsClientImpl {
             .unwrap()
             .build(provider.rand(), provider.crypto(), &signer, |_| true)
             .unwrap()
-            .finalize(&provider)
+            .finalize(&mut provider)
             .unwrap();
 
             let commit = commit_bundle.into_commit();
@@ -697,7 +697,7 @@ impl MlsClient for MlsClientImpl {
 
         fn store(
             ciphersuite: Ciphersuite,
-            crypto_provider: &OpenMlsRustCrypto,
+            crypto_provider: &mut OpenMlsRustCrypto,
             external_psk: Psk,
             secret: &[u8],
         ) -> Result<(), Status> {
@@ -715,7 +715,7 @@ impl MlsClient for MlsClientImpl {
         let pending_state_id = transaction_id_map.get(&request.state_or_transaction_id);
         if let Some(pending_state_id) = pending_state_id {
             let mut pending_state = self.pending_state.lock().unwrap();
-            let pending_state = pending_state
+            let mut pending_state = pending_state
                 .get_mut(pending_state_id)
                 .ok_or(Status::internal("Unable to retrieve pending state"))?;
 

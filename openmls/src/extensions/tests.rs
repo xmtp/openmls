@@ -51,8 +51,8 @@ fn application_id_in_leaf_node_extensions() {
 // in-band
 #[openmls_test::openmls_test]
 fn ratchet_tree_extension() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Basic group setup.
 
@@ -210,7 +210,7 @@ fn required_capabilities() {
 
 #[openmls_test::openmls_test]
 fn with_group_context_extensions() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
@@ -295,8 +295,8 @@ fn wrong_extension_with_group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn last_resort_extension() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
@@ -405,8 +405,8 @@ fn last_resort_extension() {
 #[openmls_test::openmls_test]
 fn app_data_dictionary_extension() {
     use crate::test_utils::single_group_test_framework::*;
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
     let group_id = GroupId::from_slice(b"Test Group");
@@ -448,13 +448,13 @@ fn app_data_dictionary_extension() {
             |_proposal| true,
         )
         .unwrap()
-        .stage_commit(&alice_party.provider)
+        .stage_commit(&mut alice_party.provider)
         .unwrap();
 
     // process the Welcome for Bob
     let welcome = message_bundle.into_welcome().unwrap();
     let processed_welcome = ProcessedWelcome::new_from_welcome(
-        &bob_party.provider,
+        &mut bob_party.provider,
         create_config.join_config(),
         welcome,
     )

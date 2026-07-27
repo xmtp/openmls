@@ -43,7 +43,7 @@ fn alice_group<Provider: OpenMlsProvider>(
 ) -> GroupState<'_, Provider> {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let group_state = GroupState::new_from_party(
+    let mut group_state = GroupState::new_from_party(
         group_id,
         alice_party.generate_pre_group(ciphersuite),
         create_config,
@@ -75,19 +75,19 @@ fn alice_bob_group<'a, Provider: OpenMlsProvider>(
 
 #[openmls_test]
 fn discard_commit_add() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
 
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
     let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
 
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
     let bob_key_package = bob_pre_group.key_package_bundle.key_package().clone();
 
     let [alice] = group_state.members_mut(&["alice"]);
     let state_before = alice.group_storage_state();
     let alice_group = &mut alice.group;
-    let alice_provider = &alice_party.provider;
+    let mut alice_provider = &mut alice_party.provider;
     let alice_signer = &alice.party.signer;
 
     // === Alice adds Bob ===
@@ -118,7 +118,7 @@ fn discard_commit_add() {
 
 #[openmls_test]
 fn discard_commit_update_with_new_signer() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
 
     // Set up a group with one member (Alice)
@@ -126,7 +126,7 @@ fn discard_commit_update_with_new_signer() {
     let group_id = group_state.group_id();
 
     let [alice] = group_state.members_mut(&["alice"]);
-    let alice_provider = &alice_party.provider;
+    let mut alice_provider = &mut alice_party.provider;
     let alice_credential = &alice.party.credential_with_key;
 
     // === Alice new credential ===
@@ -164,7 +164,7 @@ fn discard_commit_update_with_new_signer() {
     assert!(alice.get_storage_signature_key_pair().is_some());
 
     let alice_group = &mut alice.group;
-    let alice_provider = &alice_party.provider;
+    let mut alice_provider = &mut alice_party.provider;
 
     // === Alice updates ===
     // Alice updates own credential
@@ -260,8 +260,8 @@ fn discard_commit_update_with_new_signer() {
 #[openmls_test]
 fn discard_commit_remove() {
     // set up group with two members
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
     let mut group_state = alice_bob_group(&alice_party, &bob_party, ciphersuite, create_config);
@@ -272,7 +272,7 @@ fn discard_commit_remove() {
     let state_before = bob.group_storage_state();
 
     let bob_group = &mut bob.group;
-    let bob_provider: &Provider = &bob.party.core_state.provider;
+    let bob_provider: &mut Provider = &mut bob.party.core_state.provider;
     let bob_signer: &SignatureKeyPair = &bob.party.signer;
 
     // Bob removes Alice
@@ -300,7 +300,7 @@ fn discard_commit_remove() {
 
 #[openmls_test]
 fn discard_commit_psk() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
     let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
 
@@ -308,7 +308,7 @@ fn discard_commit_psk() {
     let state_before = alice.group_storage_state();
 
     let alice_group = &mut alice.group;
-    let alice_provider = &alice_party.provider;
+    let mut alice_provider = &mut alice_party.provider;
     let alice_signer = &alice.party.signer;
 
     let psk_bytes = vec![1; 32];
@@ -354,20 +354,20 @@ fn discard_commit_psk() {
 
 #[openmls_test]
 fn discard_commit_external_join() {
-    let bob_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let (bob_credential, bob_signer) =
         generate_credential("bob".into(), ciphersuite.signature_algorithm());
 
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let alice_party = CorePartyState::<Provider>::new("alice");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
     let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
 
     let [alice] = group_state.members_mut(&["alice"]);
 
     let alice_group = &mut alice.group;
-    let alice_provider = &alice_party.provider;
+    let mut alice_provider = &mut alice_party.provider;
     let alice_signer = &alice.party.signer;
 
     // export the group info so Bob can join
@@ -438,7 +438,7 @@ fn discard_commit_group_context_extensions() {
         .build();
     // set up group with one member
 
-    let alice_party = CorePartyState::<Provider>::new("alice");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
     let mut group_state = alice_group(&alice_party, ciphersuite, mls_group_create_config);
 
     let [alice] = group_state.members_mut(&["alice"]);
@@ -446,7 +446,7 @@ fn discard_commit_group_context_extensions() {
     let state_before = alice.group_storage_state();
 
     let alice_group = &mut alice.group;
-    let alice_provider = &alice_party.provider;
+    let mut alice_provider = &mut alice_party.provider;
     let alice_signer = &alice.party.signer;
 
     let extensions = Extensions::from_vec(vec![
@@ -474,7 +474,7 @@ fn discard_commit_group_context_extensions() {
 
 #[openmls_test]
 fn discard_commit_custom_proposal() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
 
     let group_id = GroupId::from_slice(b"Test Group");
     // Generate credentials with keys

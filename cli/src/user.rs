@@ -172,7 +172,7 @@ impl User {
         let kp = self
             .identity
             .borrow_mut()
-            .add_key_package(CIPHERSUITE, &self.provider);
+            .add_key_package(CIPHERSUITE, &mut self.provider);
         (
             kp.hash_ref(self.provider.crypto())
                 .unwrap()
@@ -297,7 +297,7 @@ impl User {
             .mls_group
             .borrow_mut()
             .create_message(
-                &self.provider,
+                &mut self.provider,
                 &self.identity.borrow().signer,
                 msg.as_bytes(),
             )
@@ -383,7 +383,7 @@ impl User {
         };
         let mut mls_group = group.mls_group.borrow_mut();
 
-        processed_message = match mls_group.process_message(&self.provider, message) {
+        processed_message = match mls_group.process_message(&mut self.provider, message) {
             Ok(msg) => msg,
             Err(e) => {
                 log::error!("Error processing unverified message: {e:?} -  Dropping message.");
@@ -451,7 +451,7 @@ impl User {
                 if commit_ptr.self_removed() {
                     remove_proposal = true;
                 }
-                match mls_group.merge_staged_commit(&self.provider, *commit_ptr) {
+                match mls_group.merge_staged_commit(&mut self.provider, *commit_ptr) {
                     Ok(()) => {
                         if remove_proposal {
                             log::debug!(
@@ -552,7 +552,7 @@ impl User {
             .build();
 
         let mls_group = MlsGroup::new_with_group_id(
-            &self.provider,
+            &mut self.provider,
             &self.identity.borrow().signer,
             &group_config,
             GroupId::from_slice(group_id),
@@ -597,7 +597,7 @@ impl User {
             .mls_group
             .borrow_mut()
             .add_members(
-                &self.provider,
+                &mut self.provider,
                 &self.identity.borrow().signer,
                 &[joiner_key_package.into()],
             )
@@ -617,7 +617,7 @@ impl User {
         group
             .mls_group
             .borrow_mut()
-            .merge_pending_commit(&self.provider)
+            .merge_pending_commit(&mut self.provider)
             .expect("error merging pending commit");
 
         // Finally, send Welcome to the joiner.
@@ -652,7 +652,7 @@ impl User {
             .mls_group
             .borrow_mut()
             .remove_members(
-                &self.provider,
+                &mut self.provider,
                 &self.identity.borrow().signer,
                 &[leaf_index],
             )
@@ -670,7 +670,7 @@ impl User {
         group
             .mls_group
             .borrow_mut()
-            .merge_pending_commit(&self.provider)
+            .merge_pending_commit(&mut self.provider)
             .expect("error merging pending commit");
 
         drop(groups);
@@ -697,9 +697,9 @@ impl User {
             .use_ratchet_tree_extension(true)
             .build();
         let mls_group =
-            StagedWelcome::new_from_welcome(&self.provider, &group_config, welcome, None)
+            StagedWelcome::new_from_welcome(&mut self.provider, &group_config, welcome, None)
                 .expect("Failed to create staged join")
-                .into_group(&self.provider)
+                .into_group(&mut self.provider)
                 .expect("Failed to create MlsGroup");
 
         let group_id = mls_group.group_id().to_vec();

@@ -11,7 +11,7 @@ use crate::group::tests_and_kats::utils::{
 // Creates a group with one member
 fn create_group(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
     wire_format_policy: WireFormatPolicy,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::random(provider.rand());
@@ -43,8 +43,8 @@ fn create_group(
 // Takes an existing group, adds a new member and sends a message from the second member to the first one, returns that message
 fn receive_message(
     ciphersuite: Ciphersuite,
-    alice_provider: &impl crate::storage::OpenMlsProvider,
-    bob_provider: &impl crate::storage::OpenMlsProvider,
+    alice_provider: &mut impl crate::storage::OpenMlsProvider,
+    bob_provider: &mut impl crate::storage::OpenMlsProvider,
     alice_group: &mut MlsGroup,
     alice_signer: &impl Signer,
 ) -> MlsMessageIn {
@@ -105,8 +105,8 @@ fn receive_message(
 #[openmls_test::openmls_test]
 fn test_wire_policy_positive() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
-        let alice_provider = &Provider::default();
-        let bob_provider = &Provider::default();
+        let mut alice_provider = &Provider::default();
+        let mut bob_provider = &Provider::default();
         let (mut alice_group, alice_credential_with_key_and_signer) =
             create_group(ciphersuite, alice_provider, *wire_format_policy);
         let message = receive_message(
@@ -125,8 +125,8 @@ fn test_wire_policy_positive() {
 // Test negative cases with only icompatible policies
 #[openmls_test::openmls_test]
 fn test_wire_policy_negative() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     // All combinations that are not part of WIRE_FORMAT_POLICIES
     let incompatible_policies = vec![
         WireFormatPolicy::new(

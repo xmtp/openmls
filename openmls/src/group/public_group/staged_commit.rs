@@ -431,7 +431,7 @@ impl PublicGroup {
     #[maybe_async::maybe_async]
     pub async fn merge_commit<Storage: PublicStorageProvider>(
         &mut self,
-        storage: &Storage,
+        storage: &mut Storage,
         staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<Storage::Error>> {
         match staged_commit.into_state() {

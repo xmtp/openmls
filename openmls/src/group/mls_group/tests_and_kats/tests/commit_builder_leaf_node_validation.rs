@@ -26,8 +26,8 @@ use crate::{
 #[openmls_test]
 fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabilities() {
     // Create parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     // Create capabilities that support the required extension
     let supporting_caps = Capabilities::builder()
@@ -116,8 +116,8 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabi
 #[openmls_test]
 fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
     // Create parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     // Create capabilities that support the required extension
     let supporting_caps = Capabilities::builder()

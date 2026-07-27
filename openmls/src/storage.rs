@@ -192,19 +192,19 @@ mod test {
     #[test]
     fn key_packages_key_upgrade() {
         // Store an old version
-        let provider = OpenMlsRustCrypto::default();
+        let mut provider = OpenMlsRustCrypto::default();
 
         let (credential_with_key, _kpb, signer, _pk) = setup_client(
             "Alice",
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            &provider,
+            &mut provider,
         );
 
         // build and store key package bundle
         let key_package_bundle = KeyPackageBuilder::new()
             .build(
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                &provider,
+                &mut provider,
                 &signer,
                 credential_with_key,
             )
@@ -216,7 +216,7 @@ mod test {
         // TODO #1566: Serialize the old storage. This should become a kat test file
 
         // ---- migration starts here ----
-        let new_storage_provider = MemoryStorage::default();
+        let mut new_storage_provider = MemoryStorage::default();
 
         // first, read the old data
         let read_key_package_bundle: crate::prelude::KeyPackageBundle =
@@ -237,7 +237,7 @@ mod test {
 
         // insert the data in the new format
         <MemoryStorage as StorageProvider<V_TEST>>::write_key_package(
-            &new_storage_provider,
+            &mut new_storage_provider,
             &key_package_ref,
             &new_key_package_bundle,
         )
@@ -246,7 +246,7 @@ mod test {
         // read the new value from storage
         let read_new_key_package_bundle: NewKeyPackageBundle =
             <MemoryStorage as StorageProvider<V_TEST>>::key_package(
-                &new_storage_provider,
+                &mut new_storage_provider,
                 &key_package_ref,
             )
             .unwrap()

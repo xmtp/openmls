@@ -185,7 +185,7 @@ impl LeafNode {
     /// returns the HPKE key pair along with the new leaf node.
     /// The caller is responsible for storing the private key.
     pub(crate) fn new(
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         signer: &impl Signer,
         new_leaf_node_params: NewLeafNodeParams,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
@@ -310,7 +310,7 @@ impl LeafNode {
         capabilities: Capabilities,
         extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<Provider::StorageError>> {
         // Note that this function is supposed to be used in the public API only
@@ -347,7 +347,7 @@ impl LeafNode {
     pub(crate) async fn update<Provider: OpenMlsProvider>(
         &mut self,
         ciphersuite: Ciphersuite,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         group_id: GroupId,
         leaf_index: LeafNodeIndex,

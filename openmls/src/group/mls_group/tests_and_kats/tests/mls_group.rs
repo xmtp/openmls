@@ -39,7 +39,7 @@ use crate::{
 
 #[openmls_test]
 fn test_mls_group_persistence<Provider: OpenMlsProvider>() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -83,9 +83,9 @@ fn test_mls_group_persistence<Provider: OpenMlsProvider>() {
 #[openmls_test]
 fn remover() {
     // Create separate providers for each participant to avoid storage conflicts
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -299,7 +299,7 @@ fn remover() {
 
 #[openmls_test]
 fn export_secret() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -361,8 +361,8 @@ fn export_secret() {
 fn safe_export_secret() {
     use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -396,7 +396,7 @@ fn safe_export_secret() {
     let alice_commit = alice_group_state
         .group
         .self_update(
-            &alice_group_state.party.core_state.provider,
+            &mut alice_group_state.party.core_state.provider,
             &alice_group_state.party.signer,
             LeafNodeParameters::default(),
         )
@@ -413,7 +413,7 @@ fn safe_export_secret() {
 
     alice_group_state
         .group
-        .merge_pending_commit(&alice_group_state.party.core_state.provider)
+        .merge_pending_commit(&mut alice_group_state.party.core_state.provider)
         .unwrap();
     let component_id = 0x8000;
 
@@ -421,7 +421,7 @@ fn safe_export_secret() {
     let processed_message = bob_group_state
         .group
         .process_message(
-            &bob_group_state.party.core_state.provider,
+            &mut bob_group_state.party.core_state.provider,
             MlsMessageIn::from(alice_commit.into_commit())
                 .into_protocol_message()
                 .unwrap(),
@@ -436,7 +436,7 @@ fn safe_export_secret() {
 
     bob_group_state
         .group
-        .merge_staged_commit(&bob_group_state.party.core_state.provider, *staged_commit)
+        .merge_staged_commit(&mut bob_group_state.party.core_state.provider, *staged_commit)
         .unwrap();
 
     let bob_application_secret = bob_group_state
@@ -479,8 +479,8 @@ fn safe_export_secret() {
 
 #[openmls_test]
 fn staged_join() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, alice_kpb, alice_signer, _alice_pk) =
@@ -669,8 +669,8 @@ fn test_invalid_plaintext() {
 
 #[openmls_test]
 fn test_verify_staged_commit_credentials() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -869,8 +869,8 @@ fn test_verify_staged_commit_credentials() {
 
 #[openmls_test]
 fn test_commit_with_update_path_leaf_node() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -1084,8 +1084,8 @@ fn test_commit_with_update_path_leaf_node() {
 
 #[openmls_test]
 fn test_pending_commit_logic() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -1285,8 +1285,8 @@ fn test_pending_commit_logic() {
 // creating a new group for a welcome message.
 #[openmls_test]
 fn key_package_deletion() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
@@ -1346,9 +1346,9 @@ fn key_package_deletion() {
 
 #[openmls_test]
 fn remove_prosposal_by_ref() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -1441,7 +1441,7 @@ fn remove_prosposal_by_ref() {
 
 #[openmls_test]
 fn max_past_epochs_join_config() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let max_past_epochs = 10;
 
     let create_config = MlsGroupCreateConfig::builder()
@@ -1468,7 +1468,7 @@ fn max_past_epochs_join_config() {
 // Test that the builder pattern accurately configures the new group.
 #[openmls_test]
 fn builder_pattern() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, alice_provider);
@@ -1617,7 +1617,7 @@ fn builder_pattern() {
 // Test the successful update of Group Context Extension with type Extension::Unknown(0xff11)
 #[openmls_test]
 fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Default>() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, alice_provider);
 
@@ -1668,7 +1668,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     );
 
     // === Alice adds Bob ===
-    let bob_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
         setup_client("Bob", ciphersuite, bob_provider);
 
@@ -1824,7 +1824,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
 
 #[openmls_test]
 fn update_proposal_bob() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, alice_provider);
 
@@ -1842,7 +1842,7 @@ fn update_proposal_bob() {
     .expect("error creating group");
 
     // === Alice adds Bob ===
-    let bob_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
         setup_client("Bob", ciphersuite, bob_provider);
 
@@ -1930,7 +1930,7 @@ fn update_proposal_bob() {
 
 #[openmls_test]
 fn update_proposal_alice() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, alice_provider);
 
@@ -1948,7 +1948,7 @@ fn update_proposal_alice() {
     .expect("error creating group");
 
     // === Alice adds Bob ===
-    let bob_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
         setup_client("Bob", ciphersuite, bob_provider);
 
@@ -2043,7 +2043,7 @@ fn update_proposal_alice() {
 fn test_update_group_context_with_unknown_extension_using_update_function<
     Provider: OpenMlsProvider + Default,
 >() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, alice_provider);
 
@@ -2176,8 +2176,8 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
 // Test that unknown group context and leaf node extensions can be used in groups
 #[openmls_test]
 fn unknown_extensions() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, alice_provider);
@@ -2277,9 +2277,9 @@ fn unknown_extensions() {
 #[openmls_test]
 fn join_multiple_groups_last_resort_extension() {
     // start with alice, bob, charlie, common config items
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
         setup_client("alice", ciphersuite, alice_provider);
     let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
@@ -2372,7 +2372,7 @@ fn join_multiple_groups_last_resort_extension() {
 
 #[openmls_test]
 fn deletion() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let (alice_credential_with_key, alice_kpb, alice_signer, alice_pk) =
         setup_client("alice", ciphersuite, alice_provider);
 
@@ -2466,7 +2466,7 @@ fn deletion() {
 
 #[openmls_test::openmls_test]
 fn failed_groupinfo_decryption() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     let epoch = 123;
     let group_id = GroupId::random(provider.rand());
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -2581,8 +2581,8 @@ fn failed_groupinfo_decryption() {
 /// is broken.
 #[openmls_test::openmls_test]
 fn update_path() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // === Alice creates a group with her and Bob ===
     // TODO: don't let alice and bob share the provider
@@ -2670,8 +2670,8 @@ fn update_path() {
 // Test several scenarios when PSKs are used in a group
 #[openmls_test::openmls_test]
 fn psks() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Basic group setup.
     let (
@@ -2756,8 +2756,8 @@ fn psks() {
 // Test several scenarios when PSKs are used in a group
 #[openmls_test::openmls_test]
 fn staged_commit_creation() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     // Basic group setup.
     let (alice_credential_with_key, alice_signature_keys, bob_key_package_bundle, _) =
         setup_alice_bob(ciphersuite, alice_provider, bob_provider);
@@ -2813,7 +2813,7 @@ fn staged_commit_creation() {
 #[openmls_test::openmls_test]
 fn own_commit_processing() {
     // Basic group setup.
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let (alice_credential_with_key, alice_signature_keys) =
         new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 
@@ -2859,9 +2859,9 @@ fn proposal_application_after_self_was_removed() {
     // everyone's membership list is as expected.
 
     // Basic group setup.
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     let (alice_credential_with_key, _, alice_signature_keys, _pk) =
         setup_client("Alice", ciphersuite, alice_provider);
@@ -3033,9 +3033,9 @@ fn proposal_application_after_self_was_removed_ref() {
     // everyone's membership list is as expected.
 
     // Basic group setup.
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     let (alice_credential_with_key, _, alice_signature_keys, _pk) =
         setup_client("Alice", ciphersuite, alice_provider);
@@ -3228,8 +3228,8 @@ fn proposal_application_after_self_was_removed_ref() {
 // Test processing of own commits
 #[openmls_test::openmls_test]
 fn signature_key_rotation() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let old_credential_with_key = alice_pre_group.credential_with_key.clone();
@@ -3259,7 +3259,7 @@ fn signature_key_rotation() {
         .expect("Could not add member");
 
     // Generate a new signer for Alice
-    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
+    let mut new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
 
     // Create a commit that updates Alice's signer
     let [alice_group_state] = group_state.members_mut(&["alice"]);
@@ -3288,7 +3288,7 @@ fn signature_key_rotation() {
     let err = alice_group_state
         .group
         .self_update_with_new_signer(
-            &alice_group_state.party.core_state.provider,
+            &mut alice_group_state.party.core_state.provider,
             &alice_group_state.party.signer,
             new_signer.clone(),
             leaf_node_parameters,
@@ -3304,7 +3304,7 @@ fn signature_key_rotation() {
     let bundle = alice_group_state
         .group
         .self_update_with_new_signer(
-            &alice_group_state.party.core_state.provider,
+            &mut alice_group_state.party.core_state.provider,
             &alice_group_state.party.signer,
             new_signer,
             LeafNodeParameters::default(),
@@ -3313,7 +3313,7 @@ fn signature_key_rotation() {
 
     alice_group_state
         .group
-        .merge_pending_commit(&alice_group_state.party.core_state.provider)
+        .merge_pending_commit(&mut alice_group_state.party.core_state.provider)
         .unwrap();
 
     group_state
@@ -3338,7 +3338,7 @@ fn signature_key_rotation() {
     let bundle = alice_group_state
         .group
         .self_update(
-            &alice_group_state.party.core_state.provider,
+            &mut alice_group_state.party.core_state.provider,
             &new_pre_group_state.signer,
             LeafNodeParameters::default(),
         )
@@ -3354,8 +3354,8 @@ fn signature_key_rotation() {
 #[openmls_test::openmls_test]
 fn group_replacement() {
     // Create a group with Alice and Bob
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
 
@@ -3365,14 +3365,14 @@ fn group_replacement() {
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
 
     let bob_kpb = KeyPackageBundle::generate(
-        &bob_party.provider,
+        &mut bob_party.provider,
         &bob_pre_group.signer,
         ciphersuite,
         bob_pre_group.credential_with_key.clone(),
     );
 
     let bob_kpb2 = KeyPackageBundle::generate(
-        &bob_party.provider,
+        &mut bob_party.provider,
         &bob_pre_group.signer,
         ciphersuite,
         bob_pre_group.credential_with_key.clone(),
@@ -3408,7 +3408,7 @@ fn group_replacement() {
         .with_group_id(group_id.clone())
         .use_ratchet_tree_extension(true)
         .build(
-            &alice_party.provider,
+            &mut alice_party.provider,
             &alice_signer,
             alice_credential_with_key.clone(),
         )
@@ -3421,7 +3421,7 @@ fn group_replacement() {
         .with_group_id(group_id.clone())
         .use_ratchet_tree_extension(true)
         .build(
-            &alice_party.provider,
+            &mut alice_party.provider,
             &alice_signer,
             alice_credential_with_key.clone(),
         )
@@ -3430,7 +3430,7 @@ fn group_replacement() {
     // Alice invites Bob to the new group
     let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
-            &alice_party.provider,
+            &mut alice_party.provider,
             &alice_signer,
             &[bob_kpb.key_package().clone()],
         )
@@ -3438,12 +3438,12 @@ fn group_replacement() {
 
     let welcome = welcome.into_welcome().unwrap();
     let processed_welcome = ProcessedWelcome::new_from_welcome(
-        &bob_party.provider,
+        &mut bob_party.provider,
         &mls_group_join_config,
         welcome.clone(),
     )
     .unwrap();
-    let err = JoinBuilder::new(&bob_party.provider, processed_welcome)
+    let err = JoinBuilder::new(&mut bob_party.provider, processed_welcome)
         .build()
         .expect_err("Bob joined the new group unexpectedly.");
     assert_eq!(err, WelcomeError::GroupAlreadyExists);
@@ -3454,7 +3454,7 @@ fn group_replacement() {
         .with_group_id(group_id)
         .use_ratchet_tree_extension(true)
         .build(
-            &alice_party.provider,
+            &mut alice_party.provider,
             &alice_signer,
             alice_credential_with_key,
         )
@@ -3463,7 +3463,7 @@ fn group_replacement() {
     // Alice invites Bob to the new group
     let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
-            &alice_party.provider,
+            &mut alice_party.provider,
             &alice_signer,
             &[bob_kpb2.key_package().clone()],
         )
@@ -3472,13 +3472,13 @@ fn group_replacement() {
     let welcome = welcome.into_welcome().unwrap();
 
     let processed_welcome = ProcessedWelcome::new_from_welcome(
-        &bob_party.provider,
+        &mut bob_party.provider,
         &mls_group_join_config,
         welcome.clone(),
     )
     .unwrap();
 
-    let _ = JoinBuilder::new(&bob_party.provider, processed_welcome)
+    let _ = JoinBuilder::new(&mut bob_party.provider, processed_welcome)
         .replace_old_group()
         .build()
         .expect("Bob failed to join the new group despite replace flag.");
@@ -3489,8 +3489,8 @@ fn group_replacement() {
 // `InvalidLeafNodeParameters` variant.
 #[openmls_test::openmls_test]
 fn propose_self_update_with_new_signer_mismatched_credential() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let old_credential_with_key = alice_pre_group.credential_with_key.clone();
@@ -3516,7 +3516,7 @@ fn propose_self_update_with_new_signer_mismatched_credential() {
         .expect("Could not add member");
 
     // Generate a new signer/credential for Alice.
-    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
+    let mut new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
 
     let [alice_group_state] = group_state.members_mut(&["alice"]);
 
@@ -3534,7 +3534,7 @@ fn propose_self_update_with_new_signer_mismatched_credential() {
     let err = alice_group_state
         .group
         .propose_self_update_with_new_signer(
-            &alice_group_state.party.core_state.provider,
+            &mut alice_group_state.party.core_state.provider,
             &alice_group_state.party.signer,
             new_signer,
             leaf_node_parameters,
@@ -3552,8 +3552,8 @@ fn propose_self_update_with_new_signer_mismatched_ciphersuite() {
     use crate::credentials::{BasicCredential, CredentialWithKey};
     use openmls_traits::types::SignatureScheme;
 
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -3602,7 +3602,7 @@ fn propose_self_update_with_new_signer_mismatched_ciphersuite() {
     let err = alice_group_state
         .group
         .propose_self_update_with_new_signer(
-            &alice_group_state.party.core_state.provider,
+            &mut alice_group_state.party.core_state.provider,
             &alice_group_state.party.signer,
             new_signer,
             LeafNodeParameters::default(),
@@ -3618,8 +3618,8 @@ fn propose_self_update_with_new_signer_mismatched_ciphersuite() {
 // Alice's leaf carries the NEW credential + NEW sig key.
 #[openmls_test::openmls_test]
 fn propose_self_update_with_new_signer_roundtrip() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -3644,7 +3644,7 @@ fn propose_self_update_with_new_signer_roundtrip() {
         .expect("Could not add member");
 
     // Alice generates a new signer + credential.
-    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
+    let mut new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
     let new_signature_key = new_pre_group_state
         .credential_with_key
         .signature_key
@@ -3661,7 +3661,7 @@ fn propose_self_update_with_new_signer_roundtrip() {
         alice_group_state
             .group
             .propose_self_update_with_new_signer(
-                &alice_group_state.party.core_state.provider,
+                &mut alice_group_state.party.core_state.provider,
                 &alice_group_state.party.signer,
                 new_signer_bundle,
                 LeafNodeParameters::default(),
@@ -3675,7 +3675,7 @@ fn propose_self_update_with_new_signer_roundtrip() {
         let processed = bob_group_state
             .group
             .process_message(
-                &bob_group_state.party.core_state.provider,
+                &mut bob_group_state.party.core_state.provider,
                 proposal_msg
                     .clone()
                     .into_protocol_message()
@@ -3697,13 +3697,13 @@ fn propose_self_update_with_new_signer_roundtrip() {
         let bundle = bob_group_state
             .group
             .commit_to_pending_proposals(
-                &bob_group_state.party.core_state.provider,
+                &mut bob_group_state.party.core_state.provider,
                 &bob_group_state.party.signer,
             )
             .expect("Bob failed to commit to pending proposals");
         bob_group_state
             .group
-            .merge_pending_commit(&bob_group_state.party.core_state.provider)
+            .merge_pending_commit(&mut bob_group_state.party.core_state.provider)
             .expect("Bob failed to merge his own commit");
         let (commit, _welcome, _gi) = bundle;
         commit
@@ -3737,7 +3737,7 @@ fn propose_self_update_with_new_signer_roundtrip() {
     let bundle = alice_group_state
         .group
         .self_update(
-            &alice_group_state.party.core_state.provider,
+            &mut alice_group_state.party.core_state.provider,
             &new_pre_group_state.signer,
             LeafNodeParameters::default(),
         )
@@ -3756,8 +3756,8 @@ fn propose_self_update_with_new_signer_roundtrip() {
 // queued Update's rotation.
 #[openmls_test::openmls_test]
 fn propose_self_update_with_new_signer_committed_by_proposer() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -3781,7 +3781,7 @@ fn propose_self_update_with_new_signer_committed_by_proposer() {
         })
         .expect("Could not add member");
 
-    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
+    let mut new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
     let new_signature_key = new_pre_group_state
         .credential_with_key
         .signature_key
@@ -3797,7 +3797,7 @@ fn propose_self_update_with_new_signer_committed_by_proposer() {
         alice_group_state
             .group
             .propose_self_update_with_new_signer(
-                &alice_group_state.party.core_state.provider,
+                &mut alice_group_state.party.core_state.provider,
                 &alice_group_state.party.signer,
                 new_signer_bundle,
                 LeafNodeParameters::default(),
@@ -3809,7 +3809,7 @@ fn propose_self_update_with_new_signer_committed_by_proposer() {
             credential_with_key: new_pre_group_state.credential_with_key.clone(),
         };
 
-        let provider = &alice_group_state.party.core_state.provider;
+        let mut provider = &mut alice_group_state.party.core_state.provider;
         let bundle = alice_group_state
             .group
             .commit_builder()

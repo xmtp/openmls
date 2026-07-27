@@ -24,7 +24,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions<KeyPackage>,
-    crypto_provider: &impl OpenMlsProvider,
+    crypto_provider: &mut impl OpenMlsProvider,
     signer: &SignatureKeyPair,
 ) -> KeyPackageBundle {
     KeyPackage::builder()

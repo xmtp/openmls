@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// Creates a simple test setup for various encoding tests.
-fn create_encoding_test_setup(provider: &impl crate::storage::OpenMlsProvider) -> TestSetup {
+fn create_encoding_test_setup(provider: &mut impl crate::storage::OpenMlsProvider) -> TestSetup {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -55,8 +55,8 @@ fn create_encoding_test_setup(provider: &impl crate::storage::OpenMlsProvider) -
 /// This test tests encoding and decoding of application messages.
 #[openmls_test::openmls_test]
 fn test_application_message_encoding() {
-    let provider = &Provider::default();
-    let test_setup = create_encoding_test_setup(provider);
+    let mut provider = &Provider::default();
+    let mut test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -97,8 +97,8 @@ fn test_application_message_encoding() {
 /// This test tests encoding and decoding of update proposals.
 #[openmls_test::openmls_test]
 fn test_update_proposal_encoding() {
-    let provider = &Provider::default();
-    let test_setup = create_encoding_test_setup(provider);
+    let mut provider = &Provider::default();
+    let mut test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -138,8 +138,8 @@ fn test_update_proposal_encoding() {
 /// This test tests encoding and decoding of add proposals.
 #[openmls_test::openmls_test]
 fn test_add_proposal_encoding() {
-    let provider = &Provider::default();
-    let test_setup = create_encoding_test_setup(provider);
+    let mut provider = &Provider::default();
+    let mut test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -184,8 +184,8 @@ fn test_add_proposal_encoding() {
 /// This test tests encoding and decoding of remove proposals.
 #[openmls_test::openmls_test]
 fn test_remove_proposal_encoding() {
-    let provider = &Provider::default();
-    let test_setup = create_encoding_test_setup(provider);
+    let mut provider = &Provider::default();
+    let mut test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -223,8 +223,8 @@ fn test_remove_proposal_encoding() {
 /// This test tests encoding and decoding of commit messages.
 #[openmls_test::openmls_test]
 fn test_commit_encoding() {
-    let provider = &Provider::default();
-    let test_setup = create_encoding_test_setup(provider);
+    let mut provider = &Provider::default();
+    let mut test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -270,8 +270,8 @@ fn test_commit_encoding() {
 
 #[openmls_test::openmls_test]
 fn test_welcome_message_encoding() {
-    let provider = &Provider::default();
-    let test_setup = create_encoding_test_setup(provider);
+    let mut provider = &Provider::default();
+    let mut test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")

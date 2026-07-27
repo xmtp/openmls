@@ -15,8 +15,8 @@ use openmls_test::openmls_test;
 #[openmls_test]
 fn staged_commit_next_epoch_values_match_merged_group() {
     // 1. Create parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     // 2. Generate pre-group states
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
@@ -51,7 +51,7 @@ fn staged_commit_next_epoch_values_match_merged_group() {
     let (commit_msg, _, _) = bob
         .group
         .self_update(
-            &bob.party.core_state.provider,
+            &mut bob.party.core_state.provider,
             &bob.party.signer,
             LeafNodeParameters::default(),
         )
@@ -60,7 +60,7 @@ fn staged_commit_next_epoch_values_match_merged_group() {
 
     // 7. Bob merges his pending commit
     bob.group
-        .merge_pending_commit(&bob.party.core_state.provider)
+        .merge_pending_commit(&mut bob.party.core_state.provider)
         .unwrap();
 
     // 8. Alice processes the commit to capture StagedCommit
@@ -68,7 +68,7 @@ fn staged_commit_next_epoch_values_match_merged_group() {
     let processed = alice
         .group
         .process_message(
-            &alice.party.core_state.provider,
+            &mut alice.party.core_state.provider,
             commit_msg.into_protocol_message().unwrap(),
         )
         .unwrap();
@@ -102,7 +102,7 @@ fn staged_commit_next_epoch_values_match_merged_group() {
     // 9. Alice merges the staged commit
     alice
         .group
-        .merge_staged_commit(&alice.party.core_state.provider, *staged_commit)
+        .merge_staged_commit(&mut alice.party.core_state.provider, *staged_commit)
         .unwrap();
 
     // === Verify staged values match merged group values ===
@@ -140,8 +140,8 @@ fn staged_commit_next_epoch_values_match_merged_group() {
 #[openmls_test]
 fn staged_commit_self_removed_returns_none() {
     // 1. Create parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     // 2. Generate pre-group states
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
@@ -179,7 +179,7 @@ fn staged_commit_self_removed_returns_none() {
     let (remove_msg, _, _) = alice
         .group
         .remove_members(
-            &alice.party.core_state.provider,
+            &mut alice.party.core_state.provider,
             &alice.party.signer,
             &[bob_leaf_index],
         )
@@ -188,7 +188,7 @@ fn staged_commit_self_removed_returns_none() {
     // 7. Alice merges her pending commit
     alice
         .group
-        .merge_pending_commit(&alice.party.core_state.provider)
+        .merge_pending_commit(&mut alice.party.core_state.provider)
         .unwrap();
 
     // 8. Bob processes the removal commit to capture StagedCommit
@@ -196,7 +196,7 @@ fn staged_commit_self_removed_returns_none() {
     let processed = bob
         .group
         .process_message(
-            &bob.party.core_state.provider,
+            &mut bob.party.core_state.provider,
             remove_msg.into_protocol_message().unwrap(),
         )
         .unwrap();
@@ -236,8 +236,8 @@ fn staged_commit_self_removed_returns_none() {
 #[openmls_test]
 fn staged_welcome_export_secret_matches_created_group() {
     // 1. Create parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
 
     // 2. Generate pre-group states
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
@@ -261,7 +261,7 @@ fn staged_welcome_export_secret_matches_created_group() {
     let (_commit_msg, welcome_msg, _group_info) = alice
         .group
         .add_members(
-            &alice_party.provider,
+            &mut alice_party.provider,
             &alice.party.signer,
             std::slice::from_ref(bob_pre_group.key_package_bundle.key_package()),
         )
@@ -270,7 +270,7 @@ fn staged_welcome_export_secret_matches_created_group() {
     // 6. Bob stages the Welcome
     let welcome = welcome_msg.into_welcome().unwrap();
     let staged_welcome =
-        StagedWelcome::new_from_welcome(&bob_party.provider, &join_config, welcome, None)
+        StagedWelcome::new_from_welcome(&mut bob_party.provider, &join_config, welcome, None)
             .expect("error staging welcome");
 
     // === Capture values from StagedWelcome ===
@@ -280,7 +280,7 @@ fn staged_welcome_export_secret_matches_created_group() {
 
     // 7. Bob creates an MlsGroup from the StagedWelcome
     let bob_group = staged_welcome
-        .into_group(&bob_party.provider)
+        .into_group(&mut bob_party.provider)
         .expect("error creating group");
 
     // === Verify staged values match group values ===
@@ -294,7 +294,7 @@ fn staged_welcome_export_secret_matches_created_group() {
     // 8. Alice merges the commit that added Bob to the group
     alice
         .group
-        .merge_pending_commit(&alice_party.provider)
+        .merge_pending_commit(&mut alice_party.provider)
         .expect("error merging pending commit");
 
     // === Verify the exported secrets match for Alice and Bob ===

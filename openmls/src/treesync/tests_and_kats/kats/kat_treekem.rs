@@ -74,7 +74,7 @@ struct LeafNodeInfoTest {
     signature_keypair: SignatureKeyPair,
 }
 
-pub fn run_test_vector(test: TreeKemTest, provider: &impl OpenMlsProvider) {
+pub fn run_test_vector(test: TreeKemTest, provider: &mut impl OpenMlsProvider) {
     // Skip unsupported cipher suites (for now).
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
 
@@ -326,7 +326,7 @@ pub fn run_test_vector(test: TreeKemTest, provider: &impl OpenMlsProvider) {
 
 #[allow(clippy::too_many_arguments)]
 fn apply_update_path(
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
     ciphersuite: Ciphersuite,
     treesync: TreeSync,
     sender: u32,
@@ -382,9 +382,9 @@ fn read_test_vectors_treekem() {
     let _ = pretty_env_logger::try_init();
     let tests: Vec<TreeKemTest> = read_json!("../../../../test_vectors/treekem.json");
 
-    let provider = OpenMlsRustCrypto::default();
+    let mut provider = OpenMlsRustCrypto::default();
 
     for test in tests.into_iter() {
-        run_test_vector(test, &provider);
+        run_test_vector(test, &mut provider);
     }
 }

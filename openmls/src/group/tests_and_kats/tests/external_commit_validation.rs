@@ -32,8 +32,8 @@ use crate::{
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
 #[openmls_test::openmls_test]
 fn test_valsem240() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ECValidationTestSetup {
         mut alice_group,
@@ -112,8 +112,8 @@ fn test_valsem240() {
 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
 #[openmls_test::openmls_test]
 fn test_valsem241() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Test with PublicMessage
     let ECValidationTestSetup {
@@ -187,8 +187,8 @@ fn test_valsem241() {
 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
 #[openmls_test::openmls_test]
 fn test_valsem242() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Test with PublicMessage
     let ECValidationTestSetup {
@@ -271,7 +271,7 @@ fn test_valsem242() {
 
     let deny_list = {
         let add_proposal = {
-            let charlie_provider = &Provider::default();
+            let mut charlie_provider = &Provider::default();
             let charlie_credential = generate_credential_with_key(
                 "Charlie".into(),
                 ciphersuite.signature_algorithm(),
@@ -360,8 +360,8 @@ fn test_valsem242() {
 // ValSem244: External Commit must not include any proposals by reference
 #[openmls_test::openmls_test]
 fn test_valsem244() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Test with PublicMessage
     let ECValidationTestSetup {
@@ -449,8 +449,8 @@ fn test_valsem244() {
 // ValSem245: External Commit: MUST contain a path.
 #[openmls_test::openmls_test]
 fn test_valsem245() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Test with PublicMessage
     let ECValidationTestSetup {
@@ -516,8 +516,8 @@ fn test_valsem245() {
 // ValSem246: External Commit: The signature of the PublicMessage MUST be verified with the credential of the KeyPackage in the included `path`.
 #[openmls_test::openmls_test]
 fn test_valsem246() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Test with PublicMessage
     let ECValidationTestSetup {
@@ -642,8 +642,8 @@ fn test_valsem246() {
 // External Commit should work when group use ciphertext WireFormat
 #[openmls_test::openmls_test]
 fn test_pure_ciphertext() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Test with PrivateMessage
 
@@ -671,8 +671,8 @@ fn test_pure_ciphertext() {
 // https://validation.openmls.tech/#valn0502
 #[openmls_test::openmls_test]
 fn test_external_commit_unsupported_group_context_extension() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Generate credentials
     let alice_credential = generate_credential_with_key(
@@ -768,8 +768,8 @@ mod utils {
     pub(super) fn validation_test_setup(
         wire_format_policy: WireFormatPolicy,
         ciphersuite: Ciphersuite,
-        alice_provider: &impl crate::storage::OpenMlsProvider,
-        bob_provider: &impl crate::storage::OpenMlsProvider,
+        alice_provider: &mut impl crate::storage::OpenMlsProvider,
+        bob_provider: &mut impl crate::storage::OpenMlsProvider,
     ) -> ECValidationTestSetup {
         // Generate credentials with keys
         let alice_credential = generate_credential_with_key(

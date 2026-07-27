@@ -42,11 +42,11 @@ fn setup<Provider: OpenMlsProvider + Default>(
     ciphersuite: Ciphersuite,
     policy: PastEpochDeletionPolicy,
 ) -> (Provider, impl Signer, MlsGroup) {
-    let alice_provider = Provider::default();
+    let mut alice_provider = Provider::default();
     let alice_credential_with_keys = generate_credential_with_key(
         b"Alice".to_vec(),
         ciphersuite.signature_algorithm(),
-        &alice_provider,
+        &mut alice_provider,
     );
     let alice_signer = alice_credential_with_keys.signer;
     // Define the MlsGroup configuration
@@ -57,7 +57,7 @@ fn setup<Provider: OpenMlsProvider + Default>(
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::new(
-        &alice_provider,
+        &mut alice_provider,
         &alice_signer,
         &mls_group_create_config,
         alice_credential_with_keys.credential_with_key.clone(),
@@ -71,7 +71,7 @@ fn setup<Provider: OpenMlsProvider + Default>(
 /// This function also ensures that the number of past epoch trees available is what is expected
 fn apply_and_merge_commits<Provider: OpenMlsProvider>(
     num_commits: usize,
-    provider: &Provider,
+    provider: &mut Provider,
     signer: &impl Signer,
     group: &mut MlsGroup,
     policy: PastEpochDeletionPolicy,
@@ -106,7 +106,7 @@ fn apply_and_merge_commits<Provider: OpenMlsProvider>(
 #[openmls_test::openmls_test]
 fn max_epochs_with_duration<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &Provider,
+    provider: &mut Provider,
 ) {
     let policy = PastEpochDeletionPolicy::MaxEpochs(2);
     // set up a provider, signer and group
@@ -116,14 +116,14 @@ fn max_epochs_with_duration<Provider: crate::storage::OpenMlsProvider>(
     let start = Instant::now();
 
     // apply and merge commits to advance the group epoch
-    apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
+    apply_and_merge_commits(4, &mut alice_provider, &alice_signer, &mut alice_group, policy);
 
     // sleep for INTERVAL + elapsed time, to ensure all secrets will be removed
     std::thread::sleep(INTERVAL + start.elapsed());
     // manually delete all before INTERVAL (early)
     alice_group
         .delete_past_epoch_secrets(
-            &alice_provider,
+            &mut alice_provider,
             PastEpochDeletion::older_than_duration(INTERVAL),
         )
         .expect("error deleting past epoch secrets");
@@ -160,13 +160,13 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
     let start = SystemTime::now();
 
     // apply and merge commits to advance the group epoch
-    apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
+    apply_and_merge_commits(4, &mut alice_provider, &alice_signer, &mut alice_group, policy);
 
     // manually delete all before start, leaving at most 3 entries
     // NOTE: all entries were inserted after `start`
     alice_group
         .delete_past_epoch_secrets(
-            &alice_provider,
+            &mut alice_provider,
             PastEpochDeletion::before_timestamp(start).max_past_epochs(3),
         )
         .expect("error deleting past epoch secrets");
@@ -180,7 +180,7 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
     // NOTE: all entries were inserted after `start`
     alice_group
         .delete_past_epoch_secrets(
-            &alice_provider,
+            &mut alice_provider,
             PastEpochDeletion::before_timestamp(start).max_past_epochs(1),
         )
         .expect("error deleting past epoch secrets");
@@ -193,7 +193,7 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
     // manually delete all before SystemTime::now()
     alice_group
         .delete_past_epoch_secrets(
-            &alice_provider,
+            &mut alice_provider,
             PastEpochDeletion::before_timestamp(SystemTime::now()),
         )
         .expect("error deleting past epoch secrets");
@@ -220,7 +220,7 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
 #[openmls_test::openmls_test]
 fn keep_all_policy_with_duration<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &Provider,
+    provider: &mut Provider,
 ) {
     let policy = PastEpochDeletionPolicy::KeepAll;
     // set up a provider, signer and group
@@ -230,7 +230,7 @@ fn keep_all_policy_with_duration<Provider: crate::storage::OpenMlsProvider>(
     let start = Instant::now();
 
     // apply and merge commits to advance the group epoch
-    apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
+    apply_and_merge_commits(4, &mut alice_provider, &alice_signer, &mut alice_group, policy);
 
     // sleep for INTERVAL + elapsed time`
     std::thread::sleep(INTERVAL + start.elapsed());
@@ -238,7 +238,7 @@ fn keep_all_policy_with_duration<Provider: crate::storage::OpenMlsProvider>(
     // manually delete all before
     alice_group
         .delete_past_epoch_secrets(
-            &alice_provider,
+            &mut alice_provider,
             PastEpochDeletion::older_than_duration(INTERVAL),
         )
         .expect("error deleting past epoch secrets");
@@ -265,7 +265,7 @@ fn keep_all_policy_with_duration<Provider: crate::storage::OpenMlsProvider>(
 #[openmls_test::openmls_test]
 fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &Provider,
+    provider: &mut Provider,
 ) {
     let policy = PastEpochDeletionPolicy::KeepAll;
 
@@ -274,12 +274,12 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
         setup::<Provider>(ciphersuite, policy.clone());
 
     // apply and merge commits to advance the group epoch
-    apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
+    apply_and_merge_commits(4, &mut alice_provider, &alice_signer, &mut alice_group, policy);
 
     // manually delete all before UNIX_EPOCH, leaving at most 5 entries
     alice_group
         .delete_past_epoch_secrets(
-            &alice_provider,
+            &mut alice_provider,
             PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH).max_past_epochs(5),
         )
         .expect("error deleting past epoch secrets");
@@ -292,7 +292,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     // manually delete all before UNIX_EPOCH, leaving at most 3 entries
     alice_group
         .delete_past_epoch_secrets(
-            &alice_provider,
+            &mut alice_provider,
             PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH).max_past_epochs(3),
         )
         .expect("error deleting past epoch secrets");
@@ -305,7 +305,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     // manually delete all before UNIX_EPOCH, leaving at most 1 entry
     alice_group
         .delete_past_epoch_secrets(
-            &alice_provider,
+            &mut alice_provider,
             PastEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH).max_past_epochs(1),
         )
         .expect("error deleting past epoch secrets");
@@ -318,7 +318,7 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     // manually delete all before SystemTime::now()
     alice_group
         .delete_past_epoch_secrets(
-            &alice_provider,
+            &mut alice_provider,
             PastEpochDeletion::before_timestamp(SystemTime::now()),
         )
         .expect("error deleting past epoch secrets");
@@ -354,12 +354,12 @@ fn delete_all<Provider: crate::storage::OpenMlsProvider>() {
             setup::<Provider>(ciphersuite, policy.clone());
 
         // apply and merge commits to advance the group epoch
-        apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
+        apply_and_merge_commits(4, &mut alice_provider, &alice_signer, &mut alice_group, policy);
 
         // manually delete all before start, leaving at most 3 entries
         // NOTE: all entries were inserted after `start`
         alice_group
-            .delete_past_epoch_secrets(&alice_provider, PastEpochDeletion::delete_all())
+            .delete_past_epoch_secrets(&mut alice_provider, PastEpochDeletion::delete_all())
             .expect("error deleting past epoch secrets");
         // assert all past secrets deleted
         assert_eq!(
@@ -383,7 +383,7 @@ fn delete_all<Provider: crate::storage::OpenMlsProvider>() {
 /// `Some` and `None` timestamp entries
 fn setup_tree_store_with_timestamps<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &Provider,
+    provider: &mut Provider,
     entries: &[Option<SystemTime>],
 ) -> MessageSecretsStore {
     // Create a store
@@ -437,7 +437,7 @@ fn test_update_policy_persistence<Provider: OpenMlsProvider>(ciphersuite: Cipher
         PastEpochDeletionPolicy::MaxEpochs(2),
     ] {
         alice_group
-            .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+            .set_past_epoch_deletion_policy(&mut alice_provider, new_policy.clone())
             .unwrap();
         // load group from storage
         let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
@@ -458,7 +458,7 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
         setup::<Provider>(ciphersuite, policy.clone());
 
     // apply and merge commits to advance the group epoch
-    apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
+    apply_and_merge_commits(4, &mut alice_provider, &alice_signer, &mut alice_group, policy);
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
         3
@@ -467,16 +467,16 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
     // update the policy
     let new_policy = PastEpochDeletionPolicy::MaxEpochs(5);
     alice_group
-        .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+        .set_past_epoch_deletion_policy(&mut alice_provider, new_policy.clone())
         .expect("error updating policy");
 
     // apply and merge additional commits to advance the group epoch
     for _ in 0..10 {
         alice_group
-            .update_group_context_extensions(&alice_provider, Extensions::empty(), &alice_signer)
+            .update_group_context_extensions(&mut alice_provider, Extensions::empty(), &alice_signer)
             .expect("error building commit");
         alice_group
-            .merge_pending_commit(&alice_provider)
+            .merge_pending_commit(&mut alice_provider)
             .expect("error merging commit");
     }
     // check that the policy was updated on the group
@@ -489,7 +489,7 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
     // update the policy
     let new_policy = PastEpochDeletionPolicy::MaxEpochs(2);
     alice_group
-        .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+        .set_past_epoch_deletion_policy(&mut alice_provider, new_policy.clone())
         .expect("error updating policy");
     // check that the policy was updated on the group
     assert_eq!(alice_group.past_epoch_deletion_policy(), &new_policy);
@@ -502,16 +502,16 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
     // update the policy
     let new_policy = PastEpochDeletionPolicy::KeepAll;
     alice_group
-        .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+        .set_past_epoch_deletion_policy(&mut alice_provider, new_policy.clone())
         .expect("error updating policy");
 
     // apply and merge additional commits to advance the group epoch
     for _ in 0..8 {
         alice_group
-            .update_group_context_extensions(&alice_provider, Extensions::empty(), &alice_signer)
+            .update_group_context_extensions(&mut alice_provider, Extensions::empty(), &alice_signer)
             .expect("error building commit");
         alice_group
-            .merge_pending_commit(&alice_provider)
+            .merge_pending_commit(&mut alice_provider)
             .expect("error merging commit");
     }
     // check that the policy was updated on the group
@@ -523,7 +523,7 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
 
     // delete all past epoch secrets
     alice_group
-        .delete_past_epoch_secrets(&alice_provider, PastEpochDeletion::delete_all())
+        .delete_past_epoch_secrets(&mut alice_provider, PastEpochDeletion::delete_all())
         .expect("error deleting past epoch secrets");
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -532,10 +532,10 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
 
     // apply and merge an additional commit to advance the group epoch
     alice_group
-        .update_group_context_extensions(&alice_provider, Extensions::empty(), &alice_signer)
+        .update_group_context_extensions(&mut alice_provider, Extensions::empty(), &alice_signer)
         .expect("error building commit");
     alice_group
-        .merge_pending_commit(&alice_provider)
+        .merge_pending_commit(&mut alice_provider)
         .expect("error merging commit");
     // NOTE: now, the number of past epoch secrets is less than the maximum
     // configured by the policy that will be applied next.
@@ -547,7 +547,7 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
     // update the policy
     let new_policy = PastEpochDeletionPolicy::MaxEpochs(2);
     alice_group
-        .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+        .set_past_epoch_deletion_policy(&mut alice_provider, new_policy.clone())
         .expect("error updating policy");
     // check that the store was resized correctly
     assert_eq!(
@@ -572,7 +572,7 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
 /// current MessageSecrets
 #[openmls_test::openmls_test]
 fn test_secret_tree_store_migration_next_epoch_timestamp() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     // Set up a secret tree store with mixed Some and None timestamps
     // NOTE: For completeness, this sequence of epoch tree timestamps is tested.
@@ -601,7 +601,7 @@ fn test_secret_tree_store_migration_next_epoch_timestamp() {
 /// current MessageSecrets
 #[openmls_test::openmls_test]
 fn test_secret_tree_store_migration_next_epoch_duration() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     // Set up a secret tree store with mixed Some and None timestamps
     // NOTE: For completeness, this sequence of epoch tree timestamps is tested.
@@ -632,7 +632,7 @@ fn test_secret_tree_store_migration_next_epoch_duration() {
 /// deleting by a provided timestamp
 #[openmls_test::openmls_test]
 fn test_secret_tree_store_mixed_delete_by_timestamp() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     let timestamp_before = SystemTime::now();
 
@@ -670,7 +670,7 @@ fn test_secret_tree_store_mixed_delete_by_timestamp() {
 /// deleting by a provided duration
 #[openmls_test::openmls_test]
 fn test_secret_tree_store_mixed_delete_by_duration() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     // Set up a secret tree store with mixed Some and None timestamps
     // NOTE: For completeness, this sequence of epoch tree timestamps is tested.
@@ -706,7 +706,7 @@ fn test_secret_tree_store_mixed_delete_by_duration() {
 /// Basic test for the message secrets store
 #[openmls_test::openmls_test]
 fn test_secret_tree_store() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     // Create a store that keeps up to 3 epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
         &PastEpochDeletionPolicy::MaxEpochs(3),
@@ -748,7 +748,7 @@ fn test_secret_tree_store() {
 
 #[openmls_test::openmls_test]
 fn test_empty_secret_tree_store() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     // Create a store that keeps no epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
         &PastEpochDeletionPolicy::MaxEpochs(0),

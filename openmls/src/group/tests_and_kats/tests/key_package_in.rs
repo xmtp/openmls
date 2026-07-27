@@ -45,7 +45,7 @@ impl FrankenKeyPackage {
 #[openmls_test::openmls_test]
 fn valn0108() {
     // Generate state for Alice
-    let alice_party = CorePartyState::<Provider>::new("alice");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let alice_key_package = alice_pre_group.key_package_bundle.key_package();
 

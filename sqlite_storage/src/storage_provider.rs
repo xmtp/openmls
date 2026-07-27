@@ -75,7 +75,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error> {
@@ -90,7 +90,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         LeafNode: traits::LeafNode<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         leaf_node: &LeafNode,
     ) -> Result<(), Self::Error> {
@@ -102,7 +102,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
         QueuedProposal: traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
         proposal: &QueuedProposal,
@@ -115,7 +115,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         TreeSync: traits::TreeSync<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         tree: &TreeSync,
     ) -> Result<(), Self::Error> {
@@ -130,7 +130,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
@@ -145,7 +145,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         GroupContext: traits::GroupContext<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
@@ -160,7 +160,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ConfirmationTag: traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
@@ -175,7 +175,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupState: traits::GroupState<STORAGE_PROVIDER_VERSION>,
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         group_state: &GroupState,
     ) -> Result<(), Self::Error> {
@@ -190,7 +190,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         MessageSecrets: traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         message_secrets: &MessageSecrets,
     ) -> Result<(), Self::Error> {
@@ -206,7 +206,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::Error> {
@@ -221,7 +221,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error> {
@@ -237,7 +237,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::Error> {
@@ -253,7 +253,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         SignaturePublicKey: traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         public_key: &SignaturePublicKey,
         signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::Error> {
@@ -265,7 +265,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         EncryptionKey: traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         public_key: &EncryptionKey,
         key_pair: &HpkeKeyPair,
     ) -> Result<(), Self::Error> {
@@ -277,7 +277,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         EpochKey: traits::EpochKey<STORAGE_PROVIDER_VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
@@ -295,7 +295,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         HashReference: traits::HashReference<STORAGE_PROVIDER_VERSION>,
         KeyPackage: traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         hash_ref: &HashReference,
         key_package: &KeyPackage,
     ) -> Result<(), Self::Error> {
@@ -306,7 +306,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         PskId: traits::PskId<STORAGE_PROVIDER_VERSION>,
         PskBundle: traits::PskBundle<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         psk_id: &PskId,
         psk: &PskBundle,
     ) -> Result<(), Self::Error> {
@@ -317,7 +317,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
         StorableGroupData::load::<C, _>(
@@ -331,7 +331,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         LeafNode: traits::LeafNode<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error> {
         StorableLeafNode::load::<C, _>(self.connection.borrow(), group_id)
@@ -341,7 +341,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
         StorableProposal::<u8, ProposalRef>::load_refs::<C, _>(self.connection.borrow(), group_id)
@@ -352,7 +352,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
         QueuedProposal: traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         StorableProposal::load::<C, _>(self.connection.borrow(), group_id)
@@ -362,7 +362,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         TreeSync: traits::TreeSync<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
         StorableGroupData::load::<C, _>(self.connection.borrow(), group_id, GroupDataType::Tree)
@@ -372,7 +372,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         GroupContext: traits::GroupContext<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::Error> {
         StorableGroupData::load::<C, _>(self.connection.borrow(), group_id, GroupDataType::Context)
@@ -382,7 +382,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         StorableGroupData::load::<C, _>(
@@ -396,7 +396,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ConfirmationTag: traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
         StorableGroupData::load::<C, _>(
@@ -410,7 +410,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupState: traits::GroupState<STORAGE_PROVIDER_VERSION>,
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error> {
         StorableGroupData::load::<C, _>(
@@ -424,7 +424,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         MessageSecrets: traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<MessageSecrets>, Self::Error> {
         StorableGroupData::load::<C, _>(
@@ -438,7 +438,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<ResumptionPskStore>, Self::Error> {
         StorableGroupData::load::<C, _>(
@@ -452,7 +452,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error> {
         StorableGroupData::load::<C, _>(
@@ -466,7 +466,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
         StorableGroupData::load::<C, _>(
@@ -480,7 +480,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         SignaturePublicKey: traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         public_key: &SignaturePublicKey,
     ) -> Result<Option<SignatureKeyPair>, Self::Error> {
         StorableSignatureKeyPairs::load::<C, _>(self.connection.borrow(), public_key)
@@ -490,7 +490,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
         EncryptionKey: traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         public_key: &EncryptionKey,
     ) -> Result<Option<HpkeKeyPair>, Self::Error> {
         StorableEncryptionKeyPair::load::<C, _>(self.connection.borrow(), public_key)
@@ -501,7 +501,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         EpochKey: traits::EpochKey<STORAGE_PROVIDER_VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
@@ -518,7 +518,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>,
         KeyPackage: traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         hash_ref: &KeyPackageRef,
     ) -> Result<Option<KeyPackage>, Self::Error> {
         StorableKeyPackage::load::<C, _>(self.connection.borrow(), hash_ref)
@@ -528,7 +528,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         PskBundle: traits::PskBundle<STORAGE_PROVIDER_VERSION>,
         PskId: traits::PskId<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error> {
         StorablePskBundle::load::<C, _>(self.connection.borrow(), psk_id)
@@ -538,7 +538,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
@@ -546,14 +546,14 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_own_leaf_nodes<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id).delete_leaf_nodes::<C>(self.connection.borrow())
     }
 
     fn delete_group_config<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id)
@@ -561,7 +561,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_tree<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id)
@@ -569,7 +569,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_confirmation_tag<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id)
@@ -577,7 +577,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_group_state<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id)
@@ -585,7 +585,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_context<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id)
@@ -593,7 +593,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_interim_transcript_hash<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id).delete_group_data::<C>(
@@ -603,7 +603,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_message_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id)
@@ -611,7 +611,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id)
@@ -619,7 +619,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_own_leaf_index<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id)
@@ -627,7 +627,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_group_epoch_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id)
@@ -638,7 +638,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id).delete_all_proposals::<C>(self.connection.borrow())?;
@@ -648,7 +648,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     fn delete_signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         public_key: &SignaturePublicKey,
     ) -> Result<(), Self::Error> {
         StorableSignaturePublicKeyRef(public_key).delete::<C>(self.connection.borrow())
@@ -657,7 +657,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     fn delete_encryption_key_pair<
         EncryptionKey: traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         public_key: &EncryptionKey,
     ) -> Result<(), Self::Error> {
         StorableEncryptionPublicKeyRef(public_key).delete::<C>(self.connection.borrow())
@@ -667,7 +667,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         EpochKey: traits::EpochKey<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
@@ -680,14 +680,14 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_key_package<KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         StorableHashRef(hash_ref).delete_key_package::<C>(self.connection.borrow())
     }
 
     fn delete_psk<PskKey: traits::PskId<STORAGE_PROVIDER_VERSION>>(
-        &self,
+        &mut self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
         StorablePskIdRef(psk_id).delete::<C>(self.connection.borrow())
@@ -698,7 +698,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
         application_export_tree: &ApplicationExportTree,
     ) -> Result<(), Self::Error> {
@@ -714,7 +714,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error> {
         StorableGroupData::load::<C, _>(
@@ -729,7 +729,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
     >(
-        &self,
+        &mut self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id).delete_group_data::<C>(

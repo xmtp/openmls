@@ -227,7 +227,7 @@ pub struct CryptoBasicsTestCase {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(
     test: CryptoBasicsTestCase,
-    provider: &OpenMlsRustCrypto,
+    provider: &mut OpenMlsRustCrypto,
 ) -> Result<(), String> {
     use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext};
 
@@ -412,11 +412,11 @@ fn read_test_vectors() {
 
     log::debug!("Generating new basic crypto test vectors ...");
 
-    let provider = OpenMlsRustCrypto::default();
+    let mut provider = OpenMlsRustCrypto::default();
 
     let tests: Vec<CryptoBasicsTestCase> = read_json!("../../../test_vectors/crypto-basics.json");
     for test in tests {
-        match run_test_vector(test, &provider) {
+        match run_test_vector(test, &mut provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking crypto basic test vector.\n{e:?}"),
         }

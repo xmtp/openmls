@@ -79,7 +79,7 @@ pub struct SecretTree {
 
 pub fn run_test_vector<Provider: openmls::storage::OpenMlsProvider>(
     test: SecretTree,
-    provider: &Provider,
+    provider: &mut Provider,
 ) -> Result<(), String> {
     use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 
@@ -184,7 +184,7 @@ pub fn run_test_vector<Provider: openmls::storage::OpenMlsProvider>(
 
 #[openmls_test::openmls_test]
 fn read_test_vectors_st() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");

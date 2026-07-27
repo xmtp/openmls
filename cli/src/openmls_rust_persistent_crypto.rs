@@ -25,8 +25,8 @@ impl OpenMlsProvider for OpenMlsRustPersistentCrypto {
         &self.crypto
     }
 
-    fn storage(&self) -> &Self::StorageProvider {
-        &self.storage
+    fn storage(&mut self) -> &mut Self::StorageProvider {
+        &mut self.storage
     }
 }
 

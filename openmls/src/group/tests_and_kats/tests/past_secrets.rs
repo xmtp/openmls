@@ -11,7 +11,7 @@ use crate::{
 #[openmls_test::openmls_test]
 fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &Provider,
+    provider: &mut Provider,
 ) {
     let alice_provider = &mut Provider::default();
     let bob_provider = &mut Provider::default();

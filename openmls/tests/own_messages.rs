@@ -7,8 +7,8 @@ use test_utils::new_credential;
 fn own_messages_attempted_decryption() {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Generate credentials with keys
     let (alice_credential, alice_signer) =

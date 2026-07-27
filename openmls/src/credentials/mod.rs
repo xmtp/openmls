@@ -478,7 +478,7 @@ pub mod test_utils {
     /// [`Credential`]: super::Credential
     #[maybe_async::maybe_async]
     pub async fn new_credential(
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         identity: &[u8],
         signature_scheme: SignatureScheme,
     ) -> (CredentialWithKey, SignatureKeyPair) {

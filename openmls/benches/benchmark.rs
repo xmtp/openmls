@@ -9,7 +9,7 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 
-fn criterion_key_package(c: &mut Criterion, provider: &impl OpenMlsProvider) {
+fn criterion_key_package(c: &mut Criterion, provider: &mut impl OpenMlsProvider) {
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
         c.bench_function(
             &format!("KeyPackage create bundle with ciphersuite: {ciphersuite:?}"),
@@ -37,7 +37,7 @@ fn criterion_key_package(c: &mut Criterion, provider: &impl OpenMlsProvider) {
     }
 }
 
-fn create_welcome(c: &mut Criterion, provider: &impl OpenMlsProvider) {
+fn create_welcome(c: &mut Criterion, provider: &mut impl OpenMlsProvider) {
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
         c.bench_function(
             &format!("Create a welcome message with ciphersuite: {ciphersuite:?}"),
@@ -100,7 +100,7 @@ fn create_welcome(c: &mut Criterion, provider: &impl OpenMlsProvider) {
     }
 }
 
-fn join_group(c: &mut Criterion, provider: &impl OpenMlsProvider) {
+fn join_group(c: &mut Criterion, provider: &mut impl OpenMlsProvider) {
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
         c.bench_function(
             &format!("Join a group with ciphersuite: {ciphersuite:?}"),
@@ -185,7 +185,7 @@ fn join_group(c: &mut Criterion, provider: &impl OpenMlsProvider) {
     }
 }
 
-fn create_commit(c: &mut Criterion, provider: &impl OpenMlsProvider) {
+fn create_commit(c: &mut Criterion, provider: &mut impl OpenMlsProvider) {
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
         c.bench_function(
             &format!("Create a commit with ciphersuite: {ciphersuite:?}"),
@@ -279,7 +279,7 @@ fn create_commit(c: &mut Criterion, provider: &impl OpenMlsProvider) {
 }
 
 fn kp_bundle_rust_crypto(c: &mut Criterion) {
-    let provider = &OpenMlsRustCrypto::default();
+    let mut provider = &OpenMlsRustCrypto::default();
     println!("provider: RustCrypto");
     criterion_key_package(c, provider);
 }

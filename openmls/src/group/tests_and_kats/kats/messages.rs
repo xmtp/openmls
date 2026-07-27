@@ -117,19 +117,19 @@ pub struct MessagesTestVector {
 }
 
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
-    let provider = OpenMlsRustCrypto::default();
+    let mut provider = OpenMlsRustCrypto::default();
 
     let alice_credential_with_key_and_signer = generate_credential_with_key(
         b"Alice".to_vec(),
         SignatureScheme::from(ciphersuite),
-        &provider,
+        &mut provider,
     );
 
     // Create a proposal to update the user's key package.
     let alice_key_package = generate_key_package(
         ciphersuite,
         Extensions::default(),
-        &provider,
+        &mut provider,
         alice_credential_with_key_and_signer.clone(),
     );
 
@@ -139,7 +139,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .max_past_epochs(2)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
-            &provider,
+            &mut provider,
             &alice_credential_with_key_and_signer.signer,
             alice_credential_with_key_and_signer
                 .credential_with_key
@@ -178,7 +178,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 alice_group.group_id().clone(),
                 alice_group.own_leaf_index(),
             )),
-            &provider,
+            &mut provider,
             &alice_credential_with_key_and_signer.signer.clone(),
         )
         .unwrap()
@@ -192,11 +192,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let bob_credential_with_key_and_signer = generate_credential_with_key(
         b"Bob".to_vec(),
         SignatureScheme::from(ciphersuite),
-        &provider,
+        &mut provider,
     );
 
     let bob_key_package_bundle = KeyPackageBundle::generate(
-        &provider,
+        &mut provider,
         &bob_credential_with_key_and_signer.signer,
         ciphersuite,
         bob_credential_with_key_and_signer.credential_with_key,
@@ -244,19 +244,19 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let (proposal_pt, _) = alice_group
         .propose_add_member(
-            &provider,
+            &mut provider,
             &alice_credential_with_key_and_signer.signer,
             bob_key_package_bundle.key_package(),
         )
         .unwrap();
 
     let (commit_pt, welcome, _) = alice_group
-        .commit_to_pending_proposals(&provider, &alice_credential_with_key_and_signer.signer)
+        .commit_to_pending_proposals(&mut provider, &alice_credential_with_key_and_signer.signer)
         .unwrap();
 
     let welcome = welcome.unwrap();
 
-    alice_group.merge_pending_commit(&provider).unwrap();
+    alice_group.merge_pending_commit(&mut provider).unwrap();
 
     let commit_pm = match commit_pt.clone().body {
         MlsMessageBodyOut::PublicMessage(pm) => pm,
@@ -271,7 +271,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let application_ctxt = alice_group
         .create_message(
-            &provider,
+            &mut provider,
             &alice_credential_with_key_and_signer.signer,
             b"test",
         )

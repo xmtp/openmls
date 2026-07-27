@@ -112,7 +112,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         .is_test(true)
         .try_init();
 
-    let provider = OpenMlsRustCrypto::default();
+    let mut provider = OpenMlsRustCrypto::default();
 
     // ---------------------------------------------------------------------------------------------
 

@@ -65,7 +65,7 @@ impl Member {
         let signer: SignatureKeyPair = serde_json::from_slice(signer).unwrap();
         let group_id: GroupId = serde_json::from_slice(group_id).unwrap();
 
-        let provider = OpenMlsRustCrypto::default();
+        let mut provider = OpenMlsRustCrypto::default();
         let mut ks_map = provider.storage().values.write().unwrap();
         for (key, value) in serializable_storage.values {
             ks_map.insert(
@@ -93,7 +93,7 @@ impl Member {
 #[inline(always)]
 fn process_commit(
     group: &mut MlsGroup,
-    provider: &OpenMlsRustCrypto,
+    provider: &mut OpenMlsRustCrypto,
     commit: openmls::prelude::MlsMessageOut,
 ) {
     let processed_message = group
@@ -112,7 +112,7 @@ fn process_commit(
 #[inline(always)]
 fn self_update(
     group: &mut MlsGroup,
-    provider: &OpenMlsRustCrypto,
+    provider: &mut OpenMlsRustCrypto,
     signer: &SignatureKeyPair,
 ) -> MlsMessageOut {
     let commit = group
@@ -129,7 +129,7 @@ fn self_update(
 #[inline(always)]
 fn remove_member(
     group: &mut MlsGroup,
-    provider: &OpenMlsRustCrypto,
+    provider: &mut OpenMlsRustCrypto,
     signer: &SignatureKeyPair,
 ) -> MlsMessageOut {
     let (commit, _, _group_info) = group
@@ -150,7 +150,7 @@ fn new_member(
     CredentialWithKey,
     openmls::prelude::KeyPackageBundle,
 ) {
-    let member_provider = OpenMlsRustCrypto::default();
+    let mut member_provider = OpenMlsRustCrypto::default();
     let credential = BasicCredential::new(name.into());
     let signer = SignatureKeyPair::new(CIPHERSUITE.signature_algorithm()).unwrap();
     let credential_with_key = CredentialWithKey {
@@ -160,7 +160,7 @@ fn new_member(
     let key_package = KeyPackage::builder()
         .build(
             CIPHERSUITE,
-            &member_provider,
+            &mut member_provider,
             &signer,
             credential_with_key.clone(),
         )
@@ -171,7 +171,7 @@ fn new_member(
 #[inline(always)]
 fn add_member(
     group: &mut MlsGroup,
-    provider: &OpenMlsRustCrypto,
+    provider: &mut OpenMlsRustCrypto,
     signer: &SignatureKeyPair,
     key_package: KeyPackage,
 ) -> MlsMessageOut {
@@ -214,7 +214,7 @@ mod generate {
             members.0.into_iter().zip(members.1).collect()
         } else {
             // Create a new setup.
-            let creator_provider = OpenMlsRustCrypto::default();
+            let mut creator_provider = OpenMlsRustCrypto::default();
             let creator_credential = BasicCredential::new("Creator".to_string().into());
             let creator_signer = SignatureKeyPair::new(CIPHERSUITE.signature_algorithm()).unwrap();
             let creator_credential_with_key = CredentialWithKey {
@@ -224,7 +224,7 @@ mod generate {
 
             // Create the group
             let creator_group = MlsGroup::new(
-                &creator_provider,
+                &mut creator_provider,
                 &creator_signer,
                 &mls_group_create_config,
                 creator_credential_with_key.clone(),
@@ -251,7 +251,7 @@ mod generate {
 
             let creator = &mut members[0];
             let creator_group = &mut creator.0;
-            let creator_provider = &creator.1.provider;
+            let mut creator_provider = &mut creator.1.provider;
             let creator_signer = &creator.1.signer;
             let (commit, welcome, _) = creator_group
                 .add_members(
@@ -270,18 +270,18 @@ mod generate {
                 .into_welcome()
                 .expect("expected the message to be a welcome message");
             let mut member_i_group = StagedWelcome::new_from_welcome(
-                &member_provider,
+                &mut member_provider,
                 mls_group_create_config.join_config(),
                 welcome,
                 Some(creator_group.export_ratchet_tree().into()),
             )
             .unwrap()
-            .into_group(&member_provider)
+            .into_group(&mut member_provider)
             .unwrap();
 
             // Merge commit on all other members
             for (group, member) in members.iter_mut().skip(1) {
-                process_commit(group, &member.provider, commit.clone());
+                process_commit(group, &mut member.provider, commit.clone());
             }
 
             // Depending on the variant we do something here.
@@ -289,9 +289,9 @@ mod generate {
                 SetupVariants::Bare => (), // Nothing to do in this case.
                 SetupVariants::CommitAfterJoin => {
                     // The new member commits and everyone else processes it.
-                    let update_commit = self_update(&mut member_i_group, &member_provider, &signer);
+                    let update_commit = self_update(&mut member_i_group, &mut member_provider, &signer);
                     for (group, member) in members.iter_mut() {
-                        process_commit(group, &member.provider, update_commit.clone());
+                        process_commit(group, &mut member.provider, update_commit.clone());
                     }
                 }
                 SetupVariants::CommitToFullGroup => (), // Commit after everyone was added.
@@ -324,10 +324,10 @@ mod generate {
                 for i in 0..members.len() {
                     let (member_i_group, member_i) = &mut members[i];
                     let update_commit =
-                        self_update(member_i_group, &member_i.provider, &member_i.signer);
+                        self_update(member_i_group, &mut member_i.provider, &member_i.signer);
                     for (j, (group, member)) in members.iter_mut().enumerate() {
                         if i != j {
-                            process_commit(group, &member.provider, update_commit.clone());
+                            process_commit(group, &mut member.provider, update_commit.clone());
                         }
                     }
                 }
@@ -564,7 +564,7 @@ fn main() {
             },
             |(group1, key_package): ((MlsGroup, Member), KeyPackage)| {
                 let (mut updater_group, updater) = group1;
-                let provider = &updater.provider;
+                let mut provider = &mut updater.provider;
                 let signer = &updater.signer;
                 let _ = add_member(&mut updater_group, provider, signer, key_package);
             }
@@ -578,7 +578,7 @@ fn main() {
             |group1: (MlsGroup, Member)| {
                 // Let group 1 update and merge the commit.
                 let (mut updater_group, updater) = group1;
-                let provider = &updater.provider;
+                let mut provider = &mut updater.provider;
                 let signer = &updater.signer;
                 let _ = self_update(&mut updater_group, provider, signer);
             }
@@ -592,7 +592,7 @@ fn main() {
             |group0: (MlsGroup, Member)| {
                 // Let group 1 update and merge the commit.
                 let (mut updater_group, updater) = group0;
-                let provider = &updater.provider;
+                let mut provider = &mut updater.provider;
                 let signer = &updater.signer;
                 let _ = remove_member(&mut updater_group, provider, signer);
             }
@@ -605,7 +605,7 @@ fn main() {
             |groups: &Vec<(MlsGroup, Member)>| {
                 // Let group 1 update and merge the commit.
                 let (updater_group, updater) = &groups[1];
-                let provider = &updater.provider;
+                let mut provider = &mut updater.provider;
                 let signer = &updater.signer;
                 let commit = self_update(&mut updater_group.clone(), provider, signer);
 
@@ -614,7 +614,7 @@ fn main() {
             |(group0, commit): ((MlsGroup, Member), MlsMessageOut)| {
                 // Apply the commit at member 0
                 let (mut member_group, member) = group0;
-                let provider = &member.provider;
+                let mut provider = &mut member.provider;
 
                 process_commit(&mut member_group, provider, commit);
             }

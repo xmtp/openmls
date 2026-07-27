@@ -31,7 +31,7 @@ type Name = &'static str;
 pub fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
@@ -51,7 +51,7 @@ pub(crate) fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions<KeyPackage>,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
     lifetime: impl Into<Option<Lifetime>>,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
@@ -87,7 +87,7 @@ pub struct PreGroupPartyState<'a, Provider> {
     // TODO: regenerate?
     pub key_package_bundle: KeyPackageBundle,
     pub signer: SignatureKeyPair,
-    pub core_state: &'a CorePartyState<Provider>,
+    pub core_state: &'a mut CorePartyState<Provider>,
 }
 
 pub struct PreGroupPartyStateBuilder<'a, Provider: OpenMlsProvider> {
@@ -96,7 +96,7 @@ pub struct PreGroupPartyStateBuilder<'a, Provider: OpenMlsProvider> {
     key_package_extensions: Option<Extensions<KeyPackage>>,
     leaf_node_extensions: Option<Extensions<LeafNode>>,
     leaf_node_capabilities: Option<Capabilities>,
-    core_state: &'a CorePartyState<Provider>,
+    core_state: &'a mut CorePartyState<Provider>,
 }
 
 impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
@@ -134,7 +134,7 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
         let (credential_with_key, signer) = generate_credential(
             self.core_state.name.into(),
             self.ciphersuite.signature_algorithm(),
-            &self.core_state.provider,
+            &mut self.core_state.provider,
         );
         let mut builder = KeyPackage::builder()
             .leaf_node_extensions(self.leaf_node_extensions.unwrap_or_default())
@@ -148,7 +148,7 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
         let key_package_bundle = builder
             .build(
                 self.ciphersuite,
-                &self.core_state.provider,
+                &mut self.core_state.provider,
                 &signer,
                 credential_with_key.clone(),
             )
@@ -166,7 +166,7 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
 impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
     /// Returns a builder for the [`CorePartyState`].
     pub fn pre_group_builder<'a>(
-        &'a self,
+        &'a mut self,
         ciphersuite: Ciphersuite,
     ) -> PreGroupPartyStateBuilder<'a, Provider> {
         PreGroupPartyStateBuilder {
@@ -180,7 +180,7 @@ impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
     }
 
     /// Generates a simple pre-group state for a `CorePartyState`
-    pub fn generate_pre_group(&self, ciphersuite: Ciphersuite) -> PreGroupPartyState<'_, Provider> {
+    pub fn generate_pre_group(&mut self, ciphersuite: Ciphersuite) -> PreGroupPartyState<'_, Provider> {
         self.pre_group_builder(ciphersuite).build()
     }
 }
@@ -193,7 +193,7 @@ pub struct MemberState<'a, Provider> {
 
 impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
     /// Get member's `SignatureKeyPair` if available
-    pub fn get_storage_signature_key_pair(&self) -> Option<SignatureKeyPair> {
+    pub fn get_storage_signature_key_pair(&mut self) -> Option<SignatureKeyPair> {
         let ciphersuite = self
             .party
             .key_package_bundle
@@ -208,7 +208,7 @@ impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
         )
     }
     /// Get the `GroupStorageState` for this group
-    pub fn group_storage_state(&self) -> GroupStorageState {
+    pub fn group_storage_state(&mut self) -> GroupStorageState {
         let storage_provider = self.party.core_state.provider.storage();
         let group_id = self.group.group_id();
 
@@ -221,7 +221,7 @@ impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
         // process message
         let processed_message = self
             .group
-            .process_message(&self.party.core_state.provider, message)?;
+            .process_message(&mut self.party.core_state.provider, message)?;
 
         match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(_) => todo!(),
@@ -229,7 +229,7 @@ impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
             ProcessedMessageContent::ExternalJoinProposalMessage(_) => todo!(),
             ProcessedMessageContent::StagedCommitMessage(m) => self
                 .group
-                .merge_staged_commit(&self.party.core_state.provider, *m)?,
+                .merge_staged_commit(&mut self.party.core_state.provider, *m)?,
         };
 
         Ok(())
@@ -249,7 +249,7 @@ where
     ) -> Result<CommitMessageBundle, GroupError<Provider>> {
         let commit_builder = f(self.group.commit_builder());
 
-        let provider = &self.party.core_state.provider;
+        let provider = &mut self.party.core_state.provider;
 
         // TODO: most of the steps here cannot be done via the closure (yet)
         let bundle = commit_builder
@@ -276,7 +276,7 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
     ) -> Result<Self, GroupError<Provider>> {
         // initialize MlsGroup
         let group = MlsGroup::new_with_group_id(
-            &party.core_state.provider,
+            &mut party.core_state.provider,
             &party.signer,
             &mls_group_create_config,
             group_id,
@@ -294,13 +294,13 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
         tree: Option<RatchetTreeIn>,
     ) -> Result<Self, GroupError<Provider>> {
         let staged_join = StagedWelcome::new_from_welcome(
-            &party.core_state.provider,
+            &mut party.core_state.provider,
             &mls_group_join_config,
             welcome,
             tree,
         )?;
 
-        let group = staged_join.into_group(&party.core_state.provider)?;
+        let group = staged_join.into_group(&mut party.core_state.provider)?;
 
         Ok(Self { party, group })
     }
@@ -322,7 +322,7 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         let mut members = HashMap::new();
 
         let name = pre_group_state.core_state.name;
-        let member_state = MemberState::create_from_pre_group(
+        let mut member_state = MemberState::create_from_pre_group(
             pre_group_state,
             mls_group_create_config,
             group_id.clone(),
@@ -430,7 +430,7 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
             .collect();
 
         let (commit, welcome, _) = adder.group.add_members(
-            &adder.party.core_state.provider,
+            &mut adder.party.core_state.provider,
             &adder.party.signer,
             &key_packages,
         )?;
@@ -464,7 +464,7 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
 
         adder
             .group
-            .merge_staged_commit(&adder.party.core_state.provider, staged_commit)?;
+            .merge_staged_commit(&mut adder.party.core_state.provider, staged_commit)?;
 
         Ok(())
     }
@@ -501,10 +501,10 @@ mod test {
 
     #[openmls_test]
     fn test_members_mut() {
-        let alice_party = CorePartyState::<Provider>::new("alice");
-        let bob_party = CorePartyState::<Provider>::new("bob");
-        let charlie_party = CorePartyState::<Provider>::new("charlie");
-        let dave_party = CorePartyState::<Provider>::new("dave");
+        let mut alice_party = CorePartyState::<Provider>::new("alice");
+        let mut bob_party = CorePartyState::<Provider>::new("bob");
+        let mut charlie_party = CorePartyState::<Provider>::new("charlie");
+        let mut dave_party = CorePartyState::<Provider>::new("dave");
 
         let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
         let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -566,10 +566,10 @@ mod test {
     }
     #[openmls_test]
     pub fn simpler_example() {
-        let alice_party = CorePartyState::<Provider>::new("alice");
-        let bob_party = CorePartyState::<Provider>::new("bob");
-        let charlie_party = CorePartyState::<Provider>::new("charlie");
-        let dave_party = CorePartyState::<Provider>::new("dave");
+        let mut alice_party = CorePartyState::<Provider>::new("alice");
+        let mut bob_party = CorePartyState::<Provider>::new("bob");
+        let mut charlie_party = CorePartyState::<Provider>::new("charlie");
+        let mut dave_party = CorePartyState::<Provider>::new("dave");
 
         let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
         let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -615,8 +615,8 @@ mod test {
 
     #[openmls_test]
     pub fn simple_example() {
-        let alice_party = CorePartyState::<Provider>::new("alice");
-        let bob_party = CorePartyState::<Provider>::new("bob");
+        let mut alice_party = CorePartyState::<Provider>::new("alice");
+        let mut bob_party = CorePartyState::<Provider>::new("bob");
 
         let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
         let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -669,7 +669,7 @@ mod test {
 
         alice
             .group
-            .merge_staged_commit(&alice.party.core_state.provider, staged_commit)
+            .merge_staged_commit(&mut alice.party.core_state.provider, staged_commit)
             .expect("Error merging staged commit");
 
         group_state.assert_membership();

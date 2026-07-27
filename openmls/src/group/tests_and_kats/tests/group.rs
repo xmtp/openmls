@@ -9,8 +9,8 @@ use treesync::{node::leaf_node::Capabilities, LeafNodeParameters};
 
 #[openmls_test::openmls_test]
 fn create_commit_optional_path() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Define identities
     let (alice_credential_with_key, alice_signer, bob_kpb, _bob_signer) =
@@ -109,8 +109,8 @@ fn create_commit_optional_path() {
 
 #[openmls_test::openmls_test]
 fn basic_group_setup() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let (mut alice_group, alice_signer, _, _, _, _) =
         setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
@@ -186,9 +186,9 @@ fn wrong_group_create_config() {
 ///  - Charlie removes Bob
 #[openmls_test::openmls_test]
 fn group_operations() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // Create group with alice and bob
     let (mut alice_group, alice_signer, mut bob_group, bob_signer, _, _) =
@@ -655,10 +655,10 @@ fn group_operations() {
 
 #[openmls_test::openmls_test]
 fn decrypt_after_leaf_index_reuse() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
-    let dora_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
+    let mut dora_provider = &Provider::default();
     // Create credentials and keys
     let (alice_credential, alice_signature_keys) = crate::credentials::test_utils::new_credential(
         alice_provider,
@@ -815,7 +815,7 @@ fn decrypt_after_leaf_index_reuse() {
 #[openmls_test::openmls_test]
 #[ignore]
 fn create_group_info_flag() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
 
     // The `use_ratchet_tree_extension` flag is set to `false` by default.
     let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
@@ -864,7 +864,7 @@ fn create_group_info_flag() {
 #[openmls_test::openmls_test]
 fn use_ratchet_tree_extension_flag() {
     for use_ratchet_tree_extension in [true, false] {
-        let provider = &Provider::default();
+        let mut provider = &Provider::default();
         // The `use_ratchet_tree_extension` flag is set to `false` by default.
         let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
             setup_alice_group(ciphersuite, provider);
@@ -904,7 +904,7 @@ fn use_ratchet_tree_extension_flag() {
 #[openmls_test::openmls_test]
 #[ignore]
 fn test_create_group_info_with_extensions() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
         setup_alice_group(ciphersuite, provider);
 

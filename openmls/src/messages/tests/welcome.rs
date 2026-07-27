@@ -31,8 +31,8 @@ use crate::{
 /// parameters.
 #[openmls_test::openmls_test]
 fn test_welcome_context_mismatch() {
-    let alice_provider = Provider::default();
-    let bob_provider = Provider::default();
+    let mut alice_provider = Provider::default();
+    let mut bob_provider = Provider::default();
 
     // We need a ciphersuite that is different from the current one to create
     // the mismatch
@@ -49,16 +49,16 @@ fn test_welcome_context_mismatch() {
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
-        setup_client("Alice", ciphersuite, &alice_provider);
+        setup_client("Alice", ciphersuite, &mut alice_provider);
     let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
-        setup_client("Bob", ciphersuite, &bob_provider);
+        setup_client("Bob", ciphersuite, &mut bob_provider);
 
     let bob_kp = bob_kpb.key_package();
     let bob_private_key = bob_kpb.init_private_key();
 
     // === Alice creates a group  and adds Bob ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        &alice_provider,
+        &mut alice_provider,
         &alice_signer,
         &mls_group_create_config,
         group_id,
@@ -67,11 +67,11 @@ fn test_welcome_context_mismatch() {
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(&alice_provider, &alice_signer, from_ref(bob_kp))
+        .add_members(&mut alice_provider, &alice_signer, from_ref(bob_kp))
         .expect("Could not add member to group.");
 
     alice_group
-        .merge_pending_commit(&alice_provider)
+        .merge_pending_commit(&mut alice_provider)
         .expect("error merging pending commit");
 
     let mut welcome = welcome.into_welcome().expect("Unexpected message type.");
@@ -160,7 +160,7 @@ fn test_welcome_context_mismatch() {
 
     // Bob tries to join the group
     let err = StagedWelcome::new_from_welcome(
-        &bob_provider,
+        &mut bob_provider,
         mls_group_create_config.join_config(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
@@ -184,19 +184,19 @@ fn test_welcome_context_mismatch() {
     encryption_keypair.write(bob_provider.storage()).unwrap();
 
     let _group = StagedWelcome::new_from_welcome(
-        &bob_provider,
+        &mut bob_provider,
         mls_group_create_config.join_config(),
         original_welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating staged join from a valid Welcome.")
-    .into_group(&bob_provider)
+    .into_group(&mut bob_provider)
     .expect("Error creating group from a valid staged join.");
 }
 
 #[openmls_test::openmls_test]
 fn test_welcome_message() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
@@ -307,8 +307,8 @@ fn test_welcome_message() {
 /// tree.
 #[openmls_test::openmls_test]
 fn test_welcome_processing() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let group_id = GroupId::random(alice_provider.rand());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
@@ -376,8 +376,8 @@ fn test_welcome_processing() {
 
 #[openmls_test::openmls_test]
 fn no_external_pub_in_welcome() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .build();

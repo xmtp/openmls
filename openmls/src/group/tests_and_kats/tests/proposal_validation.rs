@@ -42,7 +42,7 @@ use crate::{
 fn generate_credential_with_key_and_key_package(
     identity: Vec<u8>,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
 ) -> (CredentialWithKeyAndSigner, KeyPackageBundle) {
     let credential_with_key_and_signer =
         generate_credential_with_key(identity, ciphersuite.signature_algorithm(), provider);
@@ -62,7 +62,7 @@ fn create_group_with_members<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     alice_credential_with_key_and_signer: &CredentialWithKeyAndSigner,
     member_key_packages: &[KeyPackage],
-    provider: &Provider,
+    provider: &mut Provider,
 ) -> Result<(MlsMessageIn, Welcome), AddMembersError<<Provider as OpenMlsProvider>::StorageError>> {
     let mut alice_group = MlsGroup::new_with_group_id(
         provider,
@@ -103,7 +103,7 @@ fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::random(provider.rand());
 
@@ -134,8 +134,8 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    alice_provider: &impl OpenMlsProvider,
-    bob_provider: &impl OpenMlsProvider,
+    alice_provider: &mut impl OpenMlsProvider,
+    bob_provider: &mut impl OpenMlsProvider,
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
     let (mut alice_group, alice_credential_with_key_and_signer) =
@@ -193,7 +193,7 @@ fn validation_test_setup(
 }
 
 fn insert_proposal_and_resign(
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
     ciphersuite: Ciphersuite,
     mut proposal_or_ref: Vec<ProposalOrRef>,
     mut plaintext: PublicMessage,
@@ -248,9 +248,9 @@ enum KeyUniqueness {
 /// Signature public key in proposals must be unique among proposals
 #[openmls_test::openmls_test]
 fn test_valsem101a() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     for bob_and_charlie_share_keys in [
         KeyUniqueness::NegativeSameKey,
@@ -442,9 +442,9 @@ fn test_valsem101a() {
 /// HPKE init key in proposals must be unique among proposals
 #[openmls_test::openmls_test]
 fn test_valsem102() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     for bob_and_charlie_share_keys in [
         KeyUniqueness::NegativeSameKey,
@@ -568,7 +568,7 @@ fn test_valsem102() {
     // Now let's create a second proposal and insert it into the commit. We want
     // a different signature key, different identity, but the same hpke init
     // key.
-    let dave_provider = &Provider::default();
+    let mut dave_provider = &Provider::default();
     let (dave_credential_with_key_and_signer, dave_key_package) =
         generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, dave_provider);
     // Change the init key and re-sign.
@@ -631,8 +631,8 @@ fn test_valsem102() {
 /// members
 #[openmls_test::openmls_test]
 fn test_valsem101b() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
@@ -677,7 +677,7 @@ fn test_valsem101b() {
             bob_provider,
             bob_credential_with_key.clone(),
         );
-        let target_provider = &Provider::default();
+        let mut target_provider = &Provider::default();
         let target_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
@@ -897,8 +897,8 @@ fn test_valsem101b() {
 /// Add Proposal: Init key and encryption key must be different
 #[openmls_test::openmls_test]
 fn test_valsem103_valsem104() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
@@ -1000,7 +1000,7 @@ fn test_valsem103_valsem104() {
         .clone();
 
     // Generate fresh key material for Dave.
-    let dave_provider = &Provider::default();
+    let mut dave_provider = &Provider::default();
     let (dave_credential_with_key, dave_key_package) =
         generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, dave_provider);
 
@@ -1102,9 +1102,9 @@ fn test_valsem105() {
     // proposal with the relevant KeyPackage artificially afterwards, so that we
     // can have Bob try to process it.
 
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     // We begin with the creation of KeyPackages
     for key_package_version in [
@@ -1469,8 +1469,8 @@ fn test_valsem105() {
 /// Removed member must be unique among proposals
 #[openmls_test::openmls_test]
 fn test_valsem107() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Helper function to unwrap a commit with a single proposal from an mls message.
     fn unwrap_specific_commit(commit_ref_remove: MlsMessageOut) -> Commit {
@@ -1626,8 +1626,8 @@ fn test_valsem107() {
 /// Removed member must be an existing group member
 #[openmls_test::openmls_test]
 fn test_valsem108() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
@@ -1775,8 +1775,8 @@ fn test_valsem108() {
 /// Encryption key must be unique among existing members
 #[openmls_test::openmls_test]
 fn test_valsem110() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
@@ -1972,8 +1972,8 @@ fn test_valsem110() {
 /// The sender of a full Commit must not include own update proposals
 #[openmls_test::openmls_test]
 fn test_valsem111() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
@@ -2168,8 +2168,8 @@ fn test_valsem111() {
 /// The sender of a standalone update proposal must be of type member
 #[openmls_test::openmls_test]
 fn test_valsem112() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
@@ -2250,8 +2250,8 @@ fn valsem113() {
         Supported,
     }
 
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let custom_proposal_type = 0xFFFF;
     let custom_proposal_payload = vec![0, 1, 2, 3];
@@ -2411,8 +2411,8 @@ fn test_valsem401_valsem402() {
         ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
      let bad_psks = &[
      // ValSem401
@@ -2493,12 +2493,12 @@ fn test_valsem401_valsem402() {
          let mut proposals = Vec::new();
 
         for psk_id in psk_ids {
-             psk_id.store(&alice_provider, b"irrelevant").unwrap();
-             psk_id.store(&bob_provider, b"irrelevant").unwrap();
+             psk_id.store(&mut alice_provider, b"irrelevant").unwrap();
+             psk_id.store(&mut bob_provider, b"irrelevant").unwrap();
 
             let (psk_proposal, _) = alice_group
                  .propose_external_psk(
-                     &alice_provider,
+                     &mut alice_provider,
                      &alice_credential_with_key_and_signer.signer,
                      psk_id,
                  )
@@ -2509,7 +2509,7 @@ fn test_valsem401_valsem402() {
 
         let (commit, _, _) = alice_group
              .commit_to_pending_proposals(
-                 &alice_provider,
+                 &mut alice_provider,
                  &alice_credential_with_key_and_signer.signer,
              )
              .unwrap();
@@ -2523,7 +2523,7 @@ fn test_valsem401_valsem402() {
 
         for psk_proposal in proposals.into_iter() {
              let processed_message = bob_group
-                 .process_message(&bob_provider, psk_proposal.into_protocol_message().unwrap())
+                 .process_message(&mut bob_provider, psk_proposal.into_protocol_message().unwrap())
                  .unwrap();
 
             match processed_message.into_content() {
@@ -2539,7 +2539,7 @@ fn test_valsem401_valsem402() {
         assert_eq!(
              expected_error,
              bob_group
-                 .process_message(&bob_provider, commit.into_protocol_message().unwrap())
+                 .process_message(&mut bob_provider, commit.into_protocol_message().unwrap())
                  .unwrap_err(),
          );
 

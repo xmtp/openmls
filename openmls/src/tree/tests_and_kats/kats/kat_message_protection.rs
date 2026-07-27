@@ -106,7 +106,7 @@ pub struct MessageProtectionTest {
 #[cfg(test)]
 pub fn run_test_vector(
     test: MessageProtectionTest,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> Result<(), String> {
     use openmls_traits::crypto::OpenMlsCrypto;
     use tls_codec::{Deserialize, Serialize};
@@ -154,7 +154,7 @@ pub fn run_test_vector(
 
     // Make the group think it has two members.
     fn setup_group(
-        provider: &impl crate::storage::OpenMlsProvider,
+        provider: &mut impl crate::storage::OpenMlsProvider,
         ciphersuite: Ciphersuite,
         test: &MessageProtectionTest,
         sender: bool,
@@ -255,7 +255,7 @@ pub fn run_test_vector(
 
         fn test_proposal_pub(
             mut group: MlsGroup,
-            provider: &impl crate::storage::OpenMlsProvider,
+            provider: &mut impl crate::storage::OpenMlsProvider,
             proposal: ProposalIn,
             proposal_pub: MlsMessageIn,
         ) {
@@ -345,7 +345,7 @@ pub fn run_test_vector(
 
         fn test_commit_pub(
             mut group: MlsGroup,
-            provider: &impl crate::storage::OpenMlsProvider,
+            provider: &mut impl crate::storage::OpenMlsProvider,
             ciphersuite: Ciphersuite,
             commit: CommitIn,
             commit_pub: MlsMessageIn,
@@ -469,7 +469,7 @@ pub fn run_test_vector(
 
         fn test_application_priv(
             mut group: MlsGroup,
-            provider: &impl crate::storage::OpenMlsProvider,
+            provider: &mut impl crate::storage::OpenMlsProvider,
             application: Vec<u8>,
             application_priv: MlsMessageIn,
         ) {
@@ -516,7 +516,7 @@ fn read_test_vectors_mp() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
 
     let tests: Vec<MessageProtectionTest> =
         read_json!("../../../../test_vectors/message-protection.json");

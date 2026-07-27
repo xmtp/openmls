@@ -28,8 +28,8 @@ use crate::{
 /// `filtered_queued_proposals` returns only proposals of a certain type
 #[openmls_test::openmls_test]
 fn proposal_queue_functions() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let crypto = alice_provider.crypto();
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
@@ -172,8 +172,8 @@ fn proposal_queue_functions() {
 /// Test, that we QueuedProposalQueue is iterated in the right order.
 #[openmls_test::openmls_test]
 fn proposal_queue_order() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
@@ -287,8 +287,8 @@ fn proposal_queue_order() {
 
 #[openmls_test::openmls_test]
 fn required_extension_key_package_mismatch() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Basic group setup.
     let (alice_credential, _, alice_signer, _alice_pk) =
@@ -327,8 +327,8 @@ fn required_extension_key_package_mismatch() {
 
 #[openmls_test::openmls_test]
 fn group_context_extensions() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Basic group setup.
     let (alice_credential, _, alice_signer, _alice_pk) =
@@ -384,8 +384,8 @@ fn group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn group_context_extension_proposal_fails() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     // Basic group setup.
     let (alice_credential, _, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, alice_provider);
@@ -459,8 +459,8 @@ fn group_context_extension_proposal_fails() {
 #[openmls_test::openmls_test]
 fn group_context_extension_proposal() {
     // Basic group setup.
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
     let (mut alice_group, alice_signer, mut bob_group, bob_signer, _alice_credential, _bob_credential) =
         // TODO: don't let alice and bob share the provider
         setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
@@ -524,8 +524,8 @@ fn group_context_extension_proposal() {
 // processed.
 #[openmls_test::openmls_test]
 fn self_remove_proposals() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Create credentials and keys
     let (alice_credential, alice_signer) =
@@ -636,8 +636,8 @@ fn self_remove_proposals() {
 // present for a given leaf.
 #[openmls_test::openmls_test]
 fn remove_and_update_processing() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Create a group with alice and bob.
     let (alice_credential, _, alice_signer, _alice_pk) =
@@ -756,7 +756,7 @@ fn remove_and_update_processing() {
 // PublicMessages.
 #[openmls_test::openmls_test]
 fn self_remove_proposals_always_public() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     let (alice_credential, alice_signer) =
         test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 

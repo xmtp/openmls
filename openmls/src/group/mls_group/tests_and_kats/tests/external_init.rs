@@ -6,9 +6,9 @@ use crate::group::{
 
 #[openmls_test::openmls_test]
 fn test_external_init_broken_signature() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     let (
         alice_group,

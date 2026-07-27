@@ -23,7 +23,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn self_update<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<CommitMessageBundle, SelfUpdateError<Provider::StorageError>> {
@@ -65,7 +65,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         old_signer: &impl Signer,
         new_signer: NewSignerBundle<'_, S>,
         leaf_node_parameters: LeafNodeParameters,
@@ -99,7 +99,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     async fn create_self_update_proposal_internal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         old_signer: &impl Signer,
         new_signer: Option<NewSignerBundle<'_, S>>,
         mut leaf_node_parameters: LeafNodeParameters,
@@ -184,7 +184,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     async fn propose_self_update_internal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         old_signer: &impl Signer,
         new_signer: Option<NewSignerBundle<'_, S>>,
         leaf_node_parameters: LeafNodeParameters,
@@ -224,7 +224,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn propose_self_update<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &S,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
@@ -255,7 +255,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn propose_self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         old_signer: &impl Signer,
         new_signer: NewSignerBundle<'_, S>,
         leaf_node_parameters: LeafNodeParameters,

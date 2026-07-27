@@ -314,7 +314,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     #[maybe_async::maybe_async]
     pub async fn load_psks<Storage: StorageProvider>(
         self,
-        storage: &'a Storage,
+        storage: &mut Storage,
     ) -> Result<CommitBuilder<'a, LoadedPsks, G>, CreateCommitError> {
         let psk_ids: Vec<_> = self
             .stage
@@ -943,7 +943,7 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     #[maybe_async::maybe_async]
     pub async fn stage_commit<Provider: OpenMlsProvider>(
         self,
-        provider: &Provider,
+        provider: &mut Provider,
     ) -> Result<CommitMessageBundle, CommitBuilderStageError<Provider::StorageError>> {
         let Self {
             group,

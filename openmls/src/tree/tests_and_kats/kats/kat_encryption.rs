@@ -142,7 +142,7 @@ pub struct EncryptionTestVector {
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
@@ -160,7 +160,7 @@ fn generate_credential(
 #[cfg(any(feature = "test-utils", test))]
 fn group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let (credential_with_key, signer) = generate_credential(
         "Kreator".into(),
@@ -179,7 +179,7 @@ fn group(
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
     group_id: GroupId,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let (credential_with_key, signer) = generate_credential(
@@ -204,7 +204,7 @@ fn build_handshake_messages(
     sender_index: LeafNodeIndex,
     group: &mut MlsGroup,
     signer: &impl Signer,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use std::convert::Infallible;
 
@@ -267,7 +267,7 @@ fn build_application_messages(
     sender_index: LeafNodeIndex,
     group: &mut MlsGroup,
     signer: &impl Signer,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use std::convert::Infallible;
 
@@ -333,7 +333,7 @@ pub fn generate_test_vector(
     use crate::binary_tree::array_representation::TreeSize;
 
     let ciphersuite_name = ciphersuite;
-    let provider = OpenMlsRustCrypto::default();
+    let mut provider = OpenMlsRustCrypto::default();
     let encryption_secret_bytes = provider
         .rand()
         .random_vec(ciphersuite.hash_length())
@@ -359,7 +359,7 @@ pub fn generate_test_vector(
         nonce: bytes_to_hex(sender_data_nonce.as_slice()),
     };
 
-    let (mut group, _, signer) = group(ciphersuite, &provider);
+    let (mut group, _, signer) = group(ciphersuite, &mut provider);
     *group.message_secrets_test_mut().sender_data_secret_mut() =
         SenderDataSecret::from_slice(sender_data_secret_bytes);
 
@@ -394,7 +394,7 @@ pub fn generate_test_vector(
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
-                build_application_messages(sender_leaf, &mut group, &signer, &provider);
+                build_application_messages(sender_leaf, &mut group, &signer, &mut provider);
             println!("Sender Group: {group:?}");
             application.push(RatchetStep {
                 key: application_key_string,
@@ -418,7 +418,7 @@ pub fn generate_test_vector(
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
             let (handshake_plaintext, handshake_ciphertext) =
-                build_handshake_messages(sender_leaf, &mut group, &signer, &provider);
+                build_handshake_messages(sender_leaf, &mut group, &signer, &mut provider);
 
             handshake.push(RatchetStep {
                 key: handshake_key_string,
@@ -472,7 +472,7 @@ fn write_test_vectors() {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(
     test_vector: EncryptionTestVector,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
 ) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
@@ -815,13 +815,13 @@ fn read_test_vectors_encryption() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
     // The ciphersuite is defined in here and libcrux can't do all of them yet.
-    let provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
+    let mut provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
 
     let tests: Vec<EncryptionTestVector> =
         read_json!("../../../../test_vectors/kat_encryption_openmls.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, &provider) {
+        match run_test_vector(test_vector, &mut provider) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking encryption test vector.\n{e:?}"),
         }

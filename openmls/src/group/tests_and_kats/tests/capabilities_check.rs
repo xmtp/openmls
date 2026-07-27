@@ -106,7 +106,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
             .leaf_node_capabilities(new_capabilities.clone())
             .build(
                 ciphersuite,
-                &self.core_state.provider,
+                &mut self.core_state.provider,
                 &self.signer,
                 CredentialWithKey {
                     credential: self.credential_with_key.credential.clone(),
@@ -160,7 +160,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
                 signature_key: self.signer.to_public_vec().into(),
             },
             Extensions::default(),
-            &self.core_state.provider,
+            &mut self.core_state.provider,
             None,
             &self.signer,
         );
@@ -172,10 +172,10 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
 //     as specified by the capabilities field of each member's leaf node
 #[openmls_test::openmls_test]
 fn test_valn0104_new_member_unsupported_credential_type() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-    let charlie_party = CorePartyState::<Provider>::new("charlie");
-    let dave_party = CorePartyState::<Provider>::new("dave");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
+    let mut charlie_party = CorePartyState::<Provider>::new("charlie");
+    let mut dave_party = CorePartyState::<Provider>::new("dave");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -251,7 +251,7 @@ fn test_valn0104_new_member_unsupported_credential_type() {
 #[openmls_test::openmls_test]
 fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
     // Set up Alice with multiple credential capabilities and Other(3) credential
-    let alice_party = CorePartyState::<Provider>::new("alice");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
     let mut alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let alice_capabilities = alice_pre_group.update_credential_capabilities(
         vec![CredentialType::Basic, CredentialType::Other(3)],
@@ -260,7 +260,7 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
     alice_pre_group.update_credential_type(CredentialType::Other(3), ciphersuite);
 
     // Set up Bob with multiple credential capabilities and BasicCredential
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
     let mut bob_pre_group = bob_party.generate_pre_group(ciphersuite);
     bob_pre_group.update_credential_capabilities(
         vec![CredentialType::Basic, CredentialType::Other(3)],
@@ -268,7 +268,7 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
     );
 
     // Set up Charlie with multiple credential capabilities and BasicCredential
-    let charlie_party = CorePartyState::<Provider>::new("charlie");
+    let mut charlie_party = CorePartyState::<Provider>::new("charlie");
     let mut charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
     charlie_pre_group.update_credential_capabilities(
         vec![
@@ -279,8 +279,8 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
         ciphersuite,
     );
 
-    let dave_party = CorePartyState::<Provider>::new("dave");
-    let eve_party = CorePartyState::<Provider>::new("eve");
+    let mut dave_party = CorePartyState::<Provider>::new("dave");
+    let mut eve_party = CorePartyState::<Provider>::new("eve");
 
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -360,9 +360,9 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
 //     considered when using a new proposal/extension/credential.
 #[openmls_test::openmls_test]
 fn valn0311_removed_member_capabilities_skipped_in_check() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-    let charlie_party = CorePartyState::<Provider>::new("charlie");
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut bob_party = CorePartyState::<Provider>::new("bob");
+    let mut charlie_party = CorePartyState::<Provider>::new("charlie");
 
     let non_default_proposal_id = 0xFFFF;
     let non_default_proposal_type = ProposalType::Custom(non_default_proposal_id);
@@ -416,7 +416,7 @@ fn valn0311_removed_member_capabilities_skipped_in_check() {
     ));
 
     let mut members = group_state.members_mut(&["alice"]);
-    let alice_group_state = members.get_mut(0).unwrap();
+    let mut alice_group_state = members.get_mut(0).unwrap();
 
     // Remove Charlie and at the same time commit to a proposal that charlie doesn't support
     let commit = alice_group_state

@@ -16,13 +16,13 @@ fn create_provider_rust_crypto() {
     // ANCHOR_END: create_provider_rust_crypto
 
     // Suppress warning.
-    let _provider = provider;
+    let mut _provider = provider;
 }
 
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
     let credential = BasicCredential::new(identity);
@@ -45,7 +45,7 @@ fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions<KeyPackage>,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
     // ANCHOR: create_key_package
@@ -74,11 +74,11 @@ fn generate_key_package(
 ///  - Test saving the group state
 #[openmls_test]
 fn book_operations() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
-    let dave_provider = &Provider::default();
-    let ds_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
+    let mut dave_provider = &Provider::default();
+    let mut ds_provider = &Provider::default();
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) = generate_credential(
         "Alice".into(),
@@ -1520,7 +1520,7 @@ fn book_operations() {
 
 #[openmls_test]
 fn test_empty_input_errors() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -1558,8 +1558,8 @@ fn test_empty_input_errors() {
 
 #[openmls_test]
 fn custom_proposal_usage() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     // Generate credentials with keys
     let (alice_credential_with_key, alice_signer) = generate_credential(
@@ -1687,9 +1687,9 @@ fn custom_proposal_usage() {
 
 #[openmls_test]
 fn commit_builder() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let ds_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut ds_provider = &Provider::default();
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) = generate_credential(
         "Alice".into(),
@@ -1786,7 +1786,7 @@ fn commit_builder() {
 
 #[openmls_test]
 fn new_signer() {
-    let alice_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
     // Generate credentials with keys
     let (alice_old_credential, alice_old_signature_keys) = generate_credential(
         "Alice".into(),
@@ -1835,9 +1835,9 @@ fn new_signer() {
 
 #[openmls_test]
 fn external_commit_builder() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
     let (alice_credential_with_key, alice_signer) = generate_credential(
         "Alice".into(),
         ciphersuite.signature_algorithm(),

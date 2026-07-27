@@ -37,7 +37,7 @@ fn test_storage_compatibility() {
             .expect("error executing sqlite statements");
 
         // set up a new provider using the connection
-        let alice_provider = &Provider::new(conn);
+        let mut alice_provider = &Provider::new(conn);
 
         let group_id = GroupId::from_slice(TEST_GROUP_ID);
 
@@ -80,7 +80,7 @@ fn test_storage_compatibility() {
 #[test]
 fn test_serialize_deserialize() {
     // set up a basic provider
-    let provider = openmls_libcrux_crypto::Provider::default();
+    let mut provider = openmls_libcrux_crypto::Provider::default();
 
     // create a MessageSecrets
     let message_secrets = MessageSecrets::random(
@@ -120,8 +120,8 @@ impl OpenMlsProvider for Provider {
     fn rand(&self) -> &Self::RandProvider {
         &self.crypto
     }
-    fn storage(&self) -> &Self::StorageProvider {
-        &self.storage
+    fn storage(&mut self) -> &mut Self::StorageProvider {
+        &mut self.storage
     }
 }
 

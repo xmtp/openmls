@@ -29,7 +29,7 @@ fn read_write_delete() {
     let proposals = (0..10)
         .map(|i| Proposal(format!("TestProposal{i}").as_bytes().to_vec()))
         .collect::<Vec<_>>();
-    let storage = MemoryStorage::default();
+    let mut storage = MemoryStorage::default();
 
     // Store proposals
     for (i, proposal) in proposals.iter().enumerate() {

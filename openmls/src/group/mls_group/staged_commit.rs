@@ -45,7 +45,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     async fn derive_epoch_secrets(
         &self,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         apply_proposals_values: ApplyProposalsValues,
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
@@ -161,7 +161,7 @@ impl MlsGroup {
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
         if let Sender::Member(member) = mls_content.sender() {
@@ -210,7 +210,7 @@ impl MlsGroup {
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         app_data_dict_updates: Option<AppDataUpdates>,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
         if let Sender::Member(member) = mls_content.sender() {
@@ -259,7 +259,7 @@ impl MlsGroup {
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         let ciphersuite = self.ciphersuite();
         // Determine if Commit has a path
@@ -442,7 +442,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub(crate) async fn merge_commit<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones

@@ -111,7 +111,7 @@ pub(crate) struct GroupCandidate {
 pub(crate) fn generate_group_candidate(
     identity: &[u8],
     ciphersuite: Ciphersuite,
-    provider: &impl OpenMlsProvider,
+    provider: &mut impl OpenMlsProvider,
     use_store: bool,
 ) -> GroupCandidate {
     use crate::{credentials::BasicCredential, prelude::KeyPackageBundle};
@@ -155,12 +155,12 @@ pub(crate) fn generate_group_candidate(
                 .unwrap()
         } else {
             // We don't want to store anything. So...
-            let provider = OpenMlsRustCrypto::default();
+            let mut provider = OpenMlsRustCrypto::default();
 
             let key_package_creation_result = builder
                 .build_without_storage(
                     ciphersuite,
-                    &provider,
+                    &mut provider,
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
                 )

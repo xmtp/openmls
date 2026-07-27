@@ -63,7 +63,7 @@ const KEY_PACKAGE_COUNT: usize = 10;
 /// The setup function creates a set of groups and clients.
 pub(crate) fn setup(
     config: TestSetupConfig,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> TestSetup {
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, Ciphersuite), Vec<KeyPackage>> = HashMap::new();
@@ -228,7 +228,7 @@ fn test_random() {
 
 #[openmls_test::openmls_test]
 fn test_setup() {
-    let provider = &Provider::default();
+    let mut provider = &Provider::default();
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
         ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519],
@@ -247,7 +247,7 @@ fn test_setup() {
         clients: vec![test_client_config_a, test_client_config_b],
         groups: vec![test_group_config],
     };
-    let _test_setup = setup(test_setup_config, provider);
+    let mut _test_setup = setup(test_setup_config, provider);
 }
 
 #[derive(Clone)]
@@ -260,7 +260,7 @@ pub(crate) struct CredentialWithKeyAndSigner {
 pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
-    provider: &Provider,
+    provider: &mut Provider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
         let credential = BasicCredential::new(identity);
@@ -285,7 +285,7 @@ pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
 pub(crate) fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     extensions: Extensions<KeyPackage>,
-    provider: &Provider,
+    provider: &mut Provider,
     credential_with_keys: CredentialWithKeyAndSigner,
 ) -> KeyPackageBundle {
     KeyPackage::builder()
@@ -304,7 +304,7 @@ pub(crate) fn resign_message(
     alice_group: &MlsGroup,
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
-    provider: &impl crate::storage::OpenMlsProvider,
+    provider: &mut impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
     ciphersuite: Ciphersuite,
 ) -> PublicMessage {

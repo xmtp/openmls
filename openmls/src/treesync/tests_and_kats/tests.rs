@@ -37,12 +37,12 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
         let credential_with_key_and_signer = generate_credential_with_key(
             name.clone(),
             ciphersuite.signature_algorithm(),
-            &provider,
+            &mut provider,
         );
         let key_package = KeyPackage::builder()
             .build(
                 ciphersuite,
-                &provider,
+                &mut provider,
                 &credential_with_key_and_signer.signer,
                 credential_with_key_and_signer.credential_with_key.clone(),
             )
@@ -76,7 +76,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
 
     // `A` creates a group with `B`, `C`, and `D` ...
     let mut alice_group = MlsGroup::new(
-        &alice.provider,
+        &mut alice.provider,
         &alice.credential_with_key_and_signer.signer,
         &mls_group_create_config,
         alice
@@ -89,7 +89,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
 
     let (_, welcome, _group_info) = alice_group
         .add_members(
-            &alice.provider,
+            &mut alice.provider,
             &alice.credential_with_key_and_signer.signer,
             &[bob.key_package, charlie.key_package, dave.key_package],
         )
@@ -99,7 +99,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
         .into_welcome()
         .expect("expected message to be a welcome");
 
-    alice_group.merge_pending_commit(&alice.provider).unwrap();
+    alice_group.merge_pending_commit(&mut alice.provider).unwrap();
     alice_group.print_ratchet_tree("Alice (after add_members)");
 
     // ---------------------------------------------------------------------------------------------
@@ -107,13 +107,13 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
     // ... and then `C` removes `A` and `B`.
     let mut charlie_group = {
         StagedWelcome::new_from_welcome(
-            &charlie.provider,
+            &mut charlie.provider,
             mls_group_create_config.join_config(),
             welcome,
             None,
         )
         .expect("Staging the join failed.")
-        .into_group(&charlie.provider)
+        .into_group(&mut charlie.provider)
         .expect("Joining the group failed.")
     };
     charlie_group.print_ratchet_tree("Charlie (after new)");
@@ -122,14 +122,14 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
     let bob = get_member_leaf_index(&charlie_group, &bob.id);
     charlie_group
         .remove_members(
-            &charlie.provider,
+            &mut charlie.provider,
             &charlie.credential_with_key_and_signer.signer,
             &[alice, bob],
         )
         .expect("Removal of members failed.");
 
     charlie_group
-        .merge_pending_commit(&charlie.provider)
+        .merge_pending_commit(&mut charlie.provider)
         .unwrap();
     charlie_group.print_ratchet_tree("Charlie (after remove)");
 
@@ -149,7 +149,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
 
     charlie_group
         .create_message(
-            &charlie.provider,
+            &mut charlie.provider,
             &charlie.credential_with_key_and_signer.signer,
             b"Hello, World!".as_slice(),
         )

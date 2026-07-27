@@ -18,13 +18,15 @@ macro_rules! impl_storage_provider {
         provider_doc: $provider_doc:literal,
         db: $db:ty,
         connection: $connection:ty,
+        owner: $owner:ty,
+        exec_fn: $exec_fn:path,
+        migrate_fn: $migrate_fn:path,
         sql: $sql:ident,
         migrator: $migrator:ident,
         migrations: $migrations:tt $(,)?
     ) => {
         pub(crate) mod $module {
             use std::marker::PhantomData;
-            use tokio::sync::Mutex;
 
             use openmls_traits::storage::{
                 CURRENT_VERSION, Entity, Key, StorageProvider,
@@ -53,8 +55,8 @@ macro_rules! impl_storage_provider {
             /// [`Codec`](crate::Codec) trait. The codec is used to serialize and
             /// deserialize the data stored in the underlying database.
             pub struct $provider<'a, C> {
-                connection: Mutex<&'a mut $connection>,
-                codec: PhantomData<C>,
+                connection: $owner,
+                codec: PhantomData<(&'a (), C)>,
             }
 
             impl<'a, C: Codec> $provider<'a, C> {
@@ -62,9 +64,9 @@ macro_rules! impl_storage_provider {
                     "Create a new `", stringify!($provider), "` based on the given `",
                     stringify!($connection), "`."
                 )]
-                pub fn new(connection: &'a mut $connection) -> Self {
+                pub fn new(connection: $owner) -> Self {
                     Self {
-                        connection: Mutex::new(connection),
+                        connection,
                         codec: PhantomData,
                     }
                 }
@@ -72,11 +74,7 @@ macro_rules! impl_storage_provider {
                 /// Run the migrations for the storage provider using sqlx's built-in
                 /// migration support.
                 pub async fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
-                    let mut conn = self.connection.lock().await;
-                    sqlx::migrate!($migrations)
-                        .run_direct(&mut crate::migrator::$migrator(*conn))
-                        .await?;
-                    Ok(())
+                    $migrate_fn(&mut self.connection, sqlx::migrate!($migrations)).await
                 }
 
                 fn wrap_storable_group_id_ref<'b, GroupId: Key<CURRENT_VERSION>>(
@@ -94,14 +92,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     config: &MlsGroupJoinConfig,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(config);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.store::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::JoinGroupConfig,
                     );
@@ -112,13 +109,12 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     LeafNode: traits::LeafNode<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     leaf_node: &LeafNode,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableLeafNodeRef(leaf_node);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.store::<_, C>(&mut **connection, group_id);
+                    let task = storable.store::<_, C>($exec_fn(&mut self.connection), group_id);
                     run_task(task).await
                 }
 
@@ -127,14 +123,13 @@ macro_rules! impl_storage_provider {
                     ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
                     QueuedProposal: traits::QueuedProposal<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     proposal_ref: &ProposalRef,
                     proposal: &QueuedProposal,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableProposalRef(proposal_ref, proposal);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.store::<_, C>(&mut **connection, group_id);
+                    let task = storable.store::<_, C>($exec_fn(&mut self.connection), group_id);
                     run_task(task).await
                 }
 
@@ -142,14 +137,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     TreeSync: traits::TreeSync<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     tree: &TreeSync,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(tree);
-                    let mut connection = self.connection.lock().await;
                     let task =
-                        storable.store::<_, C>(&mut **connection, group_id, GroupDataType::Tree);
+                        storable.store::<_, C>($exec_fn(&mut self.connection), group_id, GroupDataType::Tree);
                     run_task(task).await
                 }
 
@@ -157,14 +151,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     InterimTranscriptHash: traits::InterimTranscriptHash<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     interim_transcript_hash: &InterimTranscriptHash,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(interim_transcript_hash);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.store::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::InterimTranscriptHash,
                     );
@@ -175,14 +168,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     GroupContext: traits::GroupContext<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     group_context: &GroupContext,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(group_context);
-                    let mut connection = self.connection.lock().await;
                     let task =
-                        storable.store::<_, C>(&mut **connection, group_id, GroupDataType::Context);
+                        storable.store::<_, C>($exec_fn(&mut self.connection), group_id, GroupDataType::Context);
                     run_task(task).await
                 }
 
@@ -190,14 +182,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ConfirmationTag: traits::ConfirmationTag<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     confirmation_tag: &ConfirmationTag,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(confirmation_tag);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.store::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::ConfirmationTag,
                     );
@@ -208,14 +199,13 @@ macro_rules! impl_storage_provider {
                     GroupState: traits::GroupState<CURRENT_VERSION>,
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     group_state: &GroupState,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(group_state);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.store::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::GroupState,
                     );
@@ -226,14 +216,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     message_secrets: &MessageSecrets,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(message_secrets);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.store::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::MessageSecrets,
                     );
@@ -244,14 +233,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     resumption_psk_store: &ResumptionPskStore,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(resumption_psk_store);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.store::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::ResumptionPskStore,
                     );
@@ -262,14 +250,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     own_leaf_index: &LeafNodeIndex,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(own_leaf_index);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.store::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::OwnLeafIndex,
                     );
@@ -280,14 +267,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     group_epoch_secrets: &GroupEpochSecrets,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(group_epoch_secrets);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.store::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::GroupEpochSecrets,
                     );
@@ -298,13 +284,12 @@ macro_rules! impl_storage_provider {
                     SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
                     SignatureKeyPair: traits::SignatureKeyPair<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     public_key: &SignaturePublicKey,
                     signature_key_pair: &SignatureKeyPair,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableSignatureKeyPairsRef(signature_key_pair);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.store::<_, C>(&mut **connection, public_key);
+                    let task = storable.store::<_, C>($exec_fn(&mut self.connection), public_key);
                     run_task(task).await
                 }
 
@@ -312,13 +297,12 @@ macro_rules! impl_storage_provider {
                     EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
                     HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     public_key: &EncryptionKey,
                     key_pair: &HpkeKeyPair,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableEncryptionKeyPairRef(key_pair);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.store::<_, C>(&mut **connection, public_key);
+                    let task = storable.store::<_, C>($exec_fn(&mut self.connection), public_key);
                     run_task(task).await
                 }
 
@@ -327,16 +311,15 @@ macro_rules! impl_storage_provider {
                     EpochKey: traits::EpochKey<CURRENT_VERSION>,
                     HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     epoch: &EpochKey,
                     leaf_index: u32,
                     key_pairs: &[HpkeKeyPair],
                 ) -> Result<(), Self::Error> {
                     let storable = StorableEpochKeyPairsRef(key_pairs);
-                    let mut connection = self.connection.lock().await;
                     let task =
-                        storable.store::<_, _, C>(&mut **connection, group_id, epoch, leaf_index);
+                        storable.store::<_, _, C>($exec_fn(&mut self.connection), group_id, epoch, leaf_index);
                     run_task(task).await
                 }
 
@@ -344,13 +327,12 @@ macro_rules! impl_storage_provider {
                     HashReference: traits::HashReference<CURRENT_VERSION>,
                     KeyPackage: traits::KeyPackage<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     hash_ref: &HashReference,
                     key_package: &KeyPackage,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableKeyPackageRef(key_package);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.store::<_, C>(&mut **connection, hash_ref);
+                    let task = storable.store::<_, C>($exec_fn(&mut self.connection), hash_ref);
                     run_task(task).await
                 }
 
@@ -358,13 +340,12 @@ macro_rules! impl_storage_provider {
                     PskId: traits::PskId<CURRENT_VERSION>,
                     PskBundle: traits::PskBundle<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     psk_id: &PskId,
                     psk: &PskBundle,
                 ) -> Result<(), Self::Error> {
                     let storable = StorablePskBundleRef(psk);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.store::<_, C>(&mut **connection, psk_id);
+                    let task = storable.store::<_, C>($exec_fn(&mut self.connection), psk_id);
                     run_task(task).await
                 }
 
@@ -372,12 +353,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::JoinGroupConfig,
                     );
@@ -388,11 +368,10 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     LeafNode: traits::LeafNode<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Vec<LeafNode>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
-                    let task = StorableLeafNode::load::<_, C>(&mut **connection, group_id);
+                    let task = StorableLeafNode::load::<_, C>($exec_fn(&mut self.connection), group_id);
                     run_task(task).await
                 }
 
@@ -400,12 +379,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Vec<ProposalRef>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableProposal::<u8, ProposalRef>::load_refs::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                     );
                     run_task(task).await
@@ -416,11 +394,10 @@ macro_rules! impl_storage_provider {
                     ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
                     QueuedProposal: traits::QueuedProposal<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
-                    let task = StorableProposal::load::<_, C>(&mut **connection, group_id);
+                    let task = StorableProposal::load::<_, C>($exec_fn(&mut self.connection), group_id);
                     run_task(task).await
                 }
 
@@ -428,12 +405,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     TreeSync: traits::TreeSync<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<TreeSync>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::Tree,
                     );
@@ -444,12 +420,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     GroupContext: traits::GroupContext<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<GroupContext>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::Context,
                     );
@@ -460,12 +435,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     InterimTranscriptHash: traits::InterimTranscriptHash<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::InterimTranscriptHash,
                     );
@@ -476,12 +450,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ConfirmationTag: traits::ConfirmationTag<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<ConfirmationTag>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::ConfirmationTag,
                     );
@@ -492,12 +465,11 @@ macro_rules! impl_storage_provider {
                     GroupState: traits::GroupState<CURRENT_VERSION>,
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<GroupState>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::GroupState,
                     );
@@ -508,12 +480,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<MessageSecrets>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::MessageSecrets,
                     );
@@ -524,12 +495,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<ResumptionPskStore>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::ResumptionPskStore,
                     );
@@ -540,12 +510,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<LeafNodeIndex>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::OwnLeafIndex,
                     );
@@ -556,12 +525,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::GroupEpochSecrets,
                     );
@@ -572,12 +540,11 @@ macro_rules! impl_storage_provider {
                     SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
                     SignatureKeyPair: traits::SignatureKeyPair<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     public_key: &SignaturePublicKey,
                 ) -> Result<Option<SignatureKeyPair>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task =
-                        StorableSignatureKeyPairs::load::<_, C>(&mut **connection, public_key);
+                        StorableSignatureKeyPairs::load::<_, C>($exec_fn(&mut self.connection), public_key);
                     run_task(task).await
                 }
 
@@ -585,11 +552,10 @@ macro_rules! impl_storage_provider {
                     HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
                     EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     public_key: &EncryptionKey,
                 ) -> Result<Option<HpkeKeyPair>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
-                    let task = StorableEncryptionKeyPair::load::<_, C>(&mut **connection, public_key);
+                    let task = StorableEncryptionKeyPair::load::<_, C>($exec_fn(&mut self.connection), public_key);
                     run_task(task).await
                 }
 
@@ -598,14 +564,13 @@ macro_rules! impl_storage_provider {
                     EpochKey: traits::EpochKey<CURRENT_VERSION>,
                     HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     epoch: &EpochKey,
                     leaf_index: u32,
                 ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = load_epoch_key_pairs::<_, _, _, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         epoch,
                         leaf_index,
@@ -617,11 +582,10 @@ macro_rules! impl_storage_provider {
                     KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
                     KeyPackage: traits::KeyPackage<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     hash_ref: &KeyPackageRef,
                 ) -> Result<Option<KeyPackage>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
-                    let task = StorableKeyPackage::load::<_, C>(&mut **connection, hash_ref);
+                    let task = StorableKeyPackage::load::<_, C>($exec_fn(&mut self.connection), hash_ref);
                     run_task(task).await
                 }
 
@@ -629,11 +593,10 @@ macro_rules! impl_storage_provider {
                     PskBundle: traits::PskBundle<CURRENT_VERSION>,
                     PskId: traits::PskId<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     psk_id: &PskId,
                 ) -> Result<Option<PskBundle>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
-                    let task = load_psk_bundle::<_, _, C>(&mut **connection, psk_id);
+                    let task = load_psk_bundle::<_, _, C>($exec_fn(&mut self.connection), psk_id);
                     run_task(task).await
                 }
 
@@ -641,137 +604,125 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     proposal_ref: &ProposalRef,
                 ) -> Result<(), Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let task = storable.delete_proposal(&mut **connection, proposal_ref);
+                    let task = storable.delete_proposal($exec_fn(&mut self.connection), proposal_ref);
                     run_task(task).await
                 }
 
                 async fn delete_own_leaf_nodes<GroupId: traits::GroupId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.delete_leaf_nodes(&mut **connection);
+                    let task = storable.delete_leaf_nodes($exec_fn(&mut self.connection));
                     run_task(task).await
                 }
 
                 async fn delete_group_config<GroupId: traits::GroupId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
                     let task = storable
-                        .delete_group_data(&mut **connection, GroupDataType::JoinGroupConfig);
+                        .delete_group_data($exec_fn(&mut self.connection), GroupDataType::JoinGroupConfig);
                     run_task(task).await
                 }
 
                 async fn delete_tree<GroupId: traits::GroupId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.delete_group_data(&mut **connection, GroupDataType::Tree);
+                    let task = storable.delete_group_data($exec_fn(&mut self.connection), GroupDataType::Tree);
                     run_task(task).await
                 }
 
                 async fn delete_confirmation_tag<GroupId: traits::GroupId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
                     let task = storable
-                        .delete_group_data(&mut **connection, GroupDataType::ConfirmationTag);
+                        .delete_group_data($exec_fn(&mut self.connection), GroupDataType::ConfirmationTag);
                     run_task(task).await
                 }
 
                 async fn delete_group_state<GroupId: traits::GroupId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
                     let task =
-                        storable.delete_group_data(&mut **connection, GroupDataType::GroupState);
+                        storable.delete_group_data($exec_fn(&mut self.connection), GroupDataType::GroupState);
                     run_task(task).await
                 }
 
                 async fn delete_context<GroupId: traits::GroupId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.delete_group_data(&mut **connection, GroupDataType::Context);
+                    let task = storable.delete_group_data($exec_fn(&mut self.connection), GroupDataType::Context);
                     run_task(task).await
                 }
 
                 async fn delete_interim_transcript_hash<
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.delete_group_data(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         GroupDataType::InterimTranscriptHash,
                     );
                     run_task(task).await
                 }
 
                 async fn delete_message_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
                     let task = storable
-                        .delete_group_data(&mut **connection, GroupDataType::MessageSecrets);
+                        .delete_group_data($exec_fn(&mut self.connection), GroupDataType::MessageSecrets);
                     run_task(task).await
                 }
 
                 async fn delete_all_resumption_psk_secrets<
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
                     let task = storable
-                        .delete_group_data(&mut **connection, GroupDataType::ResumptionPskStore);
+                        .delete_group_data($exec_fn(&mut self.connection), GroupDataType::ResumptionPskStore);
                     run_task(task).await
                 }
 
                 async fn delete_own_leaf_index<GroupId: traits::GroupId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
                     let task =
-                        storable.delete_group_data(&mut **connection, GroupDataType::OwnLeafIndex);
+                        storable.delete_group_data($exec_fn(&mut self.connection), GroupDataType::OwnLeafIndex);
                     run_task(task).await
                 }
 
                 async fn delete_group_epoch_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
                     let task = storable
-                        .delete_group_data(&mut **connection, GroupDataType::GroupEpochSecrets);
+                        .delete_group_data($exec_fn(&mut self.connection), GroupDataType::GroupEpochSecrets);
                     run_task(task).await
                 }
 
@@ -779,36 +730,33 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.delete_all_proposals(&mut **connection);
+                    let task = storable.delete_all_proposals($exec_fn(&mut self.connection));
                     run_task(task).await
                 }
 
                 async fn delete_signature_key_pair<
                     SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     public_key: &SignaturePublicKey,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableSignaturePublicKeyRef(public_key);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.delete::<C>(&mut **connection);
+                    let task = storable.delete::<C>($exec_fn(&mut self.connection));
                     run_task(task).await
                 }
 
                 async fn delete_encryption_key_pair<
                     EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     public_key: &EncryptionKey,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableEncryptionPublicKeyRef(public_key);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.delete::<C>(&mut **connection);
+                    let task = storable.delete::<C>($exec_fn(&mut self.connection));
                     run_task(task).await
                 }
 
@@ -816,36 +764,33 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     EpochKey: traits::EpochKey<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     epoch: &EpochKey,
                     leaf_index: u32,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.delete_epoch_key_pair(&mut **connection, epoch, leaf_index);
+                    let task = storable.delete_epoch_key_pair($exec_fn(&mut self.connection), epoch, leaf_index);
                     run_task(task).await
                 }
 
                 async fn delete_key_package<
                     KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     hash_ref: &KeyPackageRef,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableHashRef(hash_ref);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.delete_key_package::<C>(&mut **connection);
+                    let task = storable.delete_key_package::<C>($exec_fn(&mut self.connection));
                     run_task(task).await
                 }
 
                 async fn delete_psk<PskKey: traits::PskId<CURRENT_VERSION>>(
-                    &self,
+                    &mut self,
                     psk_id: &PskKey,
                 ) -> Result<(), Self::Error> {
                     let storable = StorablePskIdRef(psk_id);
-                    let mut connection = self.connection.lock().await;
-                    let task = storable.delete::<C>(&mut **connection);
+                    let task = storable.delete::<C>($exec_fn(&mut self.connection));
                     run_task(task).await
                 }
 
@@ -854,14 +799,13 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                     application_export_tree: &ApplicationExportTree,
                 ) -> Result<(), Self::Error> {
                     let storable = StorableGroupDataRef(application_export_tree);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.store::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::ApplicationExportTree,
                     );
@@ -873,12 +817,11 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<Option<ApplicationExportTree>, Self::Error> {
-                    let mut connection = self.connection.lock().await;
                     let task = StorableGroupData::load::<_, C>(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         group_id,
                         GroupDataType::ApplicationExportTree,
                     );
@@ -890,13 +833,12 @@ macro_rules! impl_storage_provider {
                     GroupId: traits::GroupId<CURRENT_VERSION>,
                     ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
                 >(
-                    &self,
+                    &mut self,
                     group_id: &GroupId,
                 ) -> Result<(), Self::Error> {
                     let storable = self.wrap_storable_group_id_ref(group_id);
-                    let mut connection = self.connection.lock().await;
                     let task = storable.delete_group_data(
-                        &mut **connection,
+                        $exec_fn(&mut self.connection),
                         GroupDataType::ApplicationExportTree,
                     );
                     run_task(task).await

@@ -161,7 +161,7 @@ impl EncryptionKeyPair {
     #[maybe_async::maybe_async]
     pub(crate) async fn write<Storage: StorageProvider>(
         &self,
-        store: &Storage,
+        store: &mut Storage,
     ) -> Result<(), Storage::Error> {
         store
             .write_encryption_key_pair(self.public_key(), self)
@@ -179,7 +179,7 @@ impl EncryptionKeyPair {
     /// Returns `None` if the keypair cannot be read from the store.
     #[maybe_async::maybe_async]
     pub(crate) async fn read(
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
         provider
@@ -198,7 +198,7 @@ impl EncryptionKeyPair {
     #[maybe_async::maybe_async]
     pub(crate) async fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
-        store: &Storage,
+        store: &mut Storage,
     ) -> Result<(), Storage::Error> {
         store.delete_encryption_key_pair(self.public_key()).await
     }
@@ -231,7 +231,7 @@ pub mod test_utils {
 
     #[maybe_async::maybe_async]
     pub async fn read_keys_from_key_store(
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
         let keys = EncryptionKeyPair::read(provider, encryption_key)
@@ -246,7 +246,7 @@ pub mod test_utils {
 
     #[maybe_async::maybe_async]
     pub async fn write_keys_from_key_store(
-        provider: &impl OpenMlsProvider,
+        provider: &mut impl OpenMlsProvider,
         encryption_key: HpkeKeyPair,
     ) {
         let keypair = EncryptionKeyPair::from(encryption_key);

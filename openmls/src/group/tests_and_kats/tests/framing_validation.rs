@@ -26,8 +26,8 @@ struct ValidationTestSetup {
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    alice_provider: &impl crate::storage::OpenMlsProvider,
-    bob_provider: &impl crate::storage::OpenMlsProvider,
+    alice_provider: &mut impl crate::storage::OpenMlsProvider,
+    bob_provider: &mut impl crate::storage::OpenMlsProvider,
 ) -> ValidationTestSetup {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -116,8 +116,8 @@ fn validation_test_setup(
 // ValSem002 Group id
 #[openmls_test::openmls_test]
 fn test_valsem002() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ValidationTestSetup {
         mut alice_group,
@@ -175,8 +175,8 @@ fn test_valsem002() {
 // ValSem003 Epoch
 #[openmls_test::openmls_test]
 fn test_valsem003() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ValidationTestSetup {
         mut alice_group,
@@ -287,8 +287,8 @@ fn test_valsem003() {
 // ValSem004 Sender: Member: check the member exists
 #[openmls_test::openmls_test]
 fn test_valsem004() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ValidationTestSetup {
         mut alice_group,
@@ -357,8 +357,8 @@ fn test_valsem004() {
 // ValSem005 Application messages must use ciphertext
 #[openmls_test::openmls_test]
 fn test_valsem005() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ValidationTestSetup {
         mut alice_group,
@@ -426,8 +426,8 @@ fn test_valsem005() {
 // ValSem006 Ciphertext: decryption needs to work
 #[openmls_test::openmls_test]
 fn test_valsem006() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ValidationTestSetup {
         mut alice_group,
@@ -482,8 +482,8 @@ fn test_valsem006() {
 // ValSem007 Membership tag presence
 #[openmls_test::openmls_test]
 fn test_valsem007() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ValidationTestSetup {
         mut alice_group,
@@ -541,8 +541,8 @@ fn test_valsem007() {
 // ValSem008 Membership tag verification
 #[openmls_test::openmls_test]
 fn test_valsem008() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ValidationTestSetup {
         mut alice_group,
@@ -609,8 +609,8 @@ fn test_valsem008() {
 // ValSem009 Confirmation tag presence
 #[openmls_test::openmls_test]
 fn test_valsem009() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ValidationTestSetup {
         mut alice_group,
@@ -678,8 +678,8 @@ fn test_valsem009() {
 // ValSem010 Signature verification
 #[openmls_test::openmls_test]
 fn test_valsem010() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
 
     let ValidationTestSetup {
         mut alice_group,

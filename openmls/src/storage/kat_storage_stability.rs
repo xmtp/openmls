@@ -60,7 +60,7 @@ impl<Provider: OpenMlsProvider + Default> DeterministicRandProvider<Provider> {
     }
 
     fn block(&self, mut dst: &mut [u8]) -> usize {
-        let provider = &Provider::default();
+        let mut provider = &Provider::default();
         let ctr = self.ctr.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         let block = provider
@@ -124,8 +124,8 @@ impl<Provider: OpenMlsProvider + Default> openmls_traits::OpenMlsProvider
 
     type StorageProvider = openmls_memory_storage::MemoryStorage;
 
-    fn storage(&self) -> &Self::StorageProvider {
-        &self.storage
+    fn storage(&mut self) -> &mut Self::StorageProvider {
+        &mut self.storage
     }
 
     fn crypto(&self) -> &Self::CryptoProvider {
@@ -154,7 +154,7 @@ fn check_serialized_group_equality<R: std::io::Read, Provider: OpenMlsProvider +
     group_id: &GroupId,
     group: &MlsGroup,
 ) {
-    let provider = deserialize_provider::<_, Provider>(r, name);
+    let mut provider = deserialize_provider::<_, Provider>(r, name);
     let loaded_group = MlsGroup::load(provider.storage(), group_id)
         .unwrap()
         .unwrap();
@@ -165,17 +165,17 @@ fn check_serialized_group_equality<R: std::io::Read, Provider: OpenMlsProvider +
 fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
     ciphersuite: Ciphersuite,
 ) -> (GroupId, Vec<Vec<u8>>) {
-    let alice_provider = StorageTestProvider::<Provider>::new("alice");
+    let mut alice_provider = StorageTestProvider::<Provider>::new("alice");
     let (alice_cwk, alice_signer) =
-        new_credential(&alice_provider, b"alice", ciphersuite.signature_algorithm());
+        new_credential(&mut alice_provider, b"alice", ciphersuite.signature_algorithm());
 
-    let bob_provider = StorageTestProvider::<Provider>::new("bob");
+    let mut bob_provider = StorageTestProvider::<Provider>::new("bob");
     let (bob_cwk, bob_signer) =
-        new_credential(&bob_provider, b"bob", ciphersuite.signature_algorithm());
+        new_credential(&mut bob_provider, b"bob", ciphersuite.signature_algorithm());
 
-    let charlie_provider = StorageTestProvider::<Provider>::new("charlie");
+    let mut charlie_provider = StorageTestProvider::<Provider>::new("charlie");
     let (charlie_cwk, charlie_signer) = new_credential(
-        &charlie_provider,
+        &mut charlie_provider,
         b"charlie",
         ciphersuite.signature_algorithm(),
     );
@@ -190,7 +190,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             None,
             None,
         ))
-        .build(&alice_provider, &alice_signer, alice_cwk)
+        .build(&mut alice_provider, &alice_signer, alice_cwk)
         .expect("error creating group using builder");
 
     let group_id = alice_group.group_id().clone();
@@ -216,12 +216,12 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             None,
             None,
         ))
-        .build(ciphersuite, &bob_provider, &bob_signer, bob_cwk.clone())
+        .build(ciphersuite, &mut bob_provider, &bob_signer, bob_cwk.clone())
         .unwrap();
 
     alice_group
         .add_members(
-            &alice_provider,
+            &mut alice_provider,
             &alice_signer,
             &[bob_kpb.key_package().to_owned()],
         )
@@ -240,7 +240,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         &alice_group,
     );
 
-    alice_group.merge_pending_commit(&alice_provider).unwrap();
+    alice_group.merge_pending_commit(&mut alice_provider).unwrap();
 
     let mut testdata_bob_added = vec![];
     alice_provider
@@ -250,7 +250,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
 
     alice_group
         .update_group_context_extensions(
-            &alice_provider,
+            &mut alice_provider,
             Extensions::single(Extension::RequiredCapabilities(
                 RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
             ))
@@ -272,7 +272,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         &alice_group,
     );
 
-    alice_group.merge_pending_commit(&alice_provider).unwrap();
+    alice_group.merge_pending_commit(&mut alice_provider).unwrap();
 
     let mut testdata_gce_updated = vec![];
     alice_provider
@@ -299,14 +299,14 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         ))
         .build(
             ciphersuite,
-            &charlie_provider,
+            &mut charlie_provider,
             &charlie_signer,
             charlie_cwk.clone(),
         )
         .unwrap();
 
     alice_group
-        .propose_add_member(&alice_provider, &alice_signer, charlie_kpb.key_package())
+        .propose_add_member(&mut alice_provider, &alice_signer, charlie_kpb.key_package())
         .unwrap();
 
     let mut testdata_pending_proposal = vec![];
@@ -351,7 +351,7 @@ fn generate_kats() {
 )))]
 fn write_kats() {
     // setup
-    let rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
+    let mut rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
 
     // make a list of all supported ciphersuites
     let ciphersuites = rustcrypto_provider.crypto().supported_ciphersuites();
@@ -382,8 +382,8 @@ fn write_kats() {
 ))]
 fn write_kats() {
     // setup
-    let libcrux_provider = openmls_libcrux_crypto::Provider::default();
-    let rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
+    let mut libcrux_provider = openmls_libcrux_crypto::Provider::default();
+    let mut rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
 
     // make a list of all supported ciphersuites
     let mut ciphersuites = libcrux_provider.crypto().supported_ciphersuites();

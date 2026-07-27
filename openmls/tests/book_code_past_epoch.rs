@@ -17,8 +17,8 @@ fn book_example_past_epoch() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Set up Alice party
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let provider = &alice_party.provider;
+    let mut alice_party = CorePartyState::<Provider>::new("alice");
+    let mut provider = &mut alice_party.provider;
 
     // set up the group creation config
     // ANCHOR: config_keep_all

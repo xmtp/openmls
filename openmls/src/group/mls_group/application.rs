@@ -16,7 +16,7 @@ impl MlsGroup {
     #[maybe_async::maybe_async]
     pub async fn create_message<Provider: OpenMlsProvider>(
         &mut self,
-        provider: &Provider,
+        provider: &mut Provider,
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {

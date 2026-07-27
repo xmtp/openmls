@@ -13,9 +13,9 @@ use crate::{
 
 #[openmls_test]
 fn external_commit_builder() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
+    let mut alice_provider = &Provider::default();
+    let mut bob_provider = &Provider::default();
+    let mut charlie_provider = &Provider::default();
 
     let CredentialWithKeyAndSigner {
         credential_with_key: alice_credential_with_key,
