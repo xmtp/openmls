@@ -45,14 +45,16 @@ impl MlsGroup {
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
     #[cfg(not(feature = "virtual-clients-draft"))]
-    pub fn create_message<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {
-        let (_, output) =
-            self.create_message_internal::<_, CreateMessageError>(provider, signer, message)?;
+        let (_, output) = self
+            .create_message_internal::<_, CreateMessageError>(provider, signer, message)
+            .await?;
         Ok(output)
     }
 
@@ -77,7 +79,8 @@ impl MlsGroup {
     }
 
     #[cfg(not(feature = "virtual-clients-draft"))]
-    fn create_message_internal<Provider: OpenMlsProvider, E>(
+    #[maybe_async::maybe_async]
+    async fn create_message_internal<Provider: OpenMlsProvider, E>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -106,6 +109,7 @@ impl MlsGroup {
             private_message,
         } = self
             .encrypt(authenticated_content, provider)
+            .await
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 

@@ -67,7 +67,7 @@ jobs:
       - uses: taiki-e/install-action@cargo-hack
 
       # Group features into independent axes to keep the powerset small.
-      # `virtual-clients-draft` already enables `extensions-draft-08`, so they
+      # `virtual-clients-draft` already enables `extensions-draft`, so they
       # share one "drafts" group. The pure cfg-gate flags don't interact and
       # form a "misc" group. `all-ciphersuites` only affects test expansion and
       # has no effect on a `--no-dev-deps check`, so it is excluded.
