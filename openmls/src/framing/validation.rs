@@ -470,10 +470,7 @@ impl ProcessedMessage {
     pub(crate) fn take_unresolved_app_data_commit(
         &mut self,
     ) -> Result<UnresolvedAppDataCommit, ResolveAppDataCommitError> {
-        match core::mem::replace(
-            &mut self.content,
-            ProcessedMessageContent::OwnPendingCommit,
-        ) {
+        match core::mem::replace(&mut self.content, ProcessedMessageContent::OwnPendingCommit) {
             ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => {
                 Ok(*unresolved_commit)
             }

@@ -877,15 +877,16 @@ impl MlsGroup {
 
         #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match verified.content.sender() {
-            Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
-                .process_internal_authenticated_content(
+            Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => {
+                self.process_internal_authenticated_content(
                     provider,
                     verified.content,
                     verified.credential,
                     #[cfg(feature = "virtual-clients-draft")]
                     verified.emulator_sender_leaf_index,
                 )
-                .await?,
+                .await?
+            }
             Sender::External(_) => self.process_external_authenticated_content(
                 provider,
                 verified.content,

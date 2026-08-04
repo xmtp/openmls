@@ -23,7 +23,7 @@ jobs:
       - name: Run profiling tests
         run: |
           mkdir -p target/debug/coverage
-          cargo test --no-fail-fast -p openmls
+          cargo test --no-fail-fast -p openmls -F sync
         env:
           CARGO_INCREMENTAL: '0'
           LLVM_PROFILE_FILE: 'target/debug/coverage/openmls-%p-%m.profraw'

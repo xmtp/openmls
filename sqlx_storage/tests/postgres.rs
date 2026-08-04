@@ -15,10 +15,21 @@ use sqlx::{Connection as _, Executor as _, PgConnection};
 
 const URL_ENV: &str = "OPENMLS_SQLX_POSTGRES_URL";
 
+/// Set this in CI. It turns "no server configured" from a silent skip into a
+/// failure, so a misconfigured job cannot report green having tested nothing --
+/// the skip path costs 0.00s and still prints `ok`, which is indistinguishable
+/// from a real run at a glance.
+const REQUIRE_ENV: &str = "OPENMLS_SQLX_REQUIRE_POSTGRES";
+
 /// Connects and hands back a session pinned to a freshly created, empty schema.
 /// Returns `None` when no server is configured, so the caller can skip.
 async fn connect(schema: &str) -> Option<PgConnection> {
     let Ok(url) = std::env::var(URL_ENV) else {
+        assert!(
+            std::env::var(REQUIRE_ENV).is_err(),
+            "{REQUIRE_ENV} is set but {URL_ENV} is not -- refusing to skip the \
+             PostgreSQL tests and report success"
+        );
         eprintln!("skipping: {URL_ENV} is not set");
         return None;
     };

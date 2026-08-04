@@ -574,7 +574,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.read(KEY_PACKAGE_LABEL, &key)
     }
 
-    async fn psk<PskBundle: traits::PskBundle<CURRENT_VERSION>, PskId: traits::PskId<CURRENT_VERSION>>(
+    async fn psk<
+        PskBundle: traits::PskBundle<CURRENT_VERSION>,
+        PskId: traits::PskId<CURRENT_VERSION>,
+    >(
         &self,
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error> {
@@ -1079,7 +1082,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    async fn delete_vc_emulation_state_if_unreferenced<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+    async fn delete_vc_emulation_state_if_unreferenced<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+    >(
         &self,
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error> {
@@ -1281,7 +1286,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    async fn has_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+    async fn has_retained_key_package_material_for_epoch<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+    >(
         &self,
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error> {

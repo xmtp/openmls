@@ -15,13 +15,30 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  tests:
+  # `cargo fmt` at the repo root only reaches the main workspace, so these two
+  # crates were never format-checked and had drifted.
+  fmt:
+    name: fmt (out-of-workspace crates)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --check --manifest-path sqlx_storage/Cargo.toml
+      - run: cargo fmt --check --manifest-path openmls_async_tests/Cargo.toml
+
+  sqlite:
+    name: ${{ matrix.features }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os:
           - ubuntu-latest
           - macos-latest
+        features:
+          - sqlite
+          - sqlite,extensions-draft
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -30,15 +47,72 @@ jobs:
         with:
           workspaces: |
             sqlx_storage -> target
-      - name: Build openmls_sqlx_storage
+      - name: Test
         run: |
-          cargo build --manifest-path sqlx_storage/Cargo.toml
-      - name: Test openmls_sqlx_storage
+          cargo test --manifest-path sqlx_storage/Cargo.toml \
+            --no-default-features --features ${{ matrix.features }}
+
+  postgres:
+    # Linux only: service containers are unavailable on macOS runners, so the
+    # Postgres backend is not covered there.
+    name: ${{ matrix.features }}
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - postgres
+          - postgres,extensions-draft
+          # Both backends at once. They are additive rather than mutually
+          # exclusive -- enabling both yields two provider types over one shared
+          # set of statements -- so the combination needs its own coverage.
+          - sqlite,postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: openmls
+          POSTGRES_PASSWORD: openmls
+          POSTGRES_DB: openmls
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      OPENMLS_SQLX_POSTGRES_URL: postgres://openmls:openmls@localhost:5432/openmls
+      # Without a URL the Postgres tests skip themselves and still print `ok` in
+      # 0.00s, which is indistinguishable from a real run. This makes a job that
+      # cannot reach its server fail rather than pass having tested nothing.
+      OPENMLS_SQLX_REQUIRE_POSTGRES: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            sqlx_storage -> target
+      - name: Test
         run: |
-          cargo test --manifest-path sqlx_storage/Cargo.toml
-      - name: Build openmls_sqlx_storage with `extensions-draft` feature
-        run: |
-          cargo build -F extensions-draft --manifest-path sqlx_storage/Cargo.toml
-      - name: Test openmls_sqlx_storage with `extensions-draft` feature
-        run: |
-          cargo test -F extensions-draft --manifest-path sqlx_storage/Cargo.toml
+          cargo test --manifest-path sqlx_storage/Cargo.toml \
+            --no-default-features --features ${{ matrix.features }}
+
+  async-group-flow:
+    # `openmls_async_tests` is its own workspace, so no other job compiles it --
+    # it silently rotted once before for exactly that reason. Running it
+    # exercises a full storage-backed MLS group flow against the async traits,
+    # and merely building it enforces the `Send` guard the provider needs: a
+    # server spawns one task per stream, so a `!Send` future is a regression.
+    name: async group flow (sqlx sqlite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            openmls_async_tests -> target
+      - name: Run
+        run: cargo run --manifest-path openmls_async_tests/Cargo.toml

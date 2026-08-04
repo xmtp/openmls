@@ -110,9 +110,7 @@ macro_rules! impl_propose_fun {
                 .map_err(ProposalError::StorageError)?;
             self.proposal_store_mut().add(queued_proposal);
 
-            let framing = self
-                .content_to_mls_message(proposal, provider)
-                .await?;
+            let framing = self.content_to_mls_message(proposal, provider).await?;
 
             self.reset_aad();
             Ok((framing, proposal_ref))
@@ -400,8 +398,12 @@ impl MlsGroup {
                         .await
                 }
                 ProposalOrRefType::Reference => {
-                    self.propose_custom_proposal_by_reference_impl(provider, signer, custom_proposal)
-                        .await
+                    self.propose_custom_proposal_by_reference_impl(
+                        provider,
+                        signer,
+                        custom_proposal,
+                    )
+                    .await
                 }
             },
         }

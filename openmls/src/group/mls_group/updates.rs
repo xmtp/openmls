@@ -252,13 +252,14 @@ impl MlsGroup {
         signer: &S,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        let (framing, proposal_ref) = self.propose_self_update_internal(
-            provider,
-            signer,
-            None::<NewSignerBundle<'_, S>>,
-            leaf_node_parameters,
-        )
-        .await?;
+        let (framing, proposal_ref) = self
+            .propose_self_update_internal(
+                provider,
+                signer,
+                None::<NewSignerBundle<'_, S>>,
+                leaf_node_parameters,
+            )
+            .await?;
         Ok((framing.message, proposal_ref))
     }
 
