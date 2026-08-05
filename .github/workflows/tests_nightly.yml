@@ -41,4 +41,4 @@ jobs:
       - name: Tests with all providers and ciphersuites
         run: |
           cargo test ${{ matrix.mode.arg }} -p openmls --verbose --no-default-features \
-            -F all-ciphersuites,sqlite-provider,libcrux-provider ${{ matrix.features.arg }}
+            -F sync,all-ciphersuites,sqlite-provider,libcrux-provider ${{ matrix.features.arg }}

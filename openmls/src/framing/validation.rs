@@ -458,6 +458,36 @@ impl ProcessedMessage {
         Ok(self)
     }
 
+    /// Takes the [`UnresolvedAppDataCommit`] out of this message, leaving a
+    /// placeholder in its place.
+    ///
+    /// Pair with [`Self::set_staged_commit`]. This two-step form exists because
+    /// staging a commit touches storage, which is `async` on the async storage
+    /// track and so cannot happen inside the synchronous closure
+    /// [`Self::resolve_app_data_commit`] takes. On error the original content
+    /// is put back, so the placeholder never escapes this call.
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) fn take_unresolved_app_data_commit(
+        &mut self,
+    ) -> Result<UnresolvedAppDataCommit, ResolveAppDataCommitError> {
+        match core::mem::replace(&mut self.content, ProcessedMessageContent::OwnPendingCommit) {
+            ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => {
+                Ok(*unresolved_commit)
+            }
+            other => {
+                self.content = other;
+                Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit)
+            }
+        }
+    }
+
+    /// Replaces this message's content with `staged_commit`, keeping all other
+    /// fields intact. Counterpart to [`Self::take_unresolved_app_data_commit`].
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) fn set_staged_commit(&mut self, staged_commit: StagedCommit) {
+        self.content = ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
+    }
+
     /// Parse the Safe AAD prefix at the start of `authenticated_data` and
     /// attach it to this message. Callers should invoke this only when the receiving
     /// group's GroupContext requires Safe AAD framing. Otherwise, `safe_aad`

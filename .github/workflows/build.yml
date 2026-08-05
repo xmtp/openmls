@@ -49,10 +49,10 @@ jobs:
 
       - name: Build (wasm)
         if: matrix.arch == 'wasm32-unknown-unknown'
-        run: cargo build --release --verbose --target ${{ matrix.arch }} -p openmls -F js
+        run: cargo build --release --verbose --target ${{ matrix.arch }} -p openmls -F sync,js
       - name: Build
         if: ${{ matrix.arch != 'wasm32-unknown-unknown'  }}
-        run: cargo build --release --verbose --target ${{ matrix.arch }} -p openmls
+        run: cargo build --release --verbose --target ${{ matrix.arch }} -p openmls -F sync
 
   # Check feature powerset
   check:
@@ -67,18 +67,27 @@ jobs:
       - uses: taiki-e/install-action@cargo-hack
 
       # Group features into independent axes to keep the powerset small.
-      # `virtual-clients-draft` already enables `extensions-draft-08`, so they
+      # `virtual-clients-draft` already enables `extensions-draft`, so they
       # share one "drafts" group. The pure cfg-gate flags don't interact and
       # form a "misc" group. `all-ciphersuites` only affects test expansion and
       # has no effect on a `--no-dev-deps check`, so it is excluded.
+      # The powerset runs on the sync track: `--features sync` is added to every
+      # combination and `async` is excluded from the set. Both tracks cannot be
+      # in one powerset -- they are a single choice, and `maybe-async/is_sync` is
+      # global, so a combination enabling neither would silently check a
+      # different shape than the one that ships. Pinning to `sync` also keeps
+      # this honest about the known gap: the `virtual-clients-draft` storage
+      # methods are still synchronous, so that feature does not yet build
+      # against the async traits. Widen this once they are converted.
       - name: Cargo hack
         run: |
           cargo hack check --feature-powerset --no-dev-deps --verbose -p openmls \
+          --features sync \
           --group-features test-utils,crypto-debug,content-debug,backtrace,libcrux-provider,sqlite-provider \
           --group-features extensions-draft,extensions-draft-test-dependencies,virtual-clients-draft,virtual-clients-draft-test-dependencies \
           --group-features js,js-test \
           --group-features 0-8-1-storage-format,generate-kats,unchecked-conversions,fork-resolution \
-          --exclude-features all-ciphersuites
+          --exclude-features all-ciphersuites,async
 
   # Verify the crates build with the declared MSRV (specified in rust-version in Cargo.toml)
   msrv:

@@ -87,7 +87,8 @@ impl MlsGroup {
         member_state.staged_diff.confirmation_tag() == received_tag
     }
 
-    fn derive_epoch_secrets(
+    #[maybe_async::maybe_async]
+    async fn derive_epoch_secrets(
         &self,
         provider: &impl OpenMlsProvider,
         apply_proposals_values: ApplyProposalsValues,
@@ -158,7 +159,8 @@ impl MlsGroup {
                 provider.storage(),
                 &self.resumption_psk_store,
                 &apply_proposals_values.presharedkeys,
-            )?;
+            )
+            .await?;
 
             PskSecret::new(provider.crypto(), self.ciphersuite(), psks)?
         };
@@ -217,7 +219,8 @@ impl MlsGroup {
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244
-    pub(crate) fn stage_commit(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
@@ -258,11 +261,13 @@ impl MlsGroup {
             #[cfg(feature = "virtual-clients-draft")]
             vc_commit_material,
         )
+        .await
     }
 
     #[cfg(feature = "extensions-draft")]
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn stage_commit_with_app_data_updates(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
@@ -300,13 +305,15 @@ impl MlsGroup {
             #[cfg(feature = "virtual-clients-draft")]
             vc_commit_material,
         )
+        .await
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn stage_applied_proposal_values(
+    #[maybe_async::maybe_async]
+    async fn stage_applied_proposal_values(
         &self,
         apply_proposals_values: ApplyProposalsValues,
-        mut diff: PublicGroupDiff,
+        mut diff: PublicGroupDiff<'_>,
         commit: &Commit,
         proposal_queue: ProposalQueue,
         sender_index: LeafNodeIndex,
@@ -536,15 +543,17 @@ impl MlsGroup {
             epoch_secrets,
             #[cfg(feature = "extensions-draft")]
             application_exporter,
-        } = self.derive_epoch_secrets(
-            provider,
-            apply_proposals_values,
-            self.group_epoch_secrets(),
-            commit_secret,
-            &serialized_provisional_group_context,
-            #[cfg(feature = "virtual-clients-draft")]
-            vc_external_init_secret.as_ref(),
-        )?;
+        } = self
+            .derive_epoch_secrets(
+                provider,
+                apply_proposals_values,
+                self.group_epoch_secrets(),
+                commit_secret,
+                &serialized_provisional_group_context,
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_external_init_secret.as_ref(),
+            )
+            .await?;
         let (provisional_group_secrets, provisional_message_secrets) = epoch_secrets.split_secrets(
             serialized_provisional_group_context,
             diff.tree_size(),
@@ -674,7 +683,8 @@ impl MlsGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub(crate) fn merge_commit<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn merge_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
@@ -683,12 +693,14 @@ impl MlsGroup {
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self
             .read_epoch_keypairs(provider.storage())
+            .await
             .map_err(MergeCommitError::StorageError)?;
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {
                 self.public_group
                     .merge_diff(staged_state.into_staged_diff());
                 self.store(provider.storage())
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
                 Ok(())
             }
@@ -727,6 +739,7 @@ impl MlsGroup {
                                 self.group_id(),
                                 &application_export_tree,
                             )
+                            .await
                             .map_err(MergeCommitError::StorageError)?;
 
                         self.application_export_tree = Some(application_export_tree);
@@ -780,19 +793,24 @@ impl MlsGroup {
 
                 self.public_group
                     .store(storage)
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
                 storage
                     .write_own_leaf_index(group_id, &self.own_leaf_index)
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
                 storage
                     .write_group_epoch_secrets(group_id, &self.group_epoch_secrets)
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
                 storage
                     .write_message_secrets(group_id, &self.message_secrets_store)
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
 
                 // Store the relevant keys under the new epoch
                 self.store_epoch_keypairs(storage, epoch_keypairs.as_slice())
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
 
                 // Delete the old keys.
@@ -801,16 +819,19 @@ impl MlsGroup {
                     #[cfg(feature = "virtual-clients-draft")]
                     previous_own_leaf_index,
                 )
+                .await
                 .map_err(MergeCommitError::StorageError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
                     keypair
                         .delete(storage)
+                        .await
                         .map_err(MergeCommitError::StorageError)?;
                 }
 
                 // Empty the proposal store
                 storage
                     .clear_proposal_queue::<GroupId, ProposalRef>(group_id)
+                    .await
                     .map_err(MergeCommitError::StorageError)?;
                 self.proposal_store_mut().empty();
 

@@ -38,23 +38,27 @@ impl MlsGroup {
 
     /// Creates a new group with the creator as the only member (and a random
     /// group ID).
-    pub fn new<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn new<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<Provider::StorageError>> {
-        MlsGroupBuilder::new().build_internal(
-            provider,
-            signer,
-            credential_with_key,
-            Some(mls_group_create_config.clone()),
-        )
+        MlsGroupBuilder::new()
+            .build_internal(
+                provider,
+                signer,
+                credential_with_key,
+                Some(mls_group_create_config.clone()),
+            )
+            .await
     }
 
     /// Creates a new group with a given group ID with the creator as the only
     /// member.
-    pub fn new_with_group_id<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn new_with_group_id<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
@@ -69,6 +73,7 @@ impl MlsGroup {
                 credential_with_key,
                 Some(mls_group_create_config.clone()),
             )
+            .await
     }
 
     /// Join an existing group through an External Commit.
@@ -90,7 +95,8 @@ impl MlsGroup {
         since = "0.7.1",
         note = "Use the `MlsGroup::external_commit_builder` instead."
     )]
-    pub fn join_by_external_commit<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn join_by_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -119,12 +125,14 @@ impl MlsGroup {
             .build_group(provider, verifiable_group_info, credential_with_key)?
             .leaf_node_parameters(leaf_node_parameters)
             .load_psks(provider.storage())
+            .await
             .map_err(|e| {
                 log::error!("Error loading PSKs for external commit: {e:?}");
                 LibraryError::custom("Error loading PSKs for external commit")
             })?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .finalize(provider)?;
+            .finalize(provider)
+            .await?;
 
         let (commit, _, group_info) = commit_message_bundle.into_contents();
 
@@ -139,7 +147,8 @@ impl ProcessedWelcome {
     /// This does not require a ratchet tree yet.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
@@ -153,7 +162,7 @@ impl ProcessedWelcome {
             .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
 
         let (resumption_psk_store, key_material) =
-            keys_for_welcome(mls_group_config, &welcome, provider)?;
+            keys_for_welcome(mls_group_config, &welcome, provider).await?;
 
         let Some(egs) =
             welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
@@ -188,7 +197,8 @@ impl ProcessedWelcome {
                 provider.storage(),
                 &resumption_psk_store,
                 &group_secrets.psks,
-            )?;
+            )
+            .await?;
 
             PskSecret::new(provider.crypto(), ciphersuite, psks)?
         };
@@ -281,7 +291,8 @@ impl ProcessedWelcome {
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    pub fn into_staged_welcome<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn into_staged_welcome<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -292,11 +303,13 @@ impl ProcessedWelcome {
             LeafNodeLifetimePolicy::Verify,
             false,
         )
+        .await
     }
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    pub(crate) fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
         mut self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -306,6 +319,7 @@ impl ProcessedWelcome {
         // Check if we need to replace an old group
         if !replace_old_group
             && MlsGroup::load(provider.storage(), self.verifiable_group_info.group_id())
+                .await
                 .map_err(WelcomeError::StorageError)?
                 .is_some()
         {
@@ -534,30 +548,34 @@ impl StagedWelcome {
     /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let processed_welcome =
-            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
+            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome).await?;
 
-        processed_welcome.into_staged_welcome(provider, ratchet_tree)
+        processed_welcome
+            .into_staged_welcome(provider, ratchet_tree)
+            .await
     }
 
     /// Similar to [`StagedWelcome::new_from_welcome`] but as a builder.
     ///
     /// The builder allows to set the ratchet tree, skip leaf node lifetime
     /// validation, and get the [`ProcessedWelcome`] for inspection before staging.
-    pub fn build_from_welcome<'a, Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn build_from_welcome<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         // ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
         let processed_welcome =
-            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
+            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome).await?;
 
         // processed_welcome.into_staged_welcome(provider, ratchet_tree)
         Ok(JoinBuilder::new(provider, processed_welcome))
@@ -609,7 +627,8 @@ impl StagedWelcome {
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
-    pub fn into_group<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, WelcomeError<Provider::StorageError>> {
@@ -646,12 +665,14 @@ impl StagedWelcome {
 
         mls_group
             .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
+            .await
             .map_err(WelcomeError::StorageError)?;
         // resize the store
         mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
 
         mls_group
             .store(provider.storage())
+            .await
             .map_err(WelcomeError::StorageError)?;
 
         Ok(mls_group)
@@ -692,7 +713,8 @@ impl StagedWelcome {
     }
 }
 
-fn keys_for_welcome<Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+async fn keys_for_welcome<Provider: OpenMlsProvider>(
     mls_group_config: &MlsGroupJoinConfig,
     welcome: &Welcome,
     provider: &Provider,
@@ -707,6 +729,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         if let Some(key_package_bundle) = provider
             .storage()
             .key_package(&hash_ref)
+            .await
             .map_err(WelcomeError::StorageError)?
         {
             let key_package_bundle: KeyPackageBundle = key_package_bundle;
@@ -716,6 +739,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
                     .delete_key_package(
                         &key_package_bundle.key_package.hash_ref(provider.crypto())?,
                     )
+                    .await
                     .map_err(WelcomeError::StorageError)?;
             } else {
                 log::debug!("Key package has last resort extension, not deleting");
@@ -1330,12 +1354,15 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     }
 
     /// Build the [`StagedWelcome`].
-    pub fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
-        self.processed_welcome.into_staged_welcome_inner(
-            self.provider,
-            self.ratchet_tree,
-            self.validate_lifetimes,
-            self.replace_old_group,
-        )
+    #[maybe_async::maybe_async]
+    pub async fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        self.processed_welcome
+            .into_staged_welcome_inner(
+                self.provider,
+                self.ratchet_tree,
+                self.validate_lifetimes,
+                self.replace_old_group,
+            )
+            .await
     }
 }
