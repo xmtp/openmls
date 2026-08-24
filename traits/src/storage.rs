@@ -28,7 +28,12 @@ pub const V_TEST: u16 = u16::MAX;
 /// More details can be taken from the comments on the respective method.
 #[maybe_async::maybe_async(AFIT)]
 #[allow(async_fn_in_trait)]
-pub trait StorageProvider<const VERSION: u16> {
+// `Sync` supertrait: on the async track the storage futures must be `Send`, and
+// they hold `&self` across `.await`, so the provider has to be `Sync`. Making it a
+// supertrait propagates that to every generic `Storage: StorageProvider` use inside
+// openmls without threading a `Sync` bound through the whole call graph. (On the
+// sync track it is a harmless bound — providers are already `Sync`, being shared.)
+pub trait StorageProvider<const VERSION: u16>: Sync {
     /// An opaque error returned by all methods on this trait.
     type Error: core::fmt::Debug + std::error::Error;
 
@@ -42,30 +47,30 @@ pub trait StorageProvider<const VERSION: u16> {
     //
 
     /// Writes the MlsGroupJoinConfig for the group with given id to storage
-    async fn write_mls_join_config<
+    fn write_mls_join_config<
         GroupId: traits::GroupId<VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         config: &MlsGroupJoinConfig,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Adds an own leaf node for the group with given id to storage
-    async fn append_own_leaf_node<
+    fn append_own_leaf_node<
         GroupId: traits::GroupId<VERSION>,
         LeafNode: traits::LeafNode<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         leaf_node: &LeafNode,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Enqueue a proposal.
     ///
     /// A good way to implement this could be to add a proposal to a proposal store, indexed by the
     /// proposal reference, and adding the reference to a per-group proposal queue list.
-    async fn queue_proposal<
+    fn queue_proposal<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
         QueuedProposal: traits::QueuedProposal<VERSION>,
@@ -74,105 +79,105 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
         proposal: &QueuedProposal,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the TreeSync tree.
-    async fn write_tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
+    fn write_tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
         group_id: &GroupId,
         tree: &TreeSync,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the interim transcript hash.
-    async fn write_interim_transcript_hash<
+    fn write_interim_transcript_hash<
         GroupId: traits::GroupId<VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         interim_transcript_hash: &InterimTranscriptHash,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the group context.
-    async fn write_context<
+    fn write_context<
         GroupId: traits::GroupId<VERSION>,
         GroupContext: traits::GroupContext<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         group_context: &GroupContext,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the confirmation tag.
-    async fn write_confirmation_tag<
+    fn write_confirmation_tag<
         GroupId: traits::GroupId<VERSION>,
         ConfirmationTag: traits::ConfirmationTag<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         confirmation_tag: &ConfirmationTag,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the MlsGroupState for group with given id.
-    async fn write_group_state<
+    fn write_group_state<
         GroupState: traits::GroupState<VERSION>,
         GroupId: traits::GroupId<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         group_state: &GroupState,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the MessageSecretsStore for the group with the given id.
-    async fn write_message_secrets<
+    fn write_message_secrets<
         GroupId: traits::GroupId<VERSION>,
         MessageSecrets: traits::MessageSecrets<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         message_secrets: &MessageSecrets,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the ResumptionPskStore for the group with the given id.
-    async fn write_resumption_psk_store<
+    fn write_resumption_psk_store<
         GroupId: traits::GroupId<VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         resumption_psk_store: &ResumptionPskStore,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the own leaf index inside the group for the group with the given id.
-    async fn write_own_leaf_index<
+    fn write_own_leaf_index<
         GroupId: traits::GroupId<VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         own_leaf_index: &LeafNodeIndex,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the GroupEpochSecrets for the group with the given id.
-    async fn write_group_epoch_secrets<
+    fn write_group_epoch_secrets<
         GroupId: traits::GroupId<VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         group_epoch_secrets: &GroupEpochSecrets,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the ApplicationExportTree for the group with the given id.
     #[cfg(feature = "extensions-draft")]
-    async fn write_application_export_tree<
+    fn write_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         application_export_tree: &ApplicationExportTree,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the virtual clients per-emulation-epoch state (the AEAD key
     /// plus the registering client's emulation-group leaf index) for the
@@ -275,14 +280,14 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// The signature key pair is not known to OpenMLS. This may be used by the
     /// application
-    async fn write_signature_key_pair<
+    fn write_signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
     >(
         &self,
         public_key: &SignaturePublicKey,
         signature_key_pair: &SignatureKeyPair,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store an HPKE encryption key pair.
     /// This includes the private and public key
@@ -290,18 +295,18 @@ pub trait StorageProvider<const VERSION: u16> {
     /// This is only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    async fn write_encryption_key_pair<
+    fn write_encryption_key_pair<
         EncryptionKey: traits::EncryptionKey<VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
     >(
         &self,
         public_key: &EncryptionKey,
         key_pair: &HpkeKeyPair,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    async fn write_encryption_epoch_key_pairs<
+    fn write_encryption_epoch_key_pairs<
         GroupId: traits::GroupId<VERSION>,
         EpochKey: traits::EpochKey<VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
@@ -311,7 +316,7 @@ pub trait StorageProvider<const VERSION: u16> {
         epoch: &EpochKey,
         leaf_index: u32,
         key_pairs: &[HpkeKeyPair],
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store key packages.
     ///
@@ -322,14 +327,14 @@ pub trait StorageProvider<const VERSION: u16> {
     /// in order to iterate over key packages. OpenMLS does not have a reference
     /// for them.
     // ANCHOR: write_key_package
-    async fn write_key_package<
+    fn write_key_package<
         HashReference: traits::HashReference<VERSION>,
         KeyPackage: traits::KeyPackage<VERSION>,
     >(
         &self,
         hash_ref: &HashReference,
         key_package: &KeyPackage,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
     // ANCHOR_END: write_key_package
 
     /// Store a PSK.
@@ -338,135 +343,135 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// PSKs are only read by OpenMLS. The application is responsible for managing
     /// and storing PSKs.
-    async fn write_psk<PskId: traits::PskId<VERSION>, PskBundle: traits::PskBundle<VERSION>>(
+    fn write_psk<PskId: traits::PskId<VERSION>, PskBundle: traits::PskBundle<VERSION>>(
         &self,
         psk_id: &PskId,
         psk: &PskBundle,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     //
     //    ---   getters for group state  ---
     //
 
     /// Returns the MlsGroupJoinConfig for the group with given id
-    async fn mls_group_join_config<
+    fn mls_group_join_config<
         GroupId: traits::GroupId<VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<MlsGroupJoinConfig>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<MlsGroupJoinConfig>, Self::Error>> + Send;
 
     // ANCHOR: own_leaf_nodes
     /// Returns the own leaf nodes for the group with given id
-    async fn own_leaf_nodes<
+    fn own_leaf_nodes<
         GroupId: traits::GroupId<VERSION>,
         LeafNode: traits::LeafNode<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<LeafNode>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Vec<LeafNode>, Self::Error>> + Send;
     // ANCHOR_END: own_leaf_nodes
 
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
-    async fn queued_proposal_refs<
+    fn queued_proposal_refs<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<ProposalRef>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Vec<ProposalRef>, Self::Error>> + Send;
 
     /// Returns all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
-    async fn queued_proposals<
+    fn queued_proposals<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
         QueuedProposal: traits::QueuedProposal<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error>> + Send;
 
     /// Returns the TreeSync tree for the group with group id `group_id`.
-    async fn tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
+    fn tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<TreeSync>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<TreeSync>, Self::Error>> + Send;
 
     /// Returns the group context for the group with group id `group_id`.
-    async fn group_context<
+    fn group_context<
         GroupId: traits::GroupId<VERSION>,
         GroupContext: traits::GroupContext<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupContext>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<GroupContext>, Self::Error>> + Send;
 
     /// Returns the interim transcript hash for the group with group id `group_id`.
-    async fn interim_transcript_hash<
+    fn interim_transcript_hash<
         GroupId: traits::GroupId<VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<InterimTranscriptHash>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<InterimTranscriptHash>, Self::Error>> + Send;
 
     /// Returns the confirmation tag for the group with group id `group_id`.
-    async fn confirmation_tag<
+    fn confirmation_tag<
         GroupId: traits::GroupId<VERSION>,
         ConfirmationTag: traits::ConfirmationTag<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ConfirmationTag>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<ConfirmationTag>, Self::Error>> + Send;
 
     /// Returns the group state for the group with group id `group_id`.
-    async fn group_state<
+    fn group_state<
         GroupState: traits::GroupState<VERSION>,
         GroupId: traits::GroupId<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupState>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<GroupState>, Self::Error>> + Send;
 
     /// Returns the MessageSecretsStore for the group with the given id.
-    async fn message_secrets<
+    fn message_secrets<
         GroupId: traits::GroupId<VERSION>,
         MessageSecrets: traits::MessageSecrets<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<MessageSecrets>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<MessageSecrets>, Self::Error>> + Send;
 
     /// Returns the ResumptionPskStore for the group with the given id.
     ///
     /// Returning `None` here is considered an error because the store is needed
     /// by OpenMLS when loading a group.
-    async fn resumption_psk_store<
+    fn resumption_psk_store<
         GroupId: traits::GroupId<VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ResumptionPskStore>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<ResumptionPskStore>, Self::Error>> + Send;
 
     /// Returns the own leaf index inside the group for the group with the given id.
-    async fn own_leaf_index<
+    fn own_leaf_index<
         GroupId: traits::GroupId<VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<LeafNodeIndex>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<LeafNodeIndex>, Self::Error>> + Send;
 
     /// Returns the GroupEpochSecrets for the group with the given id.
-    async fn group_epoch_secrets<
+    fn group_epoch_secrets<
         GroupId: traits::GroupId<VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupEpochSecrets>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<GroupEpochSecrets>, Self::Error>> + Send;
 
     //
     //    ---   getter for crypto objects  ---
@@ -476,30 +481,30 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// The signature key pair is not known to OpenMLS. This may be used by the
     /// application
-    async fn signature_key_pair<
+    fn signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
     >(
         &self,
         public_key: &SignaturePublicKey,
-    ) -> Result<Option<SignatureKeyPair>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<SignatureKeyPair>, Self::Error>> + Send;
 
     /// Get an HPKE encryption key pair based on the public key.
     ///
     /// This is only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    async fn encryption_key_pair<
+    fn encryption_key_pair<
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
         EncryptionKey: traits::EncryptionKey<VERSION>,
     >(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<Option<HpkeKeyPair>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<HpkeKeyPair>, Self::Error>> + Send;
 
     /// Get a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    async fn encryption_epoch_key_pairs<
+    fn encryption_epoch_key_pairs<
         GroupId: traits::GroupId<VERSION>,
         EpochKey: traits::EpochKey<VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
@@ -508,32 +513,32 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<Vec<HpkeKeyPair>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Vec<HpkeKeyPair>, Self::Error>> + Send;
 
     /// Get a key package based on its hash reference.
-    async fn key_package<
+    fn key_package<
         KeyPackageRef: traits::HashReference<VERSION>,
         KeyPackage: traits::KeyPackage<VERSION>,
     >(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<Option<KeyPackage>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<KeyPackage>, Self::Error>> + Send;
 
     /// Get a PSK based on the PSK identifier.
-    async fn psk<PskBundle: traits::PskBundle<VERSION>, PskId: traits::PskId<VERSION>>(
+    fn psk<PskBundle: traits::PskBundle<VERSION>, PskId: traits::PskId<VERSION>>(
         &self,
         psk_id: &PskId,
-    ) -> Result<Option<PskBundle>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<PskBundle>, Self::Error>> + Send;
 
     #[cfg(feature = "extensions-draft")]
     /// Get the application export tree for the group with the given id.
-    async fn application_export_tree<
+    fn application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ApplicationExportTree>, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Option<ApplicationExportTree>, Self::Error>> + Send;
 
     #[cfg(feature = "virtual-clients-draft")]
     /// Get the virtual clients per-emulation-epoch state for the given
@@ -610,89 +615,89 @@ pub trait StorageProvider<const VERSION: u16> {
     //
 
     /// Removes an individual proposal from the proposal queue of the group with the provided id
-    async fn remove_proposal<
+    fn remove_proposal<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes own leaf nodes for the given id from storage
-    async fn delete_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
+    fn delete_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the MlsGroupJoinConfig for the given id from storage
-    async fn delete_group_config<GroupId: traits::GroupId<VERSION>>(
+    fn delete_group_config<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the tree from storage
-    async fn delete_tree<GroupId: traits::GroupId<VERSION>>(
+    fn delete_tree<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the confirmation tag from storage
-    async fn delete_confirmation_tag<GroupId: traits::GroupId<VERSION>>(
+    fn delete_confirmation_tag<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the MlsGroupState for group with given id.
-    async fn delete_group_state<GroupId: traits::GroupId<VERSION>>(
+    fn delete_group_state<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the group context for the group with given id
-    async fn delete_context<GroupId: traits::GroupId<VERSION>>(
+    fn delete_context<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the interim transcript hash for the group with given id
-    async fn delete_interim_transcript_hash<GroupId: traits::GroupId<VERSION>>(
+    fn delete_interim_transcript_hash<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the MessageSecretsStore for the group with the given id.
-    async fn delete_message_secrets<GroupId: traits::GroupId<VERSION>>(
+    fn delete_message_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the ResumptionPskStore for the group with the given id.
-    async fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<VERSION>>(
+    fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the own leaf index inside the group for the group with the given id.
-    async fn delete_own_leaf_index<GroupId: traits::GroupId<VERSION>>(
+    fn delete_own_leaf_index<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the GroupEpochSecrets for the group with the given id.
-    async fn delete_group_epoch_secrets<GroupId: traits::GroupId<VERSION>>(
+    fn delete_group_epoch_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Clear the proposal queue for the group with the given id.
-    async fn clear_proposal_queue<
+    fn clear_proposal_queue<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     //
     //    ---   deleters for crypto objects   ---
@@ -702,24 +707,24 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// The signature key pair is not known to OpenMLS. This may be used by the
     /// application
-    async fn delete_signature_key_pair<SignaturePublicKey: traits::SignaturePublicKey<VERSION>>(
+    fn delete_signature_key_pair<SignaturePublicKey: traits::SignaturePublicKey<VERSION>>(
         &self,
         public_key: &SignaturePublicKey,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete an encryption key pair for a public key.
     ///
     /// This is only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    async fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<VERSION>>(
+    fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<VERSION>>(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    async fn delete_encryption_epoch_key_pairs<
+    fn delete_encryption_epoch_key_pairs<
         GroupId: traits::GroupId<VERSION>,
         EpochKey: traits::EpochKey<VERSION>,
     >(
@@ -727,7 +732,7 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete a key package based on the hash reference.
     ///
@@ -736,26 +741,26 @@ pub trait StorageProvider<const VERSION: u16> {
     /// same reference (see [`Self::delete_retained_key_package_material`]).
     /// Deleting non-existent material is a no-op, so this is safe for
     /// KeyPackages that were never uploaded by a virtual client.
-    async fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
+    fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete a PSK based on an identifier.
-    async fn delete_psk<PskKey: traits::PskId<VERSION>>(
+    fn delete_psk<PskKey: traits::PskId<VERSION>>(
         &self,
         psk_id: &PskKey,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete the application export tree for the group with the given id.
     #[cfg(feature = "extensions-draft")]
-    async fn delete_application_export_tree<
+    fn delete_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete all per-epoch state for the given emulation epoch (both the
     /// emulation epoch state and the Virtual Client Operation Secret Tree),
@@ -809,12 +814,12 @@ pub trait StorageProvider<const VERSION: u16> {
 /// Key is a trait implemented by all types that serve as a key (in the database sense) to in the
 /// storage. For example, a GroupId is a key to the stored entities for the group with that id.
 /// The point of a key is not to be stored, it's to address something that is stored.
-pub trait Key<const VERSION: u16>: Serialize {}
+pub trait Key<const VERSION: u16>: Serialize + Sync {}
 // ANCHOR_END: key_trait
 
 // ANCHOR: entity_trait
 /// Entity is a trait implemented by the values being stored.
-pub trait Entity<const VERSION: u16>: Serialize + DeserializeOwned {}
+pub trait Entity<const VERSION: u16>: Serialize + DeserializeOwned + Sync {}
 // ANCHOR_END: entity_trait
 
 impl Entity<CURRENT_VERSION> for bool {}

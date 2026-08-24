@@ -33,5 +33,11 @@ syn = { version = "2.0", features = ["full", "visit"] }
 quote = "1.0"
 openmls_rust_crypto = { workspace = true }
 openmls_libcrux_crypto = { workspace = true, optional = true }
-openmls_traits = { workspace = true, features = ["sync"] }
+# NB: no `features = ["sync"]` here. This proc-macro only references
+# openmls_traits *types* (never calls its maybe_async methods), so it compiles
+# in either mode. Hardcoding `sync` used to flip `maybe-async/is_sync` on for
+# every graph that pulls this crate in transitively (openmls/test-utils →
+# openmls_test), forcing the async (Postgres) storage track's openmls back to
+# blocking and breaking the build. Same trap the memory_storage crate documents.
+openmls_traits = { workspace = true }
 openmls_sqlite_storage = { workspace = true, optional = true }
