@@ -23,7 +23,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         tree: &TreeSync,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Write the interim transcript hash.
     fn write_interim_transcript_hash<
@@ -33,7 +33,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         interim_transcript_hash: &InterimTranscriptHash,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Write the group context.
     fn write_context<
@@ -43,7 +43,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         group_context: &GroupContext,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Write the confirmation tag.
     fn write_confirmation_tag<
@@ -53,7 +53,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         confirmation_tag: &ConfirmationTag,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Enqueue a proposal.
     fn queue_proposal<
@@ -65,7 +65,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
         proposal: &QueuedProposal,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Returns all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposals<
@@ -75,7 +75,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<Vec<(ProposalRef, QueuedProposal)>, Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<Vec<(ProposalRef, QueuedProposal)>, Self::PublicError>> + crate::MaybeSend;
 
     /// Returns the TreeSync tree for the group with group id `group_id`.
     fn tree<
@@ -84,7 +84,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<Option<TreeSync>, Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<Option<TreeSync>, Self::PublicError>> + crate::MaybeSend;
 
     /// Returns the group context for the group with group id `group_id`.
     fn group_context<
@@ -93,7 +93,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<Option<GroupContext>, Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<Option<GroupContext>, Self::PublicError>> + crate::MaybeSend;
 
     /// Returns the interim transcript hash for the group with group id `group_id`.
     fn interim_transcript_hash<
@@ -102,7 +102,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<Option<InterimTranscriptHash>, Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<Option<InterimTranscriptHash>, Self::PublicError>> + crate::MaybeSend;
 
     /// Returns the confirmation tag for the group with group id `group_id`.
     fn confirmation_tag<
@@ -111,31 +111,31 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<Option<ConfirmationTag>, Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<Option<ConfirmationTag>, Self::PublicError>> + crate::MaybeSend;
 
     /// Deletes the tree from storage
     fn delete_tree<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Deletes the confirmation tag from storage
     fn delete_confirmation_tag<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Deletes the group context for the group with given id
     fn delete_context<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Deletes the interim transcript hash for the group with given id
     fn delete_interim_transcript_hash<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Removes an individual proposal from the proposal queue of the group with the provided id
     fn remove_proposal<
@@ -145,7 +145,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 
     /// Clear the proposal queue for the group with the given id.
     fn clear_proposal_queue<
@@ -154,13 +154,13 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Self::PublicError>> + crate::MaybeSend;
 }
 
 #[maybe_async::maybe_async(AFIT)]
 impl<T, const VERSION: u16> PublicStorageProvider<VERSION> for T
 where
-    T: StorageProvider<VERSION> + Sync,
+    T: StorageProvider<VERSION> + crate::MaybeSync,
 {
     type PublicError = <T as StorageProvider<VERSION>>::Error;
 
