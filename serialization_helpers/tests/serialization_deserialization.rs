@@ -241,3 +241,35 @@ fn test_with_feature_flag() {
 
     assert_eq!(data, deserialized);
 }
+
+#[test]
+/// Regression test for the CBOR compatibility fix. `ciborium` reports
+/// `is_human_readable() == false` yet encodes enum variants by NAME. The derive used
+/// to branch on `is_human_readable()` and so fed CBOR into the integer-tag decoder,
+/// which failed on the name string. Now the variant identifier accepts either form,
+/// so CBOR round-trips.
+fn test_serialization_deserialization_ciborium() {
+    for TestCase { data, .. } in TEST_CASES {
+        let mut buf = Vec::new();
+        ciborium::into_writer(data, &mut buf).expect("serialization failed");
+
+        let deserialized: TestEnum =
+            ciborium::from_reader(buf.as_slice()).expect("deserialization failed");
+
+        assert_eq!(data, &deserialized);
+    }
+}
+
+#[test]
+/// CBOR encodes variants by name, which is what makes a CBOR-backed store forward
+/// compatible: adding or reordering variants does not shift the meaning of already
+/// stored values (unlike the integer storage tag bincode writes). Assert the variant
+/// name is present in the encoded bytes.
+fn ciborium_encodes_variant_by_name() {
+    let mut buf = Vec::new();
+    ciborium::into_writer(&TestEnum::Unit2, &mut buf).expect("serialization failed");
+    assert!(
+        buf.windows(b"Unit2".len()).any(|w| w == b"Unit2"),
+        "expected CBOR to encode the variant name; bytes: {buf:?}"
+    );
+}
