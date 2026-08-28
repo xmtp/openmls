@@ -37,12 +37,15 @@ use crate::{
 };
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
+    components::vc_commit_data::VirtualClientCommitData,
     components::vc_derivation_info::{
-        DerivationInfo, DerivationInfoTbe, EmulationEpochState, EpochEncryptionKey, EpochId,
-        ExternalInitSecret, OperationSecret, VirtualClientOperationType, VirtualClientsError,
+        require_newest_vc_derivation_epoch, DerivationInfo, DerivationInfoTbe, EpochEncryptionKey,
+        EpochId, ExternalInitSecret, OperationSecret, VcDerivationEpochState,
+        VirtualClientOperationType, VirtualClientsError,
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
+    group::GroupId,
 };
 #[cfg(feature = "extensions-draft")]
 use crate::{
@@ -95,6 +98,9 @@ use super::HandshakeConfirmationData;
 #[derive(Debug)]
 struct ExternalCommitInfo {
     aad: Vec<u8>,
+    /// The authoritative credential and signature key for the external
+    /// committer's leaf. `build_internal` folds it into the leaf node
+    /// parameters and rejects parameters that pin a different credential.
     credential: CredentialWithKey,
     wire_format_policy: WireFormatPolicy,
 }
@@ -210,6 +216,11 @@ pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     #[cfg(feature = "virtual-clients-draft")]
     vc_loaded: Option<VcLoaded>,
 
+    /// Set by [`Self::derivation_epoch`]. `build` stages the marker action
+    /// in the group's Safe AAD before it assembles the commit.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_new_derivation_epoch: bool,
+
     pd: PhantomData<&'a ()>,
 }
 
@@ -241,6 +252,8 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
             stage,
             #[cfg(feature = "virtual-clients-draft")]
             vc_loaded,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_new_derivation_epoch,
             pd: PhantomData,
         } = self;
 
@@ -253,6 +266,8 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
                 stage,
                 #[cfg(feature = "virtual-clients-draft")]
                 vc_loaded,
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_new_derivation_epoch,
                 pd: PhantomData,
             },
         )
@@ -347,6 +362,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             stage,
             #[cfg(feature = "virtual-clients-draft")]
             vc_loaded: None,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_new_derivation_epoch: false,
             pd: PhantomData,
         }
     }
@@ -360,13 +377,18 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 
     /// Opt this commit into the virtual-clients-draft sender flow.
     ///
-    /// The application supplies the [`EpochId`] of an already-registered
-    /// emulation epoch (see
-    /// [`MlsGroup::register_vc_emulation_epoch`]). This method loads the
-    /// per-epoch operation secret tree and AEAD key from the storage
-    /// provider, validates the leaf configuration (see the preconditions
-    /// below), then advances the own `LeafNode` operation ratchet by one
-    /// generation and immediately persists the advanced tree. `build` then:
+    /// The commit uses the newest derivation epoch of the emulation group named
+    /// by `emulation_group_id`, which is what the draft requires of every new
+    /// virtual-client operation. The epoch is resolved from the emulation
+    /// group's current state, so a commit that itself asks for a new derivation
+    /// epoch (see [`Self::derivation_epoch`]) still uses the epoch of its
+    /// input state: the requested one only exists once that commit is merged.
+    ///
+    /// This method loads the per-epoch operation secret tree and AEAD key from
+    /// the storage provider, validates the leaf configuration (see the
+    /// preconditions below), then advances the own `LeafNode` operation ratchet
+    /// by one generation and immediately persists the advanced tree. `build`
+    /// then:
     ///
     /// - derives the path secret and the new leaf's encryption keypair
     ///   from the allocated `OperationSecret`, so a sibling virtual
@@ -397,30 +419,59 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// [`CreateCommitError::VirtualClientsError`]) before allocating a
     /// generation, so no operation secret is burned in that case.
     ///
-    /// Fails with `VirtualClientsError::MissingEmulationEpochState` or
-    /// `VirtualClientsError::MissingOperationTree` if the epoch was never
-    /// registered. Neither the state nor the tree is instantiated on the
-    /// fly, since that could diverge from a sibling virtual client's
-    /// already-advanced ratchets.
+    /// Fails with `VirtualClientsError::NoDerivationEpoch` if the emulation
+    /// group has no registered derivation epoch, and with
+    /// `VirtualClientsError::MissingDerivationEpochState` or
+    /// `VirtualClientsError::MissingOperationTree` if the resolved epoch's state
+    /// is gone. Neither the state nor the tree is instantiated on the fly, since
+    /// that could diverge from a sibling virtual client's already-advanced
+    /// ratchets.
     ///
     /// Implies that a self-update takes place: the commit will always have
     /// a path even if no other proposals are queued.
-    ///
-    /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        self,
+        crypto: &Crypto,
+        storage: &Storage,
+        emulation_group_id: &GroupId,
+    ) -> Result<Self, CreateCommitError> {
+        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group_id)?;
+        self.vc_emulation_internal(crypto, storage, epoch_id)
+    }
+
+    /// Test-only variant of [`Self::vc_emulation`] that commits from the named
+    /// derivation epoch instead of the emulation group's newest one.
+    ///
+    /// Using an epoch other than the newest one violates the draft, which
+    /// requires every new virtual-client operation to use the newest derivation
+    /// epoch of the acting client's current emulation-group state. It exists to
+    /// construct scenarios that an application must not produce, such as a
+    /// sibling that acts on a stale emulation-group state.
+    #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
+    pub fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        self,
+        crypto: &Crypto,
+        storage: &Storage,
+        epoch_id: EpochId,
+    ) -> Result<Self, CreateCommitError> {
+        self.vc_emulation_internal(crypto, storage, epoch_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_internal<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         mut self,
         crypto: &Crypto,
         storage: &Storage,
         epoch_id: EpochId,
     ) -> Result<Self, CreateCommitError> {
-        let state: EmulationEpochState = storage
-            .vc_emulation_epoch_state(&epoch_id)
+        let state: VcDerivationEpochState = storage
+            .vc_derivation_epoch_state(&epoch_id)
             .map_err(|e| {
-                log::error!("vc: load emulation epoch state in vc_emulation failed: {e:?}");
+                log::error!("vc: load derivation epoch state in vc_emulation failed: {e:?}");
                 CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
             })?
-            .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+            .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
         let mut operation_tree: OperationSecretTree = storage
             .vc_operation_tree(&epoch_id)
             .map_err(|e| {
@@ -477,6 +528,35 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             resolved_dictionary,
         });
         Ok(self)
+    }
+
+    /// Ask the emulation group to start a new derivation epoch with this
+    /// commit.
+    ///
+    /// When set, `build` makes sure the commit's virtual-clients Safe AAD item
+    /// carries a `new_derivation_epoch` action, creating the item if the
+    /// application staged none. Every member of the emulation group then
+    /// registers the epoch this commit moves the group into as a derivation
+    /// epoch when the commit is merged, and subsequent virtual-client
+    /// operations resolve to it.
+    ///
+    /// This is the application's cadence knob for post-compromise security of
+    /// the virtual client's secrets. Commits that change membership create a
+    /// derivation epoch on their own, so they do not need this.
+    ///
+    /// Like all actions, the marker applies relative to the commit's input
+    /// state. Operations that reference a derivation epoch keep using the
+    /// newest derivation epoch of that input state, including operations
+    /// carried by this very commit.
+    ///
+    /// The group has to be configured as an emulation group and its
+    /// GroupContext has to require Safe AAD framing. Otherwise `build` fails
+    /// with [`CreateCommitError::NewDerivationEpochOutsideEmulationGroup`] or
+    /// [`CreateCommitError::NewDerivationEpochWithoutSafeAad`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn derivation_epoch(mut self, derivation_epoch: bool) -> Self {
+        self.vc_new_derivation_epoch = derivation_epoch;
+        self
     }
 
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
@@ -602,7 +682,19 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// the application to enforce custom policies in the creation of commits.
     ///
     /// In contrast to `build`, this function can be used to create commits that
-    /// rotate the own leaf node's signature key.
+    /// rotate the own leaf node's signature key. Supplying a new signer implies
+    /// a self-update: the commit always contains an UpdatePath that installs
+    /// the new signature key in the committer's leaf, even if no proposal
+    /// requires a path.
+    ///
+    /// The Commit message itself is signed with `old_signer`, because
+    /// receivers verify it against the committer's pre-commit leaf. GroupInfo
+    /// objects created for this commit are signed with the new signer,
+    /// matching the post-commit leaf.
+    ///
+    /// Returns an error if the new signer's signature scheme does not match the
+    /// group's ciphersuite, or when used on an external commit. External commits
+    /// take their credential and signer from the external commit builder.
     pub fn build_with_new_signer<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
@@ -611,6 +703,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         new_signer: NewSignerBundle<'_, S>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
+        // On an external commit, the signer passed to the external commit
+        // builder signs the Commit, the UpdatePath leaf and the GroupInfo, so
+        // a new signer cannot be used.
+        if self.stage.external_commit_info.is_some() {
+            return Err(CreateCommitError::ExternalCommitWithNewSigner);
+        }
         self.build_internal(rand, crypto, old_signer, Some(new_signer), f)
     }
 
@@ -632,7 +730,23 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             other_extensions,
         } = cur_stage.group_info_config;
 
+        // Stage the marker before any proposal validation or path computation,
+        // so a misconfigured group is rejected before an operation generation is
+        // burned. The staged Safe AAD is what gets serialized into the commit's
+        // `authenticated_data` further down.
+        #[cfg(feature = "virtual-clients-draft")]
+        if builder.vc_new_derivation_epoch {
+            stage_vc_new_derivation_epoch(builder.group.borrow_mut())?;
+        }
+
         let group = builder.group.borrow();
+
+        // The staged Safe AAD is authoritative for whether this commit creates a
+        // derivation epoch, so an application that staged the marker itself gets
+        // the same result as one that called `derivation_epoch`.
+        #[cfg(feature = "virtual-clients-draft")]
+        let marks_new_vc_derivation_epoch = staged_vc_commit_data(group)?
+            .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
         let ciphersuite = group.ciphersuite();
         let own_leaf_index = group.own_leaf_index();
         let (sender, is_external_commit) = match cur_stage.external_commit_info {
@@ -640,6 +754,49 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             Some(_) => (Sender::NewMemberCommit, true),
         };
         let psks = cur_stage.psks;
+
+        // An external commit has exactly one authoritative credential and
+        // signature key: the ones passed to the external commit builder. Leaf
+        // node parameters that pin a different credential are rejected, and
+        // the authoritative credential is folded into the parameters here so
+        // the rest of the commit flow only sees a single value.
+        if let Some(ExternalCommitInfo { credential, .. }) = &cur_stage.external_commit_info {
+            if let Some(params_credential) = cur_stage.leaf_node_parameters.credential_with_key() {
+                if params_credential != credential {
+                    return Err(CreateCommitError::ExternalCommitCredentialMismatch);
+                }
+            }
+            cur_stage
+                .leaf_node_parameters
+                .set_credential_with_key(credential.clone());
+        }
+
+        // Fold the new signer's credential into the leaf node parameters. The
+        // new signature key is installed in the committer's leaf through the
+        // UpdatePath, so parameters that pin a different credential are
+        // rejected.
+        let new_signer = match new_signer {
+            Some(NewSignerBundle {
+                signer,
+                credential_with_key,
+            }) => {
+                if ciphersuite.signature_algorithm() != signer.signature_scheme() {
+                    return Err(CreateCommitError::InvalidSignerCiphersuite);
+                }
+                if let Some(params_credential) =
+                    cur_stage.leaf_node_parameters.credential_with_key()
+                {
+                    if params_credential != &credential_with_key {
+                        return Err(CreateCommitError::InvalidLeafNodeParameters);
+                    }
+                }
+                cur_stage
+                    .leaf_node_parameters
+                    .set_credential_with_key(credential_with_key);
+                Some(signer)
+            }
+            None => None,
+        };
 
         // put the pending and uniform proposals into a uniform shape,
         // i.e. produce queued proposals from the own proposals
@@ -782,47 +939,37 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         #[cfg(not(feature = "virtual-clients-draft"))]
         let own_update_override: Option<crate::treesync::diff::OwnUpdatePathOverride> = None;
 
+        // A new signer always requires a path: the new signature key only
+        // becomes part of the group state through the UpdatePath leaf.
         let path_computation_result =
             // If path is needed, compute path values
             if apply_proposals_values.path_required
                 || contains_own_updates
                 || cur_stage.force_self_update
                 || !cur_stage.leaf_node_parameters.is_empty()
+                || new_signer.is_some()
             {
-                let commit_type = match &cur_stage.external_commit_info {
-                    Some(ExternalCommitInfo { credential , ..}) => {
-                        CommitType::External(credential.clone())
-                    }
-                    None => CommitType::Member,
+                let commit_type = if is_external_commit {
+                    CommitType::External
+                } else {
+                    CommitType::Member
                 };
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
                 // tree hash.
-                if let Some(new_signer) = new_signer {
-                    if let Some(credential_with_key) =
-                        cur_stage.leaf_node_parameters.credential_with_key()
-                    {
-                        if credential_with_key != &new_signer.credential_with_key {
-                            return Err(CreateCommitError::InvalidLeafNodeParameters);
-                        }
-                    }
-                    cur_stage.leaf_node_parameters.set_credential_with_key(
-                        new_signer.credential_with_key,
-                    );
-
-                    diff.compute_path(
+                match new_signer {
+                    Some(new_signer) => diff.compute_path(
                         rand,
                         crypto,
                         own_leaf_index,
                         apply_proposals_values.exclusion_list(),
                         &commit_type,
                         &cur_stage.leaf_node_parameters,
-                        new_signer.signer,
+                        new_signer,
                         apply_proposals_values.extensions.clone(),
                         own_update_override,
-                    )?
-                } else {
-                    diff.compute_path(
+                    )?,
+                    None => diff.compute_path(
                         rand,
                         crypto,
                         own_leaf_index,
@@ -832,7 +979,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         old_signer,
                         apply_proposals_values.extensions.clone(),
                         own_update_override,
-                    )?
+                    )?,
                 }
             } else {
                 // If path is not needed, update the group context and return
@@ -892,13 +1039,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     // The spec requires the SafeAAD prefix even with zero items
                     // when the target GroupContext has `safe_aad` present, so a
                     // bare `aad` would be rejected by SafeAAD-aware receivers.
+                    // The joining group carries no application-staged items, so
+                    // the prefix is empty unless the builder staged the
+                    // virtual-clients marker.
                     #[cfg(feature = "extensions-draft")]
                     let aad_bytes = if group.context().safe_aad_required() {
-                        crate::framing::safe_aad::assemble_authenticated_data(
-                            &crate::framing::SafeAad::empty(),
-                            aad,
-                        )
-                        .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
+                        crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, aad)
+                            .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
                     } else {
                         aad.clone()
                     };
@@ -907,6 +1054,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     (aad_bytes, WireFormat::PublicMessage)
                 }
             };
+
         let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
         // Build AuthenticatedContent
@@ -1008,8 +1156,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                             own_leaf_index,
                         )?
                     };
-                    // Sign to-be-signed group info.
-                    let group_info = group_info_tbs.sign(old_signer)?;
+                    // Sign to-be-signed group info. Joiners verify this against
+                    // the own leaf node in the post-commit ratchet tree, so a
+                    // rotated signature key has to be used here as well.
+                    let group_info = match new_signer {
+                        Some(new_signer) => group_info_tbs.sign(new_signer)?,
+                        None => group_info_tbs.sign(old_signer)?,
+                    };
 
                     // Encrypt GroupInfo object
                     let (welcome_key, welcome_nonce) = welcome_secret
@@ -1067,8 +1220,14 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                             own_leaf_index,
                         )?
                     };
-                    // Sign to-be-signed group info.
-                    Ok(group_info_tbs.sign(old_signer)?)
+                    // Sign to-be-signed group info. Like the Welcome's
+                    // GroupInfo, this is verified against the post-commit
+                    // ratchet tree, so a rotated signature key has to be used
+                    // here as well.
+                    match new_signer {
+                        Some(new_signer) => Ok(group_info_tbs.sign(new_signer)?),
+                        None => Ok(group_info_tbs.sign(old_signer)?),
+                    }
                 })
                 .transpose()?;
 
@@ -1101,12 +1260,17 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             #[cfg(feature = "virtual-clients-draft")]
             None,
         );
-        let staged_commit = StagedCommit::new(
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let mut staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
             #[cfg(feature = "virtual-clients-draft")]
             vc_loaded.as_ref().map(|loaded| loaded.epoch_id.clone()),
         );
+        #[cfg(feature = "virtual-clients-draft")]
+        {
+            staged_commit.marks_new_vc_derivation_epoch = marks_new_vc_derivation_epoch;
+        }
 
         Ok(builder.into_stage(Complete {
             result: CreateCommitResult {
@@ -1219,12 +1383,49 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     }
 }
 
+/// The virtual-clients commit data staged for `group`'s next outgoing message.
+///
+/// `Ok(None)` when the group does not act on the item at all, that is when it is
+/// not an emulation group or its GroupContext does not require Safe AAD framing,
+/// and when no item is staged.
+#[cfg(feature = "virtual-clients-draft")]
+fn staged_vc_commit_data(
+    group: &MlsGroup,
+) -> Result<Option<VirtualClientCommitData>, CreateCommitError> {
+    if !group.is_emulation_group() || !group.context().safe_aad_required() {
+        return Ok(None);
+    }
+    Ok(VirtualClientCommitData::from_safe_aad(&group.safe_aad)?)
+}
+
+/// Add a `new_derivation_epoch` action to the virtual-clients Safe AAD item
+/// staged on `group`, creating the item if the application staged none.
+///
+/// Every other entry of an application-staged item is preserved. Fails if the
+/// group cannot carry the marker, either because it is not an emulation group or
+/// because its GroupContext does not require Safe AAD framing.
+#[cfg(feature = "virtual-clients-draft")]
+fn stage_vc_new_derivation_epoch(group: &mut MlsGroup) -> Result<(), CreateCommitError> {
+    if !group.is_emulation_group() {
+        return Err(CreateCommitError::NewDerivationEpochOutsideEmulationGroup);
+    }
+    if !group.context().safe_aad_required() {
+        return Err(CreateCommitError::NewDerivationEpochWithoutSafeAad);
+    }
+
+    let mut commit_data = staged_vc_commit_data(group)?
+        .map_or_else(|| VirtualClientCommitData::new(Vec::new()), Ok)?;
+    commit_data.require_new_derivation_epoch();
+    group.safe_aad.upsert(commit_data.to_safe_aad_item()?);
+    Ok(())
+}
+
 /// Build the path-secret + leaf-keypair override from the
 /// [`OperationSecret`] allocated in [`CommitBuilder::vc_emulation`] and
 /// inject the corresponding `DerivationInfo` blob into
 /// `leaf_node_parameters`'s `app_data_dictionary` extension.
 ///
-/// The `DerivationInfoTbe` wrapping stays in the emulation epoch's
+/// The `DerivationInfoTbe` wrapping stays in the derivation epoch's
 /// ciphersuite, while the operation secret is imported into the
 /// higher-level group ciphersuite to produce MLS path material for this
 /// group. The generation was consumed and the advanced tree persisted when
@@ -1381,9 +1582,11 @@ impl TryFrom<CommitMessageBundle> for WelcomeCommitMessages {
         let (commit, welcome_opt, group_info) = value.into_messages();
         Ok(Self {
             commit,
-            welcome: welcome_opt.ok_or(LibraryError::custom(
-                "WelcomeCommitMessages must only be used with commits that produce a welcome.",
-            ))?,
+            welcome: welcome_opt.ok_or_else(|| {
+                LibraryError::custom(
+                    "WelcomeCommitMessages must only be used with commits that produce a welcome.",
+                )
+            })?,
             group_info,
         })
     }

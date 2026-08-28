@@ -19,6 +19,7 @@
   - [Committing to pending proposals](user_manual/commit_to_proposals.md)
   - [Processing incoming messages](user_manual/processing.md)
   - [Persistence of group state](user_manual/persistence.md)
+  - [Migrating from a previous version](user_manual/migration.md)
   - [Discarding commits](user_manual/discarding_commits.md)
   - [Credential validation](user_manual/credential_validation.md)
   - [AppData handling](user_manual/app_data_updates.md)
@@ -35,3 +36,5 @@
   - [Past epoch secret deletion](./user_manual/past_epoch_secret_deletion.md)
 - [Virtual Clients (draft)](./virtual_clients.md)
 - [Release management](./release_management.md)
+- [Releases](./releases/README.md)
+  - [0.9.0](./releases/0.9.0.md)

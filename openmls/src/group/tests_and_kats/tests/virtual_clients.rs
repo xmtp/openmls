@@ -1,19 +1,31 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::Serialize as _;
 
 use crate::{
-    component::{ComponentId, ComponentType},
-    components::vc_derivation_info::{
-        load_vc_epoch_state_and_tree, EpochId, VirtualClientOperationType, VC_COMPONENT_ID,
+    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
+    ciphersuite::Secret,
+    component::{ComponentId, ComponentType, ComponentsList},
+    components::{
+        vc_commit_data::{VirtualClientAction, VirtualClientCommitData},
+        vc_derivation_info::{
+            load_vc_epoch_state_and_tree, register_vc_derivation_epoch, EpochId,
+            RegisteredVcDerivationEpoch, VcDerivationEpochParams, VirtualClientOperationType,
+            VC_COMPONENT_ID,
+        },
     },
     credentials::test_utils::new_credential,
     extensions::{
         AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
     },
-    group::{MlsGroup, MlsGroupCreateConfig, PURE_PLAINTEXT_WIRE_FORMAT_POLICY},
+    framing::{MlsMessageIn, ProcessedMessageContent},
+    group::{
+        GroupContext, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
+        MlsGroupCreateConfigBuilder, StagedWelcome, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+    },
     key_packages::KeyPackage,
     messages::PathSecret,
     prelude::{Capabilities, LeafNode, LeafNodeParameters},
+    schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
 };
 
 /// Emulation group suite. Its KDF hash (SHA-384) differs from the
@@ -50,7 +62,7 @@ fn vc_leaf_extensions() -> Extensions<LeafNode> {
     Extensions::from_vec(vec![ext]).expect("build leaf-node Extensions")
 }
 
-fn vc_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
+fn vc_config_builder(ciphersuite: Ciphersuite) -> MlsGroupCreateConfigBuilder {
     MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
@@ -58,75 +70,49 @@ fn vc_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
         .capabilities(vc_capabilities())
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
-        .build()
 }
 
-/// Found a single-member emulation group on `provider` and register an
-/// emulation epoch on it.
-fn registered_emulation_epoch<P: OpenMlsProvider>(provider: &P) -> EpochId {
+fn vc_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
+    vc_config_builder(ciphersuite).build()
+}
+
+/// Like [`vc_group_config`], but marking the group as an emulation group, so
+/// derivation epochs are registered implicitly.
+fn emulation_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
+    vc_config_builder(ciphersuite).emulation_group(true).build()
+}
+
+/// A full-size, unpunctured export tree seeded with `fill` repeated over the
+/// ciphersuite's hash length. Two trees built with the same `fill` derive the
+/// same secrets, which is what a retried Welcome join rebuilds.
+fn fresh_export_tree(ciphersuite: Ciphersuite, fill: u8) -> ApplicationExportTree {
+    ApplicationExportTree::new_with_size(
+        Secret::from_slice(&vec![fill; ciphersuite.hash_length()]),
+        TreeSize::from_leaf_count(u16::MAX as u32),
+    )
+}
+
+/// Found a single-member emulation group on `provider`. Creating it registers
+/// the initial epoch as a derivation epoch. Returns the group alongside the
+/// [`EpochId`] the tests derive their reference values from.
+fn registered_derivation_epoch<P: OpenMlsProvider>(provider: &P) -> (MlsGroup, EpochId) {
     let (credential, signer) = new_credential(
         provider,
         b"Emulator",
         EMULATION_CIPHERSUITE.signature_algorithm(),
     );
-    let mut emulator_group = MlsGroup::new(
+    let emulator_group = MlsGroup::new(
         provider,
         &signer,
-        &vc_group_config(EMULATION_CIPHERSUITE),
+        &emulation_group_config(EMULATION_CIPHERSUITE),
         credential,
     )
     .expect("create emulation group");
-    emulator_group
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
-        .expect("register emulation epoch")
-}
-
-#[openmls_test::openmls_test]
-fn register_vc_emulation_epoch_is_idempotent_per_epoch() {
-    let provider = &Provider::default();
-    let (credential, signer) = new_credential(
-        provider,
-        b"Emulator",
-        EMULATION_CIPHERSUITE.signature_algorithm(),
-    );
-    let mut emulator_group = MlsGroup::new(
-        provider,
-        &signer,
-        &vc_group_config(EMULATION_CIPHERSUITE),
-        credential,
-    )
-    .expect("create emulation group");
-
     let epoch_id = emulator_group
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
-        .expect("first registration");
-
-    let epoch_id_again = emulator_group
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
-        .expect("repeated registration in the same epoch");
-    assert_eq!(
-        epoch_id, epoch_id_again,
-        "a repeated registration in the same epoch must return the recorded \
-         epoch id"
-    );
-
-    // Advancing the group epoch installs a fresh exporter, so a new
-    // registration derives a new emulation epoch.
-    emulator_group
-        .self_update(provider, &signer, LeafNodeParameters::default())
-        .expect("self update");
-    emulator_group
-        .merge_pending_commit(provider)
-        .expect("merge self update");
-
-    let next_epoch_id = emulator_group
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
-        .expect("registration in the next epoch");
-    assert_ne!(
-        epoch_id, next_epoch_id,
-        "a registration after the epoch advanced must derive a fresh \
-         emulation epoch"
-    );
+        .newest_vc_derivation_epoch(provider.storage())
+        .expect("read newest derivation epoch")
+        .expect("group creation registers a derivation epoch");
+    (emulator_group, epoch_id)
 }
 
 /// A VC commit's update-path material (the leaf encryption key and the
@@ -139,7 +125,7 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
     let bob_provider = &Provider::default();
 
-    let epoch_id = registered_emulation_epoch(provider);
+    let (emulator_group, epoch_id) = registered_derivation_epoch(provider);
 
     // Higher-level group: the VC leaf plus one regular member, so the VC
     // commit's update path contains a parent node.
@@ -213,7 +199,11 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     // Actual: send the VC commit.
     main_group
         .commit_builder()
-        .vc_emulation(provider.crypto(), provider.storage(), epoch_id)
+        .vc_emulation(
+            provider.crypto(),
+            provider.storage(),
+            emulator_group.group_id(),
+        )
         .expect("vc_emulation")
         .load_psks(provider.storage())
         .expect("load psks")
@@ -253,7 +243,7 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
 fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
 
-    let epoch_id = registered_emulation_epoch(provider);
+    let (emulator_group, epoch_id) = registered_derivation_epoch(provider);
 
     // Reference derivation per spec, from a scratch copy of the operation
     // tree (dropped unpersisted, so the builder consumes the same
@@ -296,7 +286,7 @@ fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
         .with_capabilities(vc_capabilities())
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
-        .vc_emulation(epoch_id)
+        .vc_emulation(emulator_group.group_id())
         .build(provider, &vc_signer, vc_credential)
         .expect("create vc group");
 
@@ -309,4 +299,245 @@ fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
         "the creator leaf's encryption key secret must derive from the \
          per-KeyPackage seed imported into the created group's ciphersuite"
     );
+}
+
+/// GroupContext extensions requiring Safe AAD framing, with no component id
+/// that every member must understand.
+fn safe_aad_group_context_extensions() -> Extensions<GroupContext> {
+    let mut dictionary = AppDataDictionary::new();
+    let body = ComponentsList::new(Vec::new())
+        .tls_serialize_detached()
+        .expect("serialize ComponentsList body");
+    dictionary.insert(ComponentId::from(ComponentType::SafeAad), body);
+    let ext = Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary));
+    Extensions::single(ext).expect("one app_data_dictionary extension is valid")
+}
+
+/// Found a two-member group that requires Safe AAD framing. Returns Alice's
+/// group and signer plus Bob's group.
+fn safe_aad_group_pair<P: OpenMlsProvider>(
+    alice_provider: &P,
+    bob_provider: &P,
+) -> (MlsGroup, MlsGroup, impl Signer) {
+    let config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(GROUP_CIPHERSUITE)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .with_group_context_extensions(safe_aad_group_context_extensions())
+        .build();
+
+    let (alice_credential, alice_signer) = new_credential(
+        alice_provider,
+        b"Alice (VC)",
+        GROUP_CIPHERSUITE.signature_algorithm(),
+    );
+    let mut alice_group = MlsGroup::new(alice_provider, &alice_signer, &config, alice_credential)
+        .expect("create safe-aad group");
+
+    let (bob_credential, bob_signer) = new_credential(
+        bob_provider,
+        b"Bob",
+        GROUP_CIPHERSUITE.signature_algorithm(),
+    );
+    let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .build(GROUP_CIPHERSUITE, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build");
+    let (_commit, welcome, _group_info) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package.key_package()),
+        )
+        .expect("add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("merge add");
+
+    let welcome = MlsMessageIn::from(welcome)
+        .into_welcome()
+        .expect("welcome message");
+    let bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        config.join_config(),
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("stage welcome")
+    .into_group(bob_provider)
+    .expect("group from staged welcome");
+
+    (alice_group, bob_group, alice_signer)
+}
+
+/// A [`VirtualClientCommitData`] item attached to a commit's Safe AAD reaches
+/// the other member and parses back to the same value.
+#[openmls_test::openmls_test]
+fn vc_commit_data_travels_in_commit_safe_aad() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (mut alice_group, mut bob_group, alice_signer) =
+        safe_aad_group_pair(alice_provider, bob_provider);
+
+    let commit_data = VirtualClientCommitData::new(vec![VirtualClientAction::NewDerivationEpoch])
+        .expect("one new_derivation_epoch action is valid");
+
+    alice_group
+        .set_safe_aad(vec![commit_data
+            .to_safe_aad_item()
+            .expect("serialize commit data")])
+        .expect("a single item is sorted and unique");
+
+    let commit = alice_group
+        .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .expect("self update")
+        .into_messages()
+        .0;
+
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            MlsMessageIn::from(commit)
+                .into_protocol_message()
+                .expect("protocol message"),
+        )
+        .expect("process commit");
+
+    let parsed = processed
+        .vc_commit_data()
+        .expect("the item must parse")
+        .expect("the item must be present");
+    assert_eq!(parsed, commit_data);
+    assert!(parsed.creates_derivation_epoch());
+
+    // Both members advance so the next commit is processed in a shared epoch.
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("merge own self update");
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("a commit must process into a staged commit");
+    };
+    bob_group
+        .merge_staged_commit(bob_provider, *staged)
+        .expect("merge staged commit");
+
+    // A later commit without the item leaves the accessor with nothing to parse.
+    let commit = alice_group
+        .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .expect("second self update")
+        .into_messages()
+        .0;
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            MlsMessageIn::from(commit)
+                .into_protocol_message()
+                .expect("protocol message"),
+        )
+        .expect("process second commit");
+    assert_eq!(processed.vc_commit_data(), Ok(None));
+}
+
+/// A repeated registration for the same group epoch returns the recorded
+/// [`EpochId`] and consumes a fresh export tree handed to it, so a retried
+/// Welcome join cannot persist a tree from which the consumed secret is still
+/// derivable. Passing the already-punctured tree again is a plain no-op
+/// repeat.
+#[openmls_test::openmls_test]
+fn repeated_registration_with_fresh_tree_punctures_it() {
+    let provider = Provider::default();
+    let group_id = GroupId::from_slice(b"vc retry group");
+    let params = || VcDerivationEpochParams {
+        group_id: &group_id,
+        ciphersuite,
+        group_epoch: GroupEpoch::from(5),
+        own_leaf_index: LeafNodeIndex::new(0),
+        tree_size: TreeSize::from_leaf_count(2),
+    };
+
+    let mut tree_a = fresh_export_tree(ciphersuite, 1);
+    let id_a = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        Some(&mut tree_a),
+        params(),
+    )
+    .expect("first registration");
+
+    // A retried Welcome join rebuilds the same tree from the same Welcome.
+    let mut tree_b = fresh_export_tree(ciphersuite, 1);
+    let id_b = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        Some(&mut tree_b),
+        params(),
+    )
+    .expect("repeated registration with a fresh tree");
+    assert_eq!(id_a, id_b);
+    let err = tree_b
+        .safe_export_secret(provider.crypto(), ciphersuite, VC_COMPONENT_ID)
+        .expect_err("the repeat must consume the fresh tree");
+    assert!(matches!(err, ApplicationExportTreeError::PuncturedInput));
+
+    // An in-process repeat with the consumed tree returns the recorded id.
+    let id_c = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        Some(&mut tree_a),
+        params(),
+    )
+    .expect("repeat with the already-punctured tree");
+    assert_eq!(id_c, id_a);
+
+    let registered: Option<RegisteredVcDerivationEpoch> = provider
+        .storage()
+        .registered_vc_derivation_epoch(&group_id)
+        .expect("read registration record");
+    assert_eq!(registered.expect("record must exist").epoch_id, id_a);
+}
+
+/// A registration record whose [`EpochId`] does not match the export tree for
+/// the same group epoch is stale state from a group instance that was never
+/// fully stored, for example a crashed creation under a recycled group id. The
+/// registration derives fresh state and overwrites the record.
+#[openmls_test::openmls_test]
+fn stale_registration_record_is_overwritten() {
+    let provider = Provider::default();
+    let group_id = GroupId::from_slice(b"vc recycled group id");
+    let params = || VcDerivationEpochParams {
+        group_id: &group_id,
+        ciphersuite,
+        group_epoch: GroupEpoch::from(0),
+        own_leaf_index: LeafNodeIndex::new(0),
+        tree_size: TreeSize::from_leaf_count(1),
+    };
+
+    let mut tree_old = fresh_export_tree(ciphersuite, 2);
+    let id_old = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        Some(&mut tree_old),
+        params(),
+    )
+    .expect("registration of the crashed instance");
+
+    let mut tree_new = fresh_export_tree(ciphersuite, 3);
+    let id_new = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        Some(&mut tree_new),
+        params(),
+    )
+    .expect("registration of the recreated instance");
+    assert_ne!(id_old, id_new);
+
+    let registered: Option<RegisteredVcDerivationEpoch> = provider
+        .storage()
+        .registered_vc_derivation_epoch(&group_id)
+        .expect("read registration record");
+    assert_eq!(registered.expect("record must exist").epoch_id, id_new);
 }
