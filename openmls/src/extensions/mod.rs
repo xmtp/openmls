@@ -22,6 +22,7 @@
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
 use std::{
+    collections::HashSet,
     convert::Infallible,
     fmt::Debug,
     io::{Read, Write},
@@ -266,8 +267,7 @@ impl DeserializeBytes for ExtensionType {
     {
         let mut bytes_ref = bytes;
         let extension_type = ExtensionType::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extension_type.tls_serialized_len()..];
-        Ok((extension_type, remainder))
+        Ok((extension_type, bytes_ref))
     }
 }
 
@@ -462,8 +462,7 @@ where
     {
         let mut bytes_ref = bytes;
         let extensions = Extensions::<T>::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extensions.tls_serialized_len()..];
-        Ok((extensions, remainder))
+        Ok((extensions, bytes_ref))
     }
 }
 
@@ -606,22 +605,17 @@ where
     type Error = InvalidExtensionError;
 
     fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
-        let mut unique: Vec<Extension> = Vec::new();
-        for extension in candidate.into_iter() {
-            T::validate_extension_type(&extension)?;
+        let mut seen = HashSet::with_capacity(candidate.len());
+        for extension in candidate.iter() {
+            T::validate_extension_type(extension)?;
 
-            if unique
-                .iter()
-                .any(|ext| ext.extension_type() == extension.extension_type())
-            {
+            if !seen.insert(extension.extension_type()) {
                 return Err(InvalidExtensionError::Duplicate);
-            } else {
-                unique.push(extension);
             }
         }
 
         Ok(Self {
-            unique,
+            unique: candidate,
             _object: PhantomData,
         })
     }

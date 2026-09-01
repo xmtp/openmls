@@ -184,14 +184,13 @@ impl KeyPackageIn {
 
         // Extension included in the extensions or leaf_node.extensions fields
         // MUST be included in the leaf_node.capabilities field.
-        for extension in key_package.payload.extensions.iter() {
-            if !key_package
-                .payload
-                .leaf_node
-                .supports_extension(&extension.extension_type())
-            {
-                return Err(KeyPackageVerifyError::UnsupportedExtension);
-            }
+        if !key_package
+            .payload
+            .leaf_node
+            .capabilities()
+            .contains_extensions(&key_package.payload.extensions)
+        {
+            return Err(KeyPackageVerifyError::UnsupportedExtension);
         }
 
         if validate_lifetimes == LeafNodeLifetimePolicy::Verify {
