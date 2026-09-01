@@ -30,8 +30,14 @@ use crate::{
 pub mod frankenstein;
 pub mod restricted_provider;
 pub mod storage_state;
+// The multi-client test harnesses drive openmls' async StorageProvider through
+// synchronous helper fns, so they only type-check in the blocking (is_sync) shape.
+// Gated to `sync` until they are threaded for async; downstream test-utils consumers
+// (e.g. xmtp_cryptography) only use `frankenstein`, which stays available in both.
+#[cfg(feature = "sync")]
 pub mod test_framework;
 
+#[cfg(feature = "sync")]
 pub mod single_group_test_framework;
 
 pub(crate) fn write(file_name: &str, obj: impl Serialize) {

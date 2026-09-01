@@ -41,6 +41,8 @@ fpe = { version = "0.6", optional = true }
 aes = { version = "0.8", optional = true }
 
 [features]
+sync = ["openmls_traits/sync", "openmls_memory_storage/sync"]
+async = ["openmls_traits/async", "openmls_memory_storage/async"]
 test-utils = ["openmls_memory_storage/test-utils"]
 extensions-draft = [
   "openmls_traits/extensions-draft",

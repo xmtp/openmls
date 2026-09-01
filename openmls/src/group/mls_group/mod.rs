@@ -284,13 +284,16 @@ impl MlsGroup {
     }
 
     /// Sets the configuration.
-    pub fn set_configuration<Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn set_configuration<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         mls_group_config: &MlsGroupJoinConfig,
     ) -> Result<(), Storage::Error> {
         self.mls_group_config = mls_group_config.clone();
-        storage.write_mls_join_config(self.group_id(), mls_group_config)
+        storage
+            .write_mls_join_config(self.group_id(), mls_group_config)
+            .await
     }
 
     /// Sets the additional authenticated data (AAD) for the next outgoing
@@ -412,7 +415,8 @@ impl MlsGroup {
     /// the pending commit will not be used in the group. In particular, if a
     /// pending commit is later accepted by the group, this client will lack the
     /// key material to encrypt or decrypt group messages.
-    pub fn clear_pending_commit<Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn clear_pending_commit<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
@@ -420,7 +424,9 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(ref pending_commit_state) => {
                 if let PendingCommitState::Member(_) = **pending_commit_state {
                     self.group_state = MlsGroupState::Operational;
-                    storage.write_group_state(self.group_id(), &self.group_state)
+                    storage
+                        .write_group_state(self.group_id(), &self.group_state)
+                        .await
                 } else {
                     Ok(())
                 }
@@ -435,7 +441,8 @@ impl MlsGroup {
     /// a Commit message that references those proposals. Only use this
     /// function as a last resort, e.g. when a call to
     /// `MlsGroup::commit_to_pending_proposals` fails.
-    pub fn clear_pending_proposals<Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn clear_pending_proposals<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
@@ -445,7 +452,9 @@ impl MlsGroup {
             self.proposal_store_mut().empty();
 
             // Clear proposals in storage
-            storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+            storage
+                .clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())
+                .await?;
         }
 
         Ok(())
@@ -476,20 +485,21 @@ impl MlsGroup {
     // === Storage Methods ===
 
     /// Loads the state of the group with given id from persisted state.
-    pub fn load<Storage: crate::storage::StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<MlsGroup>, Storage::Error> {
-        let public_group = PublicGroup::load(storage, group_id)?;
-        let group_epoch_secrets = storage.group_epoch_secrets(group_id)?;
-        let own_leaf_index = storage.own_leaf_index(group_id)?;
-        let message_secrets_store = storage.message_secrets(group_id)?;
-        let resumption_psk_store = storage.resumption_psk_store(group_id)?;
-        let mls_group_config = storage.mls_group_join_config(group_id)?;
-        let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
-        let group_state = storage.group_state(group_id)?;
+        let public_group = PublicGroup::load(storage, group_id).await?;
+        let group_epoch_secrets = storage.group_epoch_secrets(group_id).await?;
+        let own_leaf_index = storage.own_leaf_index(group_id).await?;
+        let message_secrets_store = storage.message_secrets(group_id).await?;
+        let resumption_psk_store = storage.resumption_psk_store(group_id).await?;
+        let mls_group_config = storage.mls_group_join_config(group_id).await?;
+        let own_leaf_nodes = storage.own_leaf_nodes(group_id).await?;
+        let group_state = storage.group_state(group_id).await?;
         #[cfg(feature = "extensions-draft")]
-        let application_export_tree = storage.application_export_tree(group_id)?;
+        let application_export_tree = storage.application_export_tree(group_id).await?;
 
         let build = || -> Option<Self> {
             Some(Self {
@@ -515,22 +525,29 @@ impl MlsGroup {
     /// Remove the persisted state of this group from storage. Note that
     /// signature key material is not managed by OpenMLS and has to be removed
     /// from the storage provider separately (if desired).
-    pub fn delete<Storage: crate::storage::StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn delete<Storage: crate::storage::StorageProvider>(
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        PublicGroup::delete(storage, self.group_id())?;
-        storage.delete_own_leaf_index(self.group_id())?;
-        storage.delete_group_epoch_secrets(self.group_id())?;
-        storage.delete_message_secrets(self.group_id())?;
-        storage.delete_all_resumption_psk_secrets(self.group_id())?;
-        storage.delete_group_config(self.group_id())?;
-        storage.delete_own_leaf_nodes(self.group_id())?;
-        storage.delete_group_state(self.group_id())?;
-        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+        PublicGroup::delete(storage, self.group_id()).await?;
+        storage.delete_own_leaf_index(self.group_id()).await?;
+        storage.delete_group_epoch_secrets(self.group_id()).await?;
+        storage.delete_message_secrets(self.group_id()).await?;
+        storage
+            .delete_all_resumption_psk_secrets(self.group_id())
+            .await?;
+        storage.delete_group_config(self.group_id()).await?;
+        storage.delete_own_leaf_nodes(self.group_id()).await?;
+        storage.delete_group_state(self.group_id()).await?;
+        storage
+            .clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())
+            .await?;
 
         #[cfg(feature = "extensions-draft")]
-        storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
+        storage
+            .delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())
+            .await?;
 
         // Drop this group's emulation-epoch bindings and its registration
         // record. `EmulationEpochState` and the operation secret tree are
@@ -543,11 +560,13 @@ impl MlsGroup {
         }
 
         self.proposal_store_mut().empty();
-        storage.delete_encryption_epoch_key_pairs(
-            self.group_id(),
-            &self.epoch(),
-            self.own_leaf_index().u32(),
-        )?;
+        storage
+            .delete_encryption_epoch_key_pairs(
+                self.group_id(),
+                &self.epoch(),
+                self.own_leaf_index().u32(),
+            )
+            .await?;
 
         Ok(())
     }
@@ -606,7 +625,8 @@ impl MlsGroup {
     }
 
     /// Set the past epoch secret deletion policy for the group.
-    pub fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         policy: PastEpochDeletionPolicy,
@@ -620,12 +640,14 @@ impl MlsGroup {
         // persist the join config
         provider
             .storage()
-            .write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)
+            .await?;
 
         // update the message secrets store in storage
         provider
             .storage()
-            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await?;
 
         Ok(())
     }
@@ -748,7 +770,8 @@ impl MlsGroup {
     }
 
     // Encrypt an AuthenticatedContent into an PrivateMessage
-    pub(crate) fn encrypt<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn encrypt<Provider: OpenMlsProvider>(
         &mut self,
         public_message: AuthenticatedContent,
         provider: &Provider,
@@ -815,6 +838,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await
             .map_err(MessageEncryptionError::StorageError)?;
 
         Ok(msg)
@@ -857,7 +881,8 @@ impl MlsGroup {
     /// Delete all past epoch secrets.
     ///
     /// For more information on the arguments to this method, see [`PastEpochDeletion`].
-    pub fn delete_past_epoch_secrets<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn delete_past_epoch_secrets<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         policy: PastEpochDeletion,
@@ -867,7 +892,8 @@ impl MlsGroup {
         // update the message secrets store in storage
         provider
             .storage()
-            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await?;
 
         Ok(())
     }
@@ -952,32 +978,38 @@ impl MlsGroup {
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///
     /// Returns an error if access to the key store fails.
-    pub(super) fn store_epoch_keypairs<Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub(super) async fn store_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
         keypair_references: &[EncryptionKeyPair],
     ) -> Result<(), Storage::Error> {
-        store.write_encryption_epoch_key_pairs(
-            self.group_id(),
-            &self.context().epoch(),
-            self.own_leaf_index().u32(),
-            keypair_references,
-        )
+        store
+            .write_encryption_epoch_key_pairs(
+                self.group_id(),
+                &self.context().epoch(),
+                self.own_leaf_index().u32(),
+                keypair_references,
+            )
+            .await
     }
 
     /// Read the [`EncryptionKeyPair`]s of this group and its current
     /// [`GroupEpoch`] from the `provider`'s storage.
     ///
     /// Returns an error if the lookup in the [`StorageProvider`] fails.
-    pub(super) fn read_epoch_keypairs<Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub(super) async fn read_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Result<Vec<EncryptionKeyPair>, Storage::Error> {
-        store.encryption_epoch_key_pairs(
-            self.group_id(),
-            &self.context().epoch(),
-            self.own_leaf_index().u32(),
-        )
+        store
+            .encryption_epoch_key_pairs(
+                self.group_id(),
+                &self.context().epoch(),
+                self.own_leaf_index().u32(),
+            )
+            .await
     }
 
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
@@ -985,15 +1017,18 @@ impl MlsGroup {
     ///
     /// Returns an error if access to the key store fails.
     #[cfg(not(feature = "virtual-clients-draft"))]
-    pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub(super) async fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {
-        store.delete_encryption_epoch_key_pairs(
-            self.group_id(),
-            &GroupEpoch::from(self.context().epoch().as_u64() - 1),
-            self.own_leaf_index().u32(),
-        )
+        store
+            .delete_encryption_epoch_key_pairs(
+                self.group_id(),
+                &GroupEpoch::from(self.context().epoch().as_u64() - 1),
+                self.own_leaf_index().u32(),
+            )
+            .await
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -1016,20 +1051,35 @@ impl MlsGroup {
 
     /// Stores the state of this group. Only to be called from constructors to
     /// store the initial state of the group.
-    pub(super) fn store<Storage: crate::storage::StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub(super) async fn store<Storage: crate::storage::StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        self.public_group.store(storage)?;
-        storage.write_group_epoch_secrets(self.group_id(), &self.group_epoch_secrets)?;
-        storage.write_own_leaf_index(self.group_id(), &self.own_leaf_index)?;
-        storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
-        storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
-        storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
-        storage.write_group_state(self.group_id(), &self.group_state)?;
+        self.public_group.store(storage).await?;
+        storage
+            .write_group_epoch_secrets(self.group_id(), &self.group_epoch_secrets)
+            .await?;
+        storage
+            .write_own_leaf_index(self.group_id(), &self.own_leaf_index)
+            .await?;
+        storage
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await?;
+        storage
+            .write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)
+            .await?;
+        storage
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)
+            .await?;
+        storage
+            .write_group_state(self.group_id(), &self.group_state)
+            .await?;
         #[cfg(feature = "extensions-draft")]
         if let Some(application_export_tree) = &self.application_export_tree {
-            storage.write_application_export_tree(self.group_id(), application_export_tree)?;
+            storage
+                .write_application_export_tree(self.group_id(), application_export_tree)
+                .await?;
         }
 
         Ok(())
@@ -1038,7 +1088,8 @@ impl MlsGroup {
     /// Converts PublicMessage to MlsMessage. Depending on whether handshake
     /// message should be encrypted, PublicMessage messages are encrypted to
     /// PrivateMessage first.
-    fn content_to_mls_message(
+    #[maybe_async::maybe_async]
+    async fn content_to_mls_message(
         &mut self,
         mls_auth_content: AuthenticatedContent,
         provider: &impl OpenMlsProvider,
@@ -1069,6 +1120,7 @@ impl MlsGroup {
                 let epoch = self.epoch();
                 let encryption_output = self
                     .encrypt(mls_auth_content, provider)
+                    .await
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
                 let message = MlsMessageOut::from_private_message(
@@ -1153,8 +1205,13 @@ impl MlsGroup {
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn ensure_persistence(&self, storage: &impl StorageProvider) -> Result<(), LibraryError> {
+    #[maybe_async::maybe_async]
+    pub async fn ensure_persistence(
+        &self,
+        storage: &impl StorageProvider,
+    ) -> Result<(), LibraryError> {
         let loaded = MlsGroup::load(storage, self.group_id())
+            .await
             .map_err(|_| LibraryError::custom("Failed to load group from storage"))?;
         let other = loaded.ok_or_else(|| LibraryError::custom("Group not found in storage"))?;
 

@@ -24,9 +24,9 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
     // hashset of used storage tags to avoid collisions
     let mut storage_tags = std::collections::HashSet::new();
 
-    // construct names for visitors
-    let non_human_readable_visitor = build_name_ident(name, "VisitorNonHumanReadable");
-    let human_readable_visitor = build_name_ident(name, "VisitorHumanReadable");
+    // construct names for the generated helper types
+    let visitor = build_name_ident(name, "Visitor");
+    let variant_id = build_name_ident(name, "VariantId");
     let tuple_visitor = build_name_ident(name, "TupleVisitor");
 
     let mut variant_names = vec![];
@@ -111,28 +111,62 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
         impl <'de> serde::Deserialize<'de>  for #name {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 const VARIANT_NAMES: &[&'static str] = &[#(#variant_names), *];
-                if d.is_human_readable() {
-                    d.deserialize_enum(
-                        stringify!(#name),
-                        VARIANT_NAMES,
-                        #human_readable_visitor
-                    )
-
-                } else {
-                    d.deserialize_enum(
-                        stringify!(#name),
-                        VARIANT_NAMES,
-                        #non_human_readable_visitor
-                    )
-                }
-
+                // One visitor for every format. The variant identifier is decoded as
+                // either an integer storage tag or a variant name (see #variant_id), so
+                // we no longer branch on `is_human_readable()` -- that assumption was
+                // wrong for CBOR, which reports `false` yet encodes variants by name.
+                d.deserialize_enum(
+                    stringify!(#name),
+                    VARIANT_NAMES,
+                    #visitor,
+                )
             }
         }
 
-        /// A visitor for self-describing enum deserialization
-        struct #human_readable_visitor;
+        /// The variant identifier for `#name`, decoded from whatever the format wrote:
+        /// an integer storage tag (non-self-describing formats, e.g. bincode) or the
+        /// variant name (self-describing formats, e.g. CBOR/JSON). This mirrors the
+        /// identifier visitor that serde's own `#[derive(Deserialize)]` generates, which
+        /// likewise accepts an index integer or a name string.
+        enum #variant_id {
+            Tag(u32),
+            Name(String),
+        }
 
-        impl <'de> serde::de::Visitor<'de> for #human_readable_visitor {
+        impl <'de> serde::Deserialize<'de> for #variant_id {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                struct IdVisitor;
+                impl <'de> serde::de::Visitor<'de> for IdVisitor {
+                    type Value = #variant_id;
+
+                    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                        f.write_str("a storage tag integer or a variant name")
+                    }
+
+                    fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                        Ok(#variant_id::Tag(v as u32))
+                    }
+                    fn visit_u32<E: serde::de::Error>(self, v: u32) -> Result<Self::Value, E> {
+                        Ok(#variant_id::Tag(v))
+                    }
+                    fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                        Ok(#variant_id::Tag(v as u32))
+                    }
+                    fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                        Ok(#variant_id::Name(v.to_string()))
+                    }
+                    fn visit_bytes<E: serde::de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+                        Ok(#variant_id::Name(String::from_utf8_lossy(v).into_owned()))
+                    }
+                }
+                d.deserialize_identifier(IdVisitor)
+            }
+        }
+
+        /// A visitor that dispatches on either the storage tag or the variant name.
+        struct #visitor;
+
+        impl <'de> serde::de::Visitor<'de> for #visitor {
             type Value = #name;
 
             fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -141,32 +175,16 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
 
             fn visit_enum<A: serde::de::EnumAccess<'de>>(self, data: A) -> Result<#name, A::Error> {
                 use serde::de::VariantAccess;
-                let (variant_str, access): (String, _) = data.variant()?;
-                match variant_str.as_str() {
-                    #(#match_arms_self_describing)*
-                    _ => Err(serde::de::Error::custom(format!("unexpected variant name \"{}\"", variant_str))),
-                }
-            }
-
-        }
-
-        /// A visitor for non-self-describing enum deserialization
-        struct #non_human_readable_visitor;
-
-        impl <'de> serde::de::Visitor<'de> for #non_human_readable_visitor {
-            type Value = #name;
-
-            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                f.write_str(stringify!(#name))
-            }
-
-            fn visit_enum<A: serde::de::EnumAccess<'de>>(self, data: A) -> Result<#name, A::Error> {
-                use serde::de::VariantAccess;
-                let (storage_tag, access) = data.variant::<u32>()?;
-
-                match storage_tag {
-                    #(#match_arms_non_self_describing)*
-                    _ => Err(serde::de::Error::custom(format!("unexpected storage tag {}", storage_tag))),
+                let (id, access) = data.variant::<#variant_id>()?;
+                match id {
+                    #variant_id::Tag(storage_tag) => match storage_tag {
+                        #(#match_arms_non_self_describing)*
+                        _ => Err(serde::de::Error::custom(format!("unexpected storage tag {}", storage_tag))),
+                    },
+                    #variant_id::Name(variant_str) => match variant_str.as_str() {
+                        #(#match_arms_self_describing)*
+                        _ => Err(serde::de::Error::custom(format!("unexpected variant name \"{}\"", variant_str))),
+                    },
                 }
             }
 

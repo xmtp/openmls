@@ -30,7 +30,8 @@ impl MlsGroup {
     /// Updates the group membership using only inline proposals.
     /// Adds and removes members and updates the group context.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    pub fn update_group_membership<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn update_group_membership<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -45,9 +46,11 @@ impl MlsGroup {
             .propose_adds(key_packages_to_add.iter().cloned())
             .propose_removals(leaf_nodes_to_remove.iter().cloned())
             .propose_group_context_extensions(new_extensions)?
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         let welcome = bundle.to_welcome_msg();
         let (commit, _, group_info) = bundle.into_contents();
@@ -55,6 +58,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
+            .await
             .map_err(UpdateGroupMembershipError::StorageError)?;
 
         self.reset_aad();
@@ -86,7 +90,8 @@ impl MlsGroup {
     // FIXME: #1217
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    pub fn add_members<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn add_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -96,6 +101,7 @@ impl MlsGroup {
         AddMembersError<Provider::StorageError>,
     > {
         self.add_members_internal(provider, signer, key_packages, true)
+            .await
     }
 
     /// Swap members.
@@ -114,7 +120,8 @@ impl MlsGroup {
     /// [`CommitMessageBundle::confirmation`](crate::group::CommitMessageBundle::confirmation)
     /// surfaces the handshake confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    pub fn swap_members<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn swap_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -139,9 +146,11 @@ impl MlsGroup {
             .commit_builder()
             .propose_removals(members.iter().cloned())
             .propose_adds(key_packages.iter().cloned())
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         self.reset_aad();
 
@@ -176,7 +185,8 @@ impl MlsGroup {
     // FIXME: #1217
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    pub fn add_members_without_update<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn add_members_without_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -186,11 +196,13 @@ impl MlsGroup {
         AddMembersError<Provider::StorageError>,
     > {
         self.add_members_internal(provider, signer, key_packages, false)
+            .await
     }
 
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    fn add_members_internal<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    async fn add_members_internal<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -210,9 +222,11 @@ impl MlsGroup {
             .commit_builder()
             .propose_adds(key_packages.iter().cloned())
             .force_self_update(force_self_update)
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         let welcome: MlsMessageOut = bundle.to_welcome_msg().ok_or(LibraryError::custom(
             "No secrets to generate commit message.",
@@ -252,7 +266,8 @@ impl MlsGroup {
     // FIXME: #1217
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    pub fn remove_members<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn remove_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -272,9 +287,11 @@ impl MlsGroup {
         let bundle = self
             .commit_builder()
             .propose_removals(members.iter().cloned())
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         let welcome = bundle.to_welcome_msg();
         let (commit, _, group_info) = bundle.into_contents();
@@ -282,6 +299,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
+            .await
             .map_err(RemoveMembersError::StorageError)?;
 
         self.reset_aad();
@@ -300,7 +318,8 @@ impl MlsGroup {
     /// [`Propose::Remove`](crate::group::Propose::Remove) of the own leaf index,
     /// which retains the handshake secret and returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    pub fn leave_group<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn leave_group<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -328,11 +347,14 @@ impl MlsGroup {
                 &queued_remove_proposal.proposal_reference(),
                 &queued_remove_proposal,
             )
+            .await
             .map_err(LeaveGroupError::StorageError)?;
 
         self.proposal_store_mut().add(queued_remove_proposal);
 
-        let framing = self.content_to_mls_message(remove_proposal, provider)?;
+        let framing = self
+            .content_to_mls_message(remove_proposal, provider)
+            .await?;
 
         self.reset_aad();
         Ok(framing.message)
@@ -349,7 +371,8 @@ impl MlsGroup {
     /// it.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn leave_group_via_self_remove<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn leave_group_via_self_remove<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -379,13 +402,15 @@ impl MlsGroup {
                 &queued_self_remove_proposal.proposal_reference(),
                 &queued_self_remove_proposal,
             )
+            .await
             .map_err(LeaveGroupError::StorageError)?;
 
         self.proposal_store_mut().add(queued_self_remove_proposal);
 
         self.reset_aad();
         Ok(self
-            .content_to_mls_message(self_remove_proposal, provider)?
+            .content_to_mls_message(self_remove_proposal, provider)
+            .await?
             .message)
     }
 

@@ -12,6 +12,7 @@ readme = "README.md"
 
 [dependencies]
 openmls_traits = { workspace = true }
+maybe-async = { workspace = true }
 
 thiserror = { workspace = true }
 serde_json = "1.0"
@@ -21,6 +22,11 @@ hex = { version = "0.4", features = ["serde"], optional = true }
 base64 = { version = "0.22", optional = true }
 
 [features]
+# Mirrors the other member crates: `sync` collapses the maybe_async impl back
+# to the blocking shape. Hardcoding `openmls_traits/sync` here used to flip
+# `maybe-async/is_sync` on for every graph that pulled this crate in.
+sync = ["openmls_traits/sync", "maybe-async/is_sync"]
+async = ["openmls_traits/async"]
 test-utils = ["hex", "openmls_traits/test-utils"] # Enable test utilites
 persistence = ["base64"]
 extensions-draft = ["openmls_traits/extensions-draft"]

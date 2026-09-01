@@ -75,13 +75,15 @@ impl MlsGroupBuilder {
     }
 
     /// Build a new group as configured by this builder.
-    pub fn build<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
         self.build_internal(provider, signer, credential_with_key, None)
+            .await
     }
 
     /// Build a new group with the given group ID.
@@ -92,7 +94,8 @@ impl MlsGroupBuilder {
     ///
     /// If a group with the same ID already exists in storage and
     /// `replace_old_group` was not set, an error will be returned.
-    pub(super) fn build_internal<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub(super) async fn build_internal<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -126,6 +129,7 @@ impl MlsGroupBuilder {
 
         if !self.replace_old_group
             && MlsGroup::load(provider.storage(), &group_id)
+                .await
                 .map_err(NewGroupError::StorageError)?
                 .is_some()
         {
@@ -169,6 +173,7 @@ impl MlsGroupBuilder {
 
         // Prepare the PskSecret
         let psk_secret = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)
+            .await
             .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
             .map_err(|e| {
                 log::debug!("Unexpected PSK error: {e:?}");
@@ -236,9 +241,11 @@ impl MlsGroupBuilder {
 
         mls_group
             .store(provider.storage())
+            .await
             .map_err(NewGroupError::StorageError)?;
         mls_group
             .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+            .await
             .map_err(NewGroupError::StorageError)?;
 
         Ok(mls_group)

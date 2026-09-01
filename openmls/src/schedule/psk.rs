@@ -349,7 +349,8 @@ impl PreSharedKeyId {
     /// Save this `PreSharedKeyId` in the keystore.
     ///
     /// Note: The nonce is not saved as it must be unique for each time it's being applied.
-    pub fn store<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn store<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         psk: &[u8],
@@ -363,6 +364,7 @@ impl PreSharedKeyId {
         provider
             .storage()
             .write_psk(&self.psk, &psk_bundle)
+            .await
             .map_err(|_| PskError::Storage)
     }
 
@@ -588,7 +590,8 @@ impl From<Secret> for PskSecret {
     }
 }
 
-pub(crate) fn load_psks<'p, Storage: StorageProvider>(
+#[maybe_async::maybe_async]
+pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,
     psk_ids: &'p [PreSharedKeyId],
@@ -609,6 +612,7 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
             Psk::External(_) => {
                 let psk_bundle: Option<PskBundle> = storage
                     .psk(psk_id.psk())
+                    .await
                     .map_err(|_| PskError::KeyNotFound)?;
                 if let Some(psk_bundle) = psk_bundle {
                     psk_bundles.push((psk_id, psk_bundle.secret));
@@ -620,6 +624,7 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
             Psk::Application(_) => {
                 let psk_bundle: Option<PskBundle> = storage
                     .psk(psk_id.psk())
+                    .await
                     .map_err(|_| PskError::KeyNotFound)?;
                 if let Some(psk_bundle) = psk_bundle {
                     psk_bundles.push((psk_id, psk_bundle.secret));

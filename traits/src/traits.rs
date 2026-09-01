@@ -11,6 +11,29 @@ pub mod signatures;
 pub mod storage;
 pub mod types;
 
+/// Conditional `Send`/`Sync` for the async `StorageProvider` bounds. Off-wasm
+/// these are real `Send`/`Sync` (herald's native spawned workers move storage
+/// futures across threads); on wasm they are a no-op bound, because storage
+/// handles there (e.g. `sqlite-wasm`) are `!Send + !Sync` and the executor is
+/// single-threaded. This lets a wasm SQLite-backed provider implement the trait.
+#[cfg(not(target_arch = "wasm32"))]
+pub trait MaybeSend: Send {}
+#[cfg(not(target_arch = "wasm32"))]
+impl<T: Send + ?Sized> MaybeSend for T {}
+#[cfg(target_arch = "wasm32")]
+pub trait MaybeSend {}
+#[cfg(target_arch = "wasm32")]
+impl<T: ?Sized> MaybeSend for T {}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub trait MaybeSync: Sync {}
+#[cfg(not(target_arch = "wasm32"))]
+impl<T: Sync + ?Sized> MaybeSync for T {}
+#[cfg(target_arch = "wasm32")]
+pub trait MaybeSync {}
+#[cfg(target_arch = "wasm32")]
+impl<T: ?Sized> MaybeSync for T {}
+
 /// A prelude to include to get all traits in scope and expose `openmls_types`.
 pub mod prelude {
     pub use super::crypto::OpenMlsCrypto as _;
