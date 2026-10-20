@@ -402,7 +402,21 @@ impl PublicGroup {
             }
 
             // https://validation.openmls.tech/#valn0202
-            self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
+            // XMTP: the lifetime is not compared with the current time. This
+            // function runs both when a member builds a commit and when a member
+            // processes one, and both skip on purpose:
+            //  - A receiver may process the commit long after the key package
+            //    expired. Rejecting it would split the group.
+            //  - A committer may commit an Add that was queued, or built from a
+            //    key package fetched earlier, after the key package expired.
+            //    Rejecting it would leave a commit that can never be built.
+            // Receivers skip too, so a committer that skips cannot split the
+            // group. Key packages are still checked when they are fetched
+            // (`KeyPackageIn::validate`).
+            self.validate_leaf_node_inner(
+                add_proposal.add_proposal().key_package().leaf_node(),
+                LeafNodeLifetimePolicy::Skip,
+            )?;
         }
         Ok(())
     }

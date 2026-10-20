@@ -174,7 +174,15 @@ impl AddProposalIn {
         protocol_version: ProtocolVersion,
         ciphersuite: Ciphersuite,
     ) -> Result<AddProposal, ValidationError> {
-        let key_package = self.key_package.validate(crypto, protocol_version)?;
+        // A receiver may process this Add long after the sender checked the key
+        // package, so the lifetime is not compared with the current time here.
+        // XMTP: this also covers an Add that a committer or an external joiner
+        // reads from a received proposal. See `PublicGroup::validate_add_proposals`.
+        let key_package = self.key_package.validate_with_lifetime_policy(
+            crypto,
+            protocol_version,
+            crate::group::mls_group::creation::LeafNodeLifetimePolicy::Skip,
+        )?;
         // Verify that the ciphersuite is valid
         if key_package.ciphersuite() != ciphersuite {
             return Err(ValidationError::InvalidAddProposalCiphersuite);
