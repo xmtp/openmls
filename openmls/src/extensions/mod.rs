@@ -846,6 +846,13 @@ impl Extension {
             #[cfg(feature = "extensions-draft")]
             Extension::AppDataDictionary(_) => ExtensionType::AppDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
+            // Map GREASE-valued extension types to `Grease`, consistent with
+            // `ExtensionType::from(u16)`. Without this an extension carrying a
+            // GREASE value would be reported as `Unknown`, so GREASE-aware
+            // validation (which ignores `Grease(_)`) would not recognize it.
+            Extension::Unknown(kind, _) if crate::grease::is_grease_value(*kind) => {
+                ExtensionType::Grease(*kind)
+            }
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }
@@ -914,6 +921,69 @@ mod test {
                 RequiredCapabilitiesExtension::default()
             ))
             .is_err());
+    }
+
+    #[test]
+    fn grease_extension_type_mapping() {
+        // A GREASE-valued extension must report a `Grease` extension type
+        // (consistent with `ExtensionType::from(u16)`), not `Unknown`. Otherwise
+        // GREASE-aware validation would fail to recognize it and reject peers
+        // (e.g. MLS++) that decorate leaf/key-package extensions with GREASE.
+        let grease = Extension::Unknown(0x5A5A, UnknownExtension(vec![1, 2, 3]));
+        assert_eq!(grease.extension_type(), ExtensionType::Grease(0x5A5A));
+        assert!(grease.extension_type().is_grease());
+
+        // A non-GREASE unknown value stays `Unknown`.
+        let unknown = Extension::Unknown(0xABCD, UnknownExtension(vec![]));
+        assert_eq!(unknown.extension_type(), ExtensionType::Unknown(0xABCD));
+    }
+
+    #[test]
+    fn grease_extension_must_be_declared_in_capabilities() {
+        // GREASE does NOT bypass the capability check: a GREASE extension type is
+        // "contained" only if it is advertised in the capabilities (RFC 9420:
+        // extensions in leaf_node.extensions/key_package.extensions MUST be in
+        // capabilities). This test only covers the capability lookup; it does
+        // not call `Extension::extension_type()`.
+        // `grease_extension_declared_through_contains_extensions` covers the
+        // mapping through the production check.
+        let advertised = crate::treesync::node::leaf_node::Capabilities::new(
+            None,
+            None,
+            Some(&[ExtensionType::Grease(0x5A5A)]),
+            None,
+            None,
+        );
+        assert!(advertised.contains_extension_type(&ExtensionType::Grease(0x5A5A)));
+        // A GREASE value that is not advertised is not contained.
+        assert!(!advertised.contains_extension_type(&ExtensionType::Grease(0xAAAA)));
+
+        // Empty capabilities contain no (non-default) extension, GREASE included.
+        let empty =
+            crate::treesync::node::leaf_node::Capabilities::new(None, None, None, None, None);
+        assert!(!empty.contains_extension_type(&ExtensionType::Grease(0x5A5A)));
+        assert!(!empty.contains_extension_type(&ExtensionType::Unknown(0xABCD)));
+    }
+
+    #[test]
+    fn grease_extension_declared_through_contains_extensions() {
+        // XMTP: the production capability check maps each extension with
+        // `Extension::extension_type()`. A GREASE-valued extension must match
+        // the `Grease(_)` type that capabilities decode to.
+        use crate::treesync::{node::leaf_node::Capabilities, LeafNode};
+
+        let extensions = Extensions::<LeafNode>::single(Extension::Unknown(
+            0x5A5A,
+            UnknownExtension(vec![1, 2, 3]),
+        ))
+        .unwrap();
+        let capabilities = |extension_types: &[ExtensionType]| -> Capabilities {
+            Capabilities::new(None, None, Some(extension_types), None, None)
+        };
+
+        assert!(capabilities(&[ExtensionType::Grease(0x5A5A)]).contains_extensions(&extensions));
+        assert!(!capabilities(&[ExtensionType::Grease(0xAAAA)]).contains_extensions(&extensions));
+        assert!(!capabilities(&[]).contains_extensions(&extensions));
     }
 
     #[test]
