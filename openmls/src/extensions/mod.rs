@@ -939,37 +939,11 @@ mod test {
     }
 
     #[test]
-    fn grease_extension_must_be_declared_in_capabilities() {
-        // GREASE does NOT bypass the capability check: a GREASE extension type is
-        // "contained" only if it is advertised in the capabilities (RFC 9420:
-        // extensions in leaf_node.extensions/key_package.extensions MUST be in
-        // capabilities). This test only covers the capability lookup; it does
-        // not call `Extension::extension_type()`.
-        // `grease_extension_declared_through_contains_extensions` covers the
-        // mapping through the production check.
-        let advertised = crate::treesync::node::leaf_node::Capabilities::new(
-            None,
-            None,
-            Some(&[ExtensionType::Grease(0x5A5A)]),
-            None,
-            None,
-        );
-        assert!(advertised.contains_extension_type(&ExtensionType::Grease(0x5A5A)));
-        // A GREASE value that is not advertised is not contained.
-        assert!(!advertised.contains_extension_type(&ExtensionType::Grease(0xAAAA)));
-
-        // Empty capabilities contain no (non-default) extension, GREASE included.
-        let empty =
-            crate::treesync::node::leaf_node::Capabilities::new(None, None, None, None, None);
-        assert!(!empty.contains_extension_type(&ExtensionType::Grease(0x5A5A)));
-        assert!(!empty.contains_extension_type(&ExtensionType::Unknown(0xABCD)));
-    }
-
-    #[test]
     fn grease_extension_declared_through_contains_extensions() {
         // XMTP: the production capability check maps each extension with
         // `Extension::extension_type()`. A GREASE-valued extension must match
-        // the `Grease(_)` type that capabilities decode to.
+        // the `Grease(_)` type that capabilities decode to. GREASE does not
+        // bypass the check: an undeclared GREASE extension is not contained.
         use crate::treesync::{node::leaf_node::Capabilities, LeafNode};
 
         let extensions = Extensions::<LeafNode>::single(Extension::Unknown(
