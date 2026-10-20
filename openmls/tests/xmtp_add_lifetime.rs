@@ -12,6 +12,7 @@ use std::{
 };
 
 use openmls::credentials::test_utils::new_credential;
+use openmls::group::ProposalStore;
 use openmls::prelude::{tls_codec::*, *};
 use openmls::treesync::errors::LifetimeError;
 use openmls_basic_credential::SignatureKeyPair;
@@ -81,11 +82,25 @@ fn alice_and_charlie<Provider: OpenMlsProvider>(
     alice_provider: &Provider,
     charlie_provider: &Provider,
 ) -> (MlsGroup, SignatureKeyPair, MlsGroup, SignatureKeyPair) {
-    let config = config(ciphersuite);
+    alice_and_charlie_with(
+        &config(ciphersuite),
+        ciphersuite,
+        alice_provider,
+        charlie_provider,
+    )
+}
+
+/// [`alice_and_charlie`] with a given group configuration.
+fn alice_and_charlie_with<Provider: OpenMlsProvider>(
+    config: &MlsGroupCreateConfig,
+    ciphersuite: Ciphersuite,
+    alice_provider: &Provider,
+    charlie_provider: &Provider,
+) -> (MlsGroup, SignatureKeyPair, MlsGroup, SignatureKeyPair) {
     let (alice_credential, alice_signer) =
         new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
     let mut alice_group =
-        MlsGroup::new(alice_provider, &alice_signer, &config, alice_credential).unwrap();
+        MlsGroup::new(alice_provider, &alice_signer, config, alice_credential).unwrap();
 
     let (charlie_credential, charlie_signer) = new_credential(
         charlie_provider,
@@ -229,6 +244,88 @@ fn member_accepts_add_by_reference_after_the_key_package_expired() {
     process_commit(&mut alice_group, alice_provider, commit);
     assert_eq!(alice_group.epoch(), charlie_group.epoch());
     assert_eq!(alice_group.members().count(), 3);
+}
+
+/// A standalone Add proposal is processed after its key package expired, by
+/// a member and by a `PublicGroup` observer. The member then commits it by
+/// reference, and everyone reaches the same epoch.
+#[openmls_test]
+fn member_and_observer_accept_add_proposal_after_the_key_package_expired() {
+    // A `PublicGroup` can read only public messages.
+    let config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build();
+    let alice_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+    let (mut alice_group, alice_signer, mut charlie_group, charlie_signer) =
+        alice_and_charlie_with(&config, ciphersuite, alice_provider, charlie_provider);
+
+    let observer_provider = &Provider::default();
+    let group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+    let (mut observer, _) = PublicGroup::from_external(
+        observer_provider.crypto(),
+        observer_provider.storage(),
+        alice_group.export_ratchet_tree().into(),
+        group_info,
+        ProposalStore::new(),
+    )
+    .unwrap();
+
+    let dave_provider = &Provider::default();
+    let dave_key_package = short_lived_key_package(ciphersuite, dave_provider);
+    let (proposal, _) = alice_group
+        .propose_add_member(alice_provider, &alice_signer, &dave_key_package)
+        .unwrap();
+
+    wait_for_expiry();
+
+    let processed = charlie_group
+        .process_message(charlie_provider, receive(proposal.clone()))
+        .expect("a member must not check the lifetime of an Add proposal");
+    let ProcessedMessageContent::ProposalMessage(queued) = processed.into_content() else {
+        panic!("expected a proposal");
+    };
+    charlie_group
+        .store_pending_proposal(charlie_provider.storage(), *queued)
+        .unwrap();
+
+    let processed = observer
+        .process_message(observer_provider.crypto(), receive(proposal))
+        .expect("an observer must not check the lifetime of an Add proposal");
+    let ProcessedMessageContent::ProposalMessage(queued) = processed.into_content() else {
+        panic!("expected a proposal");
+    };
+    observer
+        .add_proposal(observer_provider.storage(), *queued)
+        .unwrap();
+
+    let (commit, _welcome, _) = charlie_group
+        .commit_to_pending_proposals(charlie_provider, &charlie_signer)
+        .unwrap();
+    charlie_group
+        .merge_pending_commit(charlie_provider)
+        .unwrap();
+
+    process_commit(&mut alice_group, alice_provider, commit.clone());
+    let processed = observer
+        .process_message(observer_provider.crypto(), receive(commit))
+        .expect("an observer must not check the lifetime of an Add");
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("expected a staged commit");
+    };
+    observer
+        .merge_commit(observer_provider.storage(), *staged)
+        .unwrap();
+
+    assert_eq!(alice_group.epoch(), charlie_group.epoch());
+    assert_eq!(observer.group_context().epoch(), alice_group.epoch());
+    assert_eq!(observer.members().count(), 3);
 }
 
 /// `KeyPackageIn::validate`, used when a key package is fetched, still
