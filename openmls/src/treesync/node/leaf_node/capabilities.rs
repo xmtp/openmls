@@ -14,6 +14,7 @@ use crate::{
     extensions::{
         Extension, ExtensionType, ExtensionValidator, Extensions, RequiredCapabilitiesExtension,
     },
+    key_packages::KeyPackage,
     messages::proposals::ProposalType,
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
@@ -239,6 +240,26 @@ impl Capabilities {
     /// Check if these [`Capabilities`] contain the ciphersuite.
     pub(crate) fn contains_ciphersuite(&self, ciphersuite: VerifiableCiphersuite) -> bool {
         self.ciphersuites().contains(&ciphersuite)
+    }
+
+    /// Widen `self` to cover the non-default extension types of the
+    /// KeyPackage this leaf is built for.
+    ///
+    /// RFC 9420 requires a KeyPackage's extensions to be listed in its leaf's
+    /// capabilities. Every added entry is a fact about what is being built.
+    pub(crate) fn widen_for_key_package(
+        &mut self,
+        key_package_extensions: &Extensions<KeyPackage>,
+    ) {
+        self.widen_for_extensions(key_package_extensions);
+    }
+
+    fn widen_for_extensions(&mut self, extensions: &Extensions<impl ExtensionValidator>) {
+        for extension_type in extensions.iter().map(Extension::extension_type) {
+            if !extension_type.is_default() && !self.extensions.contains(&extension_type) {
+                self.extensions.push(extension_type);
+            }
+        }
     }
 
     /// Add random GREASE values to the capabilities to ensure extensibility.

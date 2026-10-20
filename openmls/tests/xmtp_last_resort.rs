@@ -1,11 +1,11 @@
-//! XMTP backport of the validation check of upstream be2368a21 (#2133) on
-//! v0.9.1. With `extensions-draft`, the `last_resort_key_package` component
-//! (0x0004) in a key package's `app_data_dictionary` must have empty data.
-//! Later OpenMLS releases reject a key package that breaks this rule, so this
-//! branch must reject it too, or the two disagree on a commit that adds it.
+//! XMTP backport of upstream be2368a21 (#2133) on v0.9.1. With
+//! `extensions-draft`, the `last_resort_key_package` component (0x0004) in a
+//! key package's `app_data_dictionary` must have empty data. Later OpenMLS
+//! releases reject a key package that breaks this rule, so this branch must
+//! reject it too, or the two disagree on a commit that adds it.
 //!
-//! The encoding change of #2133 (`mark_as_last_resort` writing the component)
-//! is not backported, but a key package in that encoding must be accepted.
+//! `mark_as_last_resort` writes the component, and `KeyPackage::last_resort`
+//! recognizes it, so a Welcome does not consume such a key package.
 #![cfg(feature = "extensions-draft")]
 
 use openmls::component::ComponentType;
@@ -427,4 +427,221 @@ fn member_accepts_add_of_key_package_in_upstream_transition_shape() {
 
     process_commit(&mut charlie_group, charlie_provider, &commit);
     assert_eq!(charlie_group.epoch(), alice_group.epoch());
+}
+
+/// Dave joins two groups from Welcomes to the same `key_package`. In the
+/// first, Alice adds him and Charlie processes the commit from bytes. In the
+/// second, Eve adds him. A Welcome that consumes the key package makes the
+/// second join fail with `NoMatchingKeyPackage`.
+fn join_two_groups<Provider: OpenMlsProvider + Default>(
+    ciphersuite: Ciphersuite,
+    dave_provider: &Provider,
+    key_package: KeyPackage,
+) {
+    let alice_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+    let (mut alice_group, alice_signer, mut charlie_group) = alice_and_charlie(
+        &config(ciphersuite),
+        ciphersuite,
+        alice_provider,
+        charlie_provider,
+    );
+    let (commit, welcome, _) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            std::slice::from_ref(&key_package),
+        )
+        .unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    process_commit(&mut charlie_group, charlie_provider, &commit);
+    assert_eq!(charlie_group.members().count(), 3);
+    let dave_in_alice_group = join(dave_provider, &config(ciphersuite), welcome);
+    assert_eq!(dave_in_alice_group.epoch(), alice_group.epoch());
+
+    let eve_provider = &Provider::default();
+    let (eve_credential, eve_signer) =
+        new_credential(eve_provider, b"Eve", ciphersuite.signature_algorithm());
+    let mut eve_group = MlsGroup::new(
+        eve_provider,
+        &eve_signer,
+        &config(ciphersuite),
+        eve_credential,
+    )
+    .unwrap();
+    let (_, welcome, _) = eve_group
+        .add_members(eve_provider, &eve_signer, &[key_package])
+        .unwrap();
+    eve_group.merge_pending_commit(eve_provider).unwrap();
+    let dave_in_eve_group = join(dave_provider, &config(ciphersuite), welcome);
+    assert_eq!(dave_in_eve_group.epoch(), eve_group.epoch());
+}
+
+/// Asserts that `key_package`'s `app_data_dictionary` holds the last-resort
+/// component with empty data.
+fn assert_last_resort_component(key_package: &KeyPackage) {
+    assert_eq!(
+        key_package
+            .extensions()
+            .app_data_dictionary()
+            .expect("the marker must be in the app_data_dictionary")
+            .dictionary()
+            .get(&ComponentType::LastResortKeyPackage.into()),
+        Some(&[][..])
+    );
+}
+
+/// A key package built with `mark_as_last_resort` and no capabilities carries
+/// only the new marker. It passes validation, a receiver accepts the commit
+/// that adds it, and it survives a Welcome: Dave joins two groups from the
+/// same key package.
+#[openmls_test]
+fn marked_key_package_survives_two_welcomes() {
+    let dave_provider = &Provider::default();
+    let (dave_credential, dave_signer) =
+        new_credential(dave_provider, b"Dave", ciphersuite.signature_algorithm());
+    let dave_key_package = KeyPackage::builder()
+        .mark_as_last_resort()
+        .build(ciphersuite, dave_provider, &dave_signer, dave_credential)
+        .unwrap()
+        .key_package()
+        .clone();
+    assert!(dave_key_package.last_resort());
+    assert!(!dave_key_package
+        .extensions()
+        .contains(ExtensionType::LastResort));
+    assert_last_resort_component(&dave_key_package);
+    let validated = validate(dave_provider, &dave_key_package)
+        .expect("a key package marked as last resort must pass");
+
+    join_two_groups(ciphersuite, dave_provider, validated);
+}
+
+/// libxmtp's key packages carry only the legacy `last_resort` extension. With
+/// `extensions-draft`, a Welcome must still keep such a key package.
+#[openmls_test]
+fn legacy_marked_key_package_survives_two_welcomes() {
+    let dave_provider = &Provider::default();
+    let dave_key_package = key_package_with(
+        ciphersuite,
+        dave_provider,
+        &[ExtensionType::LastResort],
+        Extensions::single(Extension::LastResort(LastResortExtension::default())).unwrap(),
+        None,
+    )
+    .key_package()
+    .clone();
+    assert!(dave_key_package
+        .extensions()
+        .app_data_dictionary()
+        .is_none());
+    let validated = validate(dave_provider, &dave_key_package)
+        .expect("a key package with the legacy marker must pass");
+
+    join_two_groups(ciphersuite, dave_provider, validated);
+}
+
+/// An `app_data_dictionary` without component 4 is not a last-resort marker,
+/// so a Welcome deletes the bundle.
+#[openmls_test]
+fn key_package_with_other_component_only_is_consumed() {
+    let alice_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+    let (mut alice_group, alice_signer, _charlie_group) = alice_and_charlie(
+        &config(ciphersuite),
+        ciphersuite,
+        alice_provider,
+        charlie_provider,
+    );
+    let dave_provider = &Provider::default();
+    let key_package = key_package_with(
+        ciphersuite,
+        dave_provider,
+        &[ExtensionType::AppDataDictionary],
+        Extensions::single(Extension::AppDataDictionary(dictionary(&[(
+            0x8001,
+            vec![1],
+        )])))
+        .unwrap(),
+        None,
+    )
+    .key_package()
+    .clone();
+    assert!(!key_package.last_resort());
+
+    let hash_ref = key_package.hash_ref(dave_provider.crypto()).unwrap();
+    let (_, welcome, _) = alice_group
+        .add_members(alice_provider, &alice_signer, &[key_package])
+        .unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    join(dave_provider, &config(ciphersuite), welcome);
+    let stored: Option<KeyPackageBundle> = dave_provider.storage().key_package(&hash_ref).unwrap();
+    assert!(stored.is_none(), "a Welcome must delete the bundle");
+}
+
+/// `mark_as_last_resort` also marks key packages that the virtual-client batch
+/// builder creates, and they pass validation.
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test]
+fn virtual_client_batch_marks_key_packages_as_last_resort() {
+    use openmls::components::vc_derivation_info::VC_COMPONENT_ID;
+
+    let provider = &Provider::default();
+    let capabilities = Capabilities::builder()
+        .extensions(vec![ExtensionType::AppDataDictionary])
+        .build();
+    // The leaf lists VC_COMPONENT_ID in its AppComponents entry (component 1).
+    let leaf_node_extensions = {
+        let mut dictionary = AppDataDictionary::new();
+        dictionary.insert(1, vec![VC_COMPONENT_ID].tls_serialize_detached().unwrap());
+        Extensions::single(Extension::AppDataDictionary(
+            AppDataDictionaryExtension::new(dictionary),
+        ))
+        .unwrap()
+    };
+
+    let (emulator_credential, emulator_signer) =
+        new_credential(provider, b"Emulator", ciphersuite.signature_algorithm());
+    let emulator_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(capabilities.clone())
+        .with_leaf_node_extensions(leaf_node_extensions.clone())
+        .unwrap()
+        .build();
+    let mut emulator = MlsGroup::new(
+        provider,
+        &emulator_signer,
+        &emulator_config,
+        emulator_credential,
+    )
+    .unwrap();
+    let epoch_id = emulator
+        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .unwrap();
+
+    let (vc_credential, vc_signer) = new_credential(
+        provider,
+        b"VirtualClient",
+        ciphersuite.signature_algorithm(),
+    );
+    let batch = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
+        .leaf_node_extensions(leaf_node_extensions)
+        .mark_as_last_resort()
+        .build_vc_batch(
+            ciphersuite,
+            provider,
+            &vc_signer,
+            vc_credential,
+            epoch_id,
+            1,
+        )
+        .unwrap();
+
+    let key_package = batch.key_packages[0].0.key_package();
+    assert!(key_package.last_resort());
+    assert_last_resort_component(key_package);
+    validate(provider, key_package).expect("a marked virtual-client key package must pass");
 }

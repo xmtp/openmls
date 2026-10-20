@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+- [#2133](https://github.com/openmls/openmls/pull/2133): With the `extensions-draft` feature, `KeyPackageBuilder::mark_as_last_resort` now marks the KeyPackage with the draft-10 `last_resort_key_package` component in its `app_data_dictionary` instead of the legacy `last_resort` extension. A `last_resort` extension the caller sets explicitly is kept, so applications can emit both during a transition. `KeyPackage::last_resort` recognizes either marker. If the caller set leaf node capabilities that don't list the extension carrying the marker, building fails with `KeyPackageNewError::MissingLastResortCapability`. When no capabilities are set, the leaf node capabilities now also list the extension types of the KeyPackage's own extensions, as RFC 9420 requires. (Backport to v0.9.1, which has no `CapabilitiesPolicy`.)
+- [#2133](https://github.com/openmls/openmls/pull/2133): With the `extensions-draft` feature, `KeyPackageIn::validate` rejects a KeyPackage whose `last_resort_key_package` component has non-empty data, with `KeyPackageVerifyError::MalformedLastResortComponent`. The check also runs when a received Add proposal is decoded. (Backported to v0.9.1 before the encoding change.)
+
 ## 0.9.1 (2026-10-07)
 
 ### Fixed
