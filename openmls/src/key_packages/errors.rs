@@ -43,6 +43,10 @@ pub enum KeyPackageVerifyError {
     /// The provided extension is not allowed in key packages
     #[error(transparent)]
     ExtensionTypeNotValidInKeyPackage(#[from] ExtensionTypeNotValidInKeyPackageError),
+    /// The last_resort_key_package component contains data.
+    #[cfg(feature = "extensions-draft")]
+    #[error("The last_resort_key_package component data must be empty.")]
+    MalformedLastResortComponent,
 }
 
 /// KeyPackage extension support error

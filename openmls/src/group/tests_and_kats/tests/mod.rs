@@ -31,3 +31,4 @@ mod unsupported_ciphersuite;
 ))]
 mod virtual_clients;
 mod wire_format_policy;
+mod xmtp_receiver_checks;

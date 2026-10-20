@@ -5,6 +5,7 @@ use crate::{
     ciphersuite::{signable::*, *},
     credentials::*,
     extensions::{AnyObject, Extensions},
+    group::mls_group::creation::LeafNodeLifetimePolicy,
     treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
     versions::ProtocolVersion,
 };
@@ -138,6 +139,18 @@ impl KeyPackageIn {
         crypto: &impl OpenMlsCrypto,
         protocol_version: ProtocolVersion,
     ) -> Result<KeyPackage, KeyPackageVerifyError> {
+        self.validate_with_lifetime_policy(crypto, protocol_version, LeafNodeLifetimePolicy::Verify)
+    }
+
+    /// [`Self::validate`], except that [`LeafNodeLifetimePolicy::Skip`] does not
+    /// compare the lifetime with the current time. The lifetime must still be
+    /// present.
+    pub(crate) fn validate_with_lifetime_policy(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
+    ) -> Result<KeyPackage, KeyPackageVerifyError> {
         // We first need to verify the LeafNode inside the KeyPackage
         let leaf_node = self.payload.leaf_node.clone().into_verifiable_leaf_node();
 
@@ -191,9 +204,16 @@ impl KeyPackageIn {
             return Err(KeyPackageVerifyError::UnsupportedExtension);
         }
 
+        #[cfg(feature = "extensions-draft")]
+        if key_package.has_malformed_last_resort_component() {
+            return Err(KeyPackageVerifyError::MalformedLastResortComponent);
+        }
+
         // Ensure validity of the life time extension in the leaf node.
         if let Some(life_time) = key_package.payload.leaf_node.life_time() {
-            life_time.validate()?;
+            if lifetime_policy == LeafNodeLifetimePolicy::Verify {
+                life_time.validate()?;
+            }
         } else {
             // This assumes that we only verify key packages with leaf nodes
             // that were created for the key package.

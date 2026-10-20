@@ -622,6 +622,110 @@ fn self_remove_proposals() {
     assert_eq!(alice_group.members().count(), 1);
 }
 
+// XMTP (#2207 backport): when a SelfRemove and then an Update from the same
+// member are pending, the committer keeps the SelfRemove. Before #2207 the
+// (SelfRemove, Update) pair hit a `debug_assert` in
+// `Proposal::has_lower_priority_than`.
+#[openmls_test::openmls_test]
+fn self_remove_then_update_from_same_member() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    // Create credentials and keys
+    let (alice_credential, alice_signer) =
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+    // Add SelfRemove to capabilities
+    let capabilities = Capabilities::new(
+        None,
+        Some(&[ciphersuite]),
+        None,
+        Some(&[ProposalType::SelfRemove]),
+        None,
+    );
+
+    // Generate KeyPackages
+    let bob_key_package_bundle = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities.clone())
+        .build(
+            ciphersuite,
+            bob_provider,
+            &bob_signer,
+            bob_credential.clone(),
+        )
+        .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Alice creates a group
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        // support the non-default SelfRemove proposal type
+        .with_capabilities(capabilities)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(alice_provider, &alice_signer, alice_credential.clone())
+        .expect("Error creating group.");
+
+    // Alice adds Bob
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
+        .expect("Could not create proposal.");
+
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("error merging pending commit");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .build(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .and_then(|staged_join| staged_join.into_group(bob_provider))
+    .expect("error creating group from welcome");
+
+    // Bob sends a SelfRemove, then an Update. Alice stores both, in that order.
+    let self_remove = bob_group
+        .leave_group_via_self_remove(bob_provider, &bob_signer)
+        .unwrap();
+    let (update, _) = bob_group
+        .propose_self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
+        .unwrap();
+    for message in [self_remove, update] {
+        let processed_message = alice_group
+            .process_message(alice_provider, message.into_protocol_message().unwrap())
+            .unwrap();
+        let ProcessedMessageContent::ProposalMessage(queued_proposal) =
+            processed_message.into_content()
+        else {
+            panic!("Expected a ProposalMessage.");
+        };
+        alice_group
+            .store_pending_proposal(alice_provider.storage(), *queued_proposal)
+            .unwrap();
+    }
+
+    // Alice commits: only the SelfRemove goes in, and Bob leaves.
+    alice_group
+        .commit_to_pending_proposals(alice_provider, &alice_signer)
+        .unwrap();
+    let pending_commit = alice_group.pending_commit().unwrap();
+    assert_eq!(pending_commit.queued_proposals().count(), 1);
+    assert!(matches!(
+        pending_commit.queued_proposals().next().unwrap().proposal(),
+        Proposal::SelfRemove
+    ));
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    assert_eq!(alice_group.members().count(), 1);
+}
+
 // Test if update proposals are properly discarded if a remove proposal is
 // present for a given leaf.
 #[openmls_test::openmls_test]

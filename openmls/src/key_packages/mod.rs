@@ -88,6 +88,8 @@
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
 
+#[cfg(feature = "extensions-draft")]
+use crate::component::{ComponentId, ComponentType};
 use crate::{
     ciphersuite::{
         hash_ref::{make_key_package_ref, KeyPackageRef},
@@ -222,6 +224,11 @@ impl SignedStruct<KeyPackageTbs> for KeyPackage {
 }
 
 const SIGNATURE_KEY_PACKAGE_LABEL: &str = "KeyPackageTBS";
+
+#[cfg(feature = "extensions-draft")]
+fn last_resort_component_id() -> ComponentId {
+    ComponentType::LastResortKeyPackage.into()
+}
 
 /// The leaf-node-specific parameters used when creating a [`KeyPackage`].
 pub(crate) struct KeyPackageLeafNodeParams {
@@ -486,6 +493,17 @@ impl KeyPackage {
     /// Check if this KeyPackage is a last resort key package.
     pub fn last_resort(&self) -> bool {
         self.payload.extensions.contains(ExtensionType::LastResort)
+    }
+
+    #[cfg(feature = "extensions-draft")]
+    fn has_malformed_last_resort_component(&self) -> bool {
+        matches!(
+            self.payload
+                .extensions
+                .app_data_dictionary()
+                .and_then(|extension| extension.dictionary().get(&last_resort_component_id())),
+            Some(data) if !data.is_empty()
+        )
     }
 
     /// Get the lifetime of the KeyPackage
