@@ -155,3 +155,47 @@ fn committer_rejects_add_of_leaf_node_with_undeclared_grease_extension() {
         "unexpected error: {error:?}"
     );
 }
+
+/// A key package whose `key_package.extensions` carries a GREASE extension.
+/// Its capabilities declare that extension type when `declare` is true.
+fn key_package_with_grease_extension<Provider: OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+    declare: bool,
+) -> KeyPackage {
+    let (credential, signer) = new_credential(provider, b"Dave", ciphersuite.signature_algorithm());
+    let declared = if declare {
+        vec![ExtensionType::Grease(GREASE)]
+    } else {
+        vec![]
+    };
+    KeyPackage::builder()
+        .leaf_node_capabilities(Capabilities::builder().extensions(declared).build())
+        .key_package_extensions(
+            Extensions::single(Extension::Unknown(GREASE, UnknownExtension(vec![7]))).unwrap(),
+        )
+        .build(ciphersuite, provider, &signer, credential)
+        .unwrap()
+        .key_package()
+        .clone()
+}
+
+/// The mapping also applies to `key_package.extensions`. v0.9.1 rejected a
+/// declared GREASE extension there with `UnsupportedExtension`; it now passes,
+/// as on later OpenMLS releases. An undeclared one is still rejected.
+#[openmls_test]
+fn key_package_validation_accepts_declared_grease_key_package_extension() {
+    let provider = &Provider::default();
+    let validate = |key_package: KeyPackage| {
+        KeyPackageIn::from(key_package).validate(provider.crypto(), ProtocolVersion::Mls10)
+    };
+
+    let declared = key_package_with_grease_extension(ciphersuite, provider, true);
+    assert!(validate(declared).is_ok());
+
+    let undeclared = key_package_with_grease_extension(ciphersuite, provider, false);
+    assert_eq!(
+        validate(undeclared).unwrap_err(),
+        KeyPackageVerifyError::UnsupportedExtension
+    );
+}
