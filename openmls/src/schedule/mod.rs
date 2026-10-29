@@ -478,7 +478,8 @@ impl KeySchedule {
         crypto: &impl OpenMlsCrypto,
         serialized_group_context: &[u8],
     ) -> Result<(), KeyScheduleError> {
-        log::trace!("Adding context to key schedule. {serialized_group_context:?}");
+        log::trace!("Adding context to key schedule.");
+        log_crypto!(trace, "  group context: {serialized_group_context:?}");
         if self.state != State::Initial || self.intermediate_secret.is_none() {
             log::error!(
                 "Trying to add context to the key schedule while not in the initial state."

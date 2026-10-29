@@ -41,7 +41,7 @@ impl KdfLabel {
             label: label.as_bytes().into(),
             context: context.into(),
         };
-        log::trace!("{kdf_label:?}");
+        log_crypto!(trace, "{kdf_label:?}");
         kdf_label
             .tls_serialize_detached()
             .map_err(|_| CryptoError::KdfSerializationError)
