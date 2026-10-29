@@ -386,6 +386,19 @@ impl MlsGroup {
                 )
             })
     }
+
+    /// Returns the [`Member`] at the given leaf index in the given epoch: the
+    /// current tree, or the leaves retained for a past epoch. Returns `None`
+    /// if the leaf is blank or the epoch is not retained.
+    pub fn member_at_epoch(&self, epoch: GroupEpoch, leaf_index: LeafNodeIndex) -> Option<Member> {
+        if epoch == self.epoch() {
+            return self.member_at(leaf_index);
+        }
+        self.message_secrets_store
+            .leaves_for_epoch(epoch)
+            .get(&leaf_index)
+            .map(|member| (*member).clone())
+    }
 }
 
 /// Helper `enum` that classifies the kind of remove operation. This can be used to
