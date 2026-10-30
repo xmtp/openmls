@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- [#63](https://github.com/xmtp/openmls/pull/63): `MlsGroup::member_at_epoch` returns the member at a leaf index in the current epoch or in a retained past epoch.
+
 ### Changed
 
 - [#2133](https://github.com/openmls/openmls/pull/2133): With the `extensions-draft` feature, `KeyPackageBuilder::mark_as_last_resort` now marks the KeyPackage with the draft-10 `last_resort_key_package` component in its `app_data_dictionary` instead of the legacy `last_resort` extension. A `last_resort` extension the caller sets explicitly is kept, so applications can emit both during a transition. `KeyPackage::last_resort` recognizes either marker. If the caller set leaf node capabilities that don't list the extension carrying the marker, building fails with `KeyPackageNewError::MissingLastResortCapability`. When no capabilities are set, the leaf node capabilities now also list the extension types of the KeyPackage's own extensions, as RFC 9420 requires. (Backport to v0.9.1, which has no `CapabilitiesPolicy`.)

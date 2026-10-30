@@ -19,6 +19,7 @@
 //! Additional tests for the message secrets store:
 //! - `test_secret_tree_store()`
 //! - `test_empty_secret_tree_store()`
+//! - `member_at_epoch_reads_retained_leaves()`
 
 use openmls_traits::signatures::Signer;
 
