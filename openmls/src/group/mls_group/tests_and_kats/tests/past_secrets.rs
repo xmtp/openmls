@@ -19,13 +19,17 @@
 //! Additional tests for the message secrets store:
 //! - `test_secret_tree_store()`
 //! - `test_empty_secret_tree_store()`
+//! - `member_at_epoch_reads_retained_leaves()`
 
 use openmls_traits::signatures::Signer;
 
 use crate::{
     binary_tree::LeafNodeIndex,
     group::past_secrets::MessageSecretsStore,
-    prelude::{tests_and_kats::utils::generate_credential_with_key, *},
+    prelude::{
+        tests_and_kats::utils::{generate_credential_with_key, generate_key_package},
+        *,
+    },
     schedule::message_secrets::MessageSecrets,
 };
 use std::time::Duration;
@@ -834,4 +838,61 @@ fn test_empty_secret_tree_store() {
 
     // Make sure we cannot access the message secrets we just stored
     assert!(message_secrets_store.secrets_for_epoch_mut(0).is_none());
+}
+
+/// `member_at_epoch` returns a removed member from a retained past epoch,
+/// and `None` for the current tree and for epochs that are not retained.
+#[openmls_test::openmls_test]
+fn member_at_epoch_reads_retained_leaves() {
+    let policy = PastEpochDeletionPolicy::MaxEpochs(1);
+    let (alice_provider, alice_signer, mut alice_group) = setup::<Provider>(ciphersuite, policy);
+
+    let bob_provider = &Provider::default();
+    let bob_credential = generate_credential_with_key(
+        b"Bob".to_vec(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+    let bob_key = bob_credential.credential_with_key.signature_key.clone();
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        bob_provider,
+        bob_credential,
+    );
+    alice_group
+        .add_members(
+            &alice_provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
+        .expect("error adding Bob");
+    alice_group
+        .merge_pending_commit(&alice_provider)
+        .expect("error merging commit");
+    let bob_epoch = alice_group.epoch();
+    let bob_leaf = LeafNodeIndex::new(1);
+    let bob = alice_group
+        .member_at_epoch(bob_epoch, bob_leaf)
+        .expect("Bob is in the current tree");
+    assert_eq!(bob.signature_key, bob_key.as_slice());
+
+    alice_group
+        .remove_members(&alice_provider, &alice_signer, &[bob_leaf])
+        .expect("error removing Bob");
+    alice_group
+        .merge_pending_commit(&alice_provider)
+        .expect("error merging commit");
+
+    assert!(alice_group
+        .member_at_epoch(alice_group.epoch(), bob_leaf)
+        .is_none());
+    let past_bob = alice_group
+        .member_at_epoch(bob_epoch, bob_leaf)
+        .expect("Bob is in the retained epoch");
+    assert_eq!(past_bob.signature_key, bob_key.as_slice());
+    // Epoch 0 is no longer retained.
+    assert!(alice_group
+        .member_at_epoch(GroupEpoch::from(0), LeafNodeIndex::new(0))
+        .is_none());
 }
